@@ -1,0 +1,30 @@
+# Node tooling
+node_modules/
+dist/
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# CI runner output
+ci-results/
+ci-report/
+
+# Environment and secrets (document variables in .env.example)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editors and OS files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

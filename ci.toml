@@ -1,0 +1,55 @@
+# Operations run by CI and locally with:  python ../.github/scripts/ci_runner.py
+# An operation whose `requires` paths are missing is skipped and the report says why,
+# so checks switch on automatically as the project grows. Order here = report order.
+# A failing operation can be bypassed with the label bypass:<name>, except
+# pr-policy and secret-scan. See the contributor docs before using a bypass.
+
+[[setup]]
+run = "npm ci"
+requires = ["package-lock.json"]
+local = false
+
+[[operation]]
+name = "secret-scan"
+run = 'docker run --rm -v "{repo}:/repo" -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e "GIT_CONFIG_VALUE_0=*" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact --no-banner'
+requires = [".git"]
+pass_summary = "no secrets found"
+
+[[operation]]
+name = "audit"
+run = "npm audit --audit-level=high"
+requires = ["package-lock.json"]
+pass_summary = "no high or critical vulnerabilities"
+
+[[operation]]
+name = "format-check"
+run = "npx --no-install prettier --check ."
+requires = ["package.json", ".prettierrc.json"]
+
+[[operation]]
+name = "lint"
+run = "npm run lint"
+requires = ["package.json", "eslint.config.js"]
+
+[[operation]]
+name = "typecheck"
+run = "npx --no-install tsc -p jsconfig.json"
+requires = ["package.json", "jsconfig.json"]
+
+[[operation]]
+name = "unit-test"
+run = "npx --no-install vitest run"
+requires = ["package.json", "vitest.config.js"]
+
+[[operation]]
+name = "build"
+run = "docker build -t workforce-ops-frontend:ci ."
+requires = ["Dockerfile"]
+pass_summary = "built workforce-ops-frontend:ci"
+timeout_minutes = 20
+
+[[operation]]
+name = "integration-test"
+run = "npx --no-install playwright test"
+requires = ["package.json", "playwright.config.js"]
+timeout_minutes = 20

@@ -1,0 +1,46 @@
+# Local checks. Install once per clone:
+#   python -m pip install pre-commit
+#   pre-commit install
+# Hook versions are refreshed with `pre-commit autoupdate` (see the dependencies guide).
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+default_stages: [pre-commit]
+
+repos:
+  - repo: https://github.com/workforce-ops-app/.github
+    rev: v0.1.0
+    hooks:
+      - id: commit-message
+      - id: branch-name
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: detect-private-key
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  # Enable once package.json exists (runs the project's own pinned tool versions):
+  # - repo: local
+  #   hooks:
+  #     - id: prettier
+  #       name: prettier
+  #       entry: npx --no-install prettier --write --ignore-unknown
+  #       language: system
+  #       types_or: [html, css, javascript, json, markdown, yaml]
+  #     - id: eslint
+  #       name: eslint
+  #       entry: npx --no-install eslint --fix
+  #       language: system
+  #       types: [javascript]
