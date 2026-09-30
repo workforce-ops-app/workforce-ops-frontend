@@ -1,0 +1,12 @@
+# Documentation is written by hand; Prettier would re-pad every Markdown table.
+docs/
+*.md
+
+# Generated or installed files
+package-lock.json
+node_modules/
+ci-results/
+ci-report/
+coverage/
+playwright-report/
+test-results/
