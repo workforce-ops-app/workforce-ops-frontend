@@ -1,4 +1,4 @@
-# Project Architecture — Frontend
+# Project Architecture: Frontend
 
 **In short:** how the user interface is put together: pages, the layer that talks to the server, shared components, and the measures that protect users from malicious content.
 

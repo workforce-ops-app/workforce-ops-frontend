@@ -1,4 +1,4 @@
-# Contributor Documentation — Frontend
+# Contributor Documentation: Frontend
 
 **In short:** how to set up and work on the frontend. The shared workflow (issues, branches, PRs, CI) is in the [contributor guide](https://github.com/workforce-ops-app/.github/tree/main/docs/contributing); this page covers what is specific to this repository.
 
