@@ -29,15 +29,27 @@ export function el(tag, options = {}, children = []) {
 
   if (options.attrs) {
     for (const [key, value] of Object.entries(options.attrs)) {
+      // Attribute names are case-insensitive (ONERROR works like onerror), so compare
+      // the lowercase name.
+      const name = key.toLowerCase();
+
       // Event-handler attributes (onclick, onerror, ...) contain code the browser runs.
-      // Lowercase first, because attribute names are case-insensitive (ONERROR works too).
-      if (key.toLowerCase().startsWith("on")) {
+      if (name.startsWith("on")) {
         throw new Error("Refused attribute: " + key);
       }
-      // A "javascript:" URL runs code when a link is followed or a source is loaded.
-      // The pattern allows leading spaces and any capitalization, the usual ways to sneak
-      // past a simple check: ^ start, \s* optional spaces, i = ignore case.
-      if (typeof value === "string" && /^\s*javascript:/i.test(value)) {
+
+      // srcdoc holds a whole HTML page that an iframe parses and runs, scripts included,
+      // so it is HTML in disguise.
+      if (name === "srcdoc") {
+        throw new Error("Refused attribute: " + key);
+      }
+
+      // Some URL schemes run code or carry a page of their own when a link is followed or
+      // a source is loaded: javascript: and vbscript: run code; data: can hold an HTML
+      // page with scripts. The pattern allows leading spaces and any capitalization, the
+      // usual ways to sneak past a simple check: ^ start, \s* optional spaces,
+      // (a|b|c) any of these, i = ignore case. Pages use ordinary URLs instead.
+      if (typeof value === "string" && /^\s*(javascript|vbscript|data):/i.test(value)) {
         throw new Error("Refused attribute: " + key);
       }
       // Anything else is safe to set: setAttribute stores the value as plain text.

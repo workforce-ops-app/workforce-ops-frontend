@@ -42,6 +42,18 @@ describe("el", () => {
     expect(() => el("a", { attrs: { href: "  JavaScript:alert(1)" } })).toThrow();
   });
 
+  it("refuses vbscript: and data: URLs, which run code or carry a page of their own", () => {
+    expect(() => el("a", { attrs: { href: "vbscript:msgbox(1)" } })).toThrow();
+    expect(() =>
+      el("a", { attrs: { href: " DATA:text/html,<script>alert(1)</script>" } }),
+    ).toThrow();
+  });
+
+  it("refuses srcdoc, which an iframe parses as a whole HTML page", () => {
+    expect(() => el("iframe", { attrs: { srcdoc: XSS } })).toThrow();
+    expect(() => el("iframe", { attrs: { SRCDOC: XSS } })).toThrow();
+  });
+
   it("appends children, with strings as text", () => {
     const list = el("ul", {}, [el("li", { text: "one" }), XSS]);
 

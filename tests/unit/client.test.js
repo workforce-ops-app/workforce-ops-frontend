@@ -1,19 +1,35 @@
 // The API client: requests, the CSRF header, errors, and password re-entry.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, api, apiRequest, onReauthRequired, setCsrfToken } from "../../js/api/client.js";
+import {
+  ApiError,
+  NetworkError,
+  api,
+  apiRequest,
+  onReauthRequired,
+  setCsrfToken,
+} from "../../js/api/client.js";
 
 /**
  * A fake fetch answer.
  * @param {number} status
  * @param {unknown} [body]
  * @param {string} [contentType]
+ * @param {Record<string, string>} [extraHeaders]
  */
-function answer(status, body, contentType = "application/json") {
+function answer(status, body, contentType = "application/json", extraHeaders = {}) {
   const text = body === undefined ? "" : typeof body === "string" ? body : JSON.stringify(body);
   return new Response(status === 204 ? null : text, {
     status,
-    statusText: { 200: "OK", 204: "No Content", 500: "Internal Server Error" }[status] || "",
-    headers: { "Content-Type": contentType },
+    statusText:
+      {
+        200: "OK",
+        204: "No Content",
+        405: "Method Not Allowed",
+        429: "Too Many Requests",
+        500: "Internal Server Error",
+        503: "Service Unavailable",
+      }[status] || "",
+    headers: { "Content-Type": contentType, ...extraHeaders },
   });
 }
 
@@ -61,6 +77,15 @@ describe("requests", () => {
     expect(options.method).toBe("POST");
     expect(headers.get("Content-Type")).toBe("application/json");
     expect(JSON.parse(options.body)).toEqual({ title: "Hello" });
+  });
+
+  it("sends a PUT with a JSON body", async () => {
+    fetchMock.mockResolvedValue(answer(204));
+
+    await api.put("/api/me/password", { current: "a", new: "b" });
+
+    expect(call().options.method).toBe("PUT");
+    expect(call().options.body).toBe(JSON.stringify({ current: "a", new: "b" }));
   });
 
   it("sends a PATCH with a JSON body", async () => {
@@ -154,10 +179,98 @@ describe("errors", () => {
     expect(error.message).not.toContain("secret");
   });
 
-  it("reports a network failure as an error the page can show", async () => {
-    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+  it("reports a network failure as a NetworkError, keeping the browser's error", async () => {
+    // fetch rejects only when no answer arrives at all (network down, server stopped).
+    const browserError = new TypeError("Failed to fetch");
+    fetchMock.mockRejectedValue(browserError);
 
-    await expect(api.get("/api/x")).rejects.toThrow();
+    const error = await api.get("/api/x").catch((e) => e);
+
+    // Its own type, so a page can tell it apart from a bug in our own code.
+    expect(error).toBeInstanceOf(NetworkError);
+    expect(error).not.toBeInstanceOf(ApiError);
+    expect(error.cause).toBe(browserError);
+  });
+
+  it("keeps the status when an error claims to be JSON but is not", async () => {
+    // A cut-off answer, or a proxy that mislabels its page: reading it must not turn a
+    // 503 into a parsing error that loses the status.
+    fetchMock.mockResolvedValue(answer(503, "<html>oops", "application/json"));
+
+    const error = await api.get("/api/x").catch((e) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(503);
+    expect(error.title).toBe("Service Unavailable");
+  });
+
+  it("keeps the error_id of a 500, so a report can be matched to the log", async () => {
+    fetchMock.mockResolvedValue(
+      answer(
+        500,
+        {
+          type: "about:blank",
+          title: "Internal Server Error",
+          status: 500,
+          detail: "An unexpected error occurred.",
+          error_id: "2ee9ff85-7336-4c33-9026-ea151ee6b013",
+        },
+        "application/problem+json",
+      ),
+    );
+
+    const error = await api.get("/api/x").catch((e) => e);
+
+    expect(error.errorId).toBe("2ee9ff85-7336-4c33-9026-ea151ee6b013");
+  });
+
+  it("keeps Retry-After from a 429, and every other header", async () => {
+    fetchMock.mockResolvedValue(
+      answer(429, { title: "Too Many Requests", status: 429 }, "application/problem+json", {
+        "Retry-After": "30",
+      }),
+    );
+
+    const error = await api.get("/api/x").catch((e) => e);
+
+    expect(error.retryAfter).toBe(30);
+    expect(error.headers.get("Retry-After")).toBe("30");
+  });
+
+  it("keeps headers such as Allow on a 405", async () => {
+    fetchMock.mockResolvedValue(
+      answer(405, { title: "Method Not Allowed", status: 405 }, "application/problem+json", {
+        Allow: "GET",
+      }),
+    );
+
+    const error = await api.post("/api/health").catch((e) => e);
+
+    expect(error.headers.get("Allow")).toBe("GET");
+    // No Retry-After: a page must not invent a waiting time.
+    expect(error.retryAfter).toBeNull();
+  });
+
+  it("still gives a usable error for an empty answer with no Content-Type", async () => {
+    // No body and no type at all: the error falls back to the status alone.
+    fetchMock.mockResolvedValue(new Response(null, { status: 418 }));
+
+    const error = await api.get("/api/x").catch((e) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(418);
+    expect(error.title).toBe("Error");
+    expect(error.message).toBe("Request failed with status 418");
+  });
+
+  it("keeps fields the client does not know yet in error.problem", async () => {
+    fetchMock.mockResolvedValue(
+      answer(409, { title: "Conflict", status: 409, shift_id: "0192-abc" }, "application/json"),
+    );
+
+    const error = await api.get("/api/x").catch((e) => e);
+
+    expect(error.problem.shift_id).toBe("0192-abc");
   });
 });
 

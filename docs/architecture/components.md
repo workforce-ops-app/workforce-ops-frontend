@@ -22,7 +22,7 @@ clear(list);                                  // empty an element
 
 | Helper | Does | Refuses |
 |---|---|---|
-| `el(tag, { text, className, attrs }, children)` | creates an element; text through `setText`; string children become text nodes | attributes starting with `on` (any capitalization), and values starting with `javascript:` (with leading spaces, any capitalization): both run code |
+| `el(tag, { text, className, attrs }, children)` | creates an element; text through `setText`; string children become text nodes | attributes starting with `on` (any capitalization) and `srcdoc` (an iframe parses it as a whole HTML page), and values starting with `javascript:`, `vbscript:`, or `data:` (with leading spaces, any capitalization): they run code or carry a page of their own |
 | `setText(element, value)` | replaces the content with text (`textContent`); `null` and `undefined` become empty | nothing to refuse: text can never become HTML |
 | `clear(element)` | removes everything inside | |
 
@@ -38,4 +38,4 @@ The strict Content Security Policy (served by nginx) is the second defense: even
 
 ## Tests
 
-`tests/unit/dom.test.js` feeds an XSS payload through every helper and checks that no `<script>` or `<img>` element appears, that event attributes and `javascript:` links are refused, and that `null` shows as empty.
+`tests/unit/dom.test.js` feeds an XSS payload through every helper and checks that no `<script>` or `<img>` element appears, that event attributes, `srcdoc`, and `javascript:`, `vbscript:`, and `data:` URLs are refused, and that `null` shows as empty.
