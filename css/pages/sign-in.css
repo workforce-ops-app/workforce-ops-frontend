@@ -1,0 +1,6 @@
+/* Sign-in page. */
+.sign-in-status {
+  padding: var(--space);
+  border: 1px solid var(--color-muted);
+  border-radius: var(--radius);
+}

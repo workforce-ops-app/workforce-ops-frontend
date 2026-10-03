@@ -5,7 +5,12 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     include: ["tests/unit/**/*.test.js"],
-    // The first tests arrive with the API client and DOM helpers.
-    passWithNoTests: true,
+    coverage: {
+      provider: "v8",
+      // Shared code is unit-tested; page scripts (js/pages/) are tested in the browser
+      // by the integration tests.
+      include: ["js/api/**/*.js", "js/core/**/*.js", "js/components/**/*.js"],
+      reporter: ["text"],
+    },
   },
 });
