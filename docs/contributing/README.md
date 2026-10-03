@@ -27,6 +27,7 @@ pre-commit install
 | Lint JavaScript, CSS, and HTML | `npm run lint` |
 | Type check (JSDoc comments, no build step) | `npm run typecheck` |
 | Unit tests | `npm test` |
+| Unit tests with coverage (`js/api`, `js/core`, `js/components`) | `npx vitest run --coverage` |
 
 ## Conventions specific to this repository
 

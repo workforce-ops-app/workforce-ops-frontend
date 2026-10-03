@@ -1,0 +1,38 @@
+/* Base styles shared by every page: colors, type, and layout basics. */
+:root {
+  --color-text: #1f2328;
+  --color-muted: #59636e;
+  --color-background: #fff;
+  --color-accent: #0969da;
+  --color-error: #cf222e;
+  --space: 1rem;
+  --radius: 6px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-background);
+}
+
+main {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--space);
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.error {
+  color: var(--color-error);
+}

@@ -18,9 +18,15 @@ export default [
     languageOptions: { globals: globals.browser },
   },
   {
-    // Tool configuration and tests run in Node.js.
-    files: ["*.config.js", "tests/**/*.js"],
+    // Tool configuration runs in Node.js.
+    files: ["*.config.js"],
     languageOptions: { globals: globals.node },
+  },
+  {
+    // Tests run in Node.js with jsdom, a simulated browser page (vitest.config.js), so
+    // both Node's and the browser's globals (document, window) exist there.
+    files: ["tests/**/*.js"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {
     rules: {
