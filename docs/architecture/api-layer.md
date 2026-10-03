@@ -44,7 +44,7 @@ As modules arrive, each gets its own file in `js/api/` (for example `js/api/shif
 |---|---|
 | success | the parsed JSON; `null` for 204 No Content |
 | an error with problem details (`application/problem+json`, [errors](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/user/errors.md)) | `ApiError` with `status`, `title`, `detail`, for 422 the field `errors`, for 500 the `errorId` (a reference number a user can quote), `retryAfter` in seconds from a 429's `Retry-After` header, and the full `problem` and response `headers` (for example `Allow` on a 405), so new fields reach pages without changing the client |
-| an error that is not JSON (for example an HTML page from a proxy), or claims to be JSON but cannot be read | `ApiError` with only the status and its standard text; the page's content is never shown, since it could reveal internals, and the status is never lost to a reading error |
+| an error that is not JSON (for example an HTML page from a proxy), claims to be JSON but cannot be read, or is valid JSON but not an object (`null`, an array, a string, a number) | `ApiError` with only the status and its standard text; the page's content is never shown, since it could reveal internals, and the status is never lost to a reading error |
 | no answer (network down, server not running) | `NetworkError`, with the browser's own error kept as its `cause` for the console; pages show a short "could not reach the server" message |
 
 ## Password re-entry

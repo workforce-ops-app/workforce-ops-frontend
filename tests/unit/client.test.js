@@ -24,6 +24,7 @@ function answer(status, body, contentType = "application/json", extraHeaders = {
       {
         200: "OK",
         204: "No Content",
+        403: "Forbidden",
         405: "Method Not Allowed",
         429: "Too Many Requests",
         500: "Internal Server Error",
@@ -249,6 +250,37 @@ describe("errors", () => {
     expect(error.headers.get("Allow")).toBe("GET");
     // No Retry-After: a page must not invent a waiting time.
     expect(error.retryAfter).toBeNull();
+  });
+
+  it.each([
+    ["null", "null"],
+    ["an array", '[{"title": "x"}]'],
+    ["a string", '"Service Unavailable"'],
+    ["a number", "42"],
+  ])("keeps the status when the JSON error body is %s, not an object", async (_, body) => {
+    // Valid JSON, but not problem details: the client must still give an ApiError with
+    // the right status, never crash reading fields of null or an array.
+    fetchMock.mockResolvedValue(answer(503, body, "application/json"));
+
+    const error = await api.get("/api/x").catch((e) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(503);
+    expect(error.title).toBe("Service Unavailable");
+  });
+
+  it("does not ask for the password again when a 403 body is null", async () => {
+    // A 403 is where the client reads problem.type (password re-entry), so a null body
+    // must not crash there either.
+    const reauth = vi.fn();
+    onReauthRequired(reauth);
+    fetchMock.mockResolvedValue(answer(403, "null", "application/json"));
+
+    const error = await api.post("/api/x").catch((e) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(403);
+    expect(reauth).not.toHaveBeenCalled();
   });
 
   it("still gives a usable error for an empty answer with no Content-Type", async () => {

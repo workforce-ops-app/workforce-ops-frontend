@@ -187,14 +187,25 @@ async function readProblem(response) {
     return statusOnly;
   }
 
+  /** @type {unknown} */
+  let body;
   try {
-    return await response.json();
+    body = await response.json();
   } catch {
     // The answer claimed to be JSON but was not (cut off, or from a misconfigured proxy).
     // Keep the status instead of failing with a parsing error, so the page still learns
     // it was, say, a 401 or a 503.
     return statusOnly;
   }
+
+  // Valid JSON is not always problem details: the body could be null, an array, a string,
+  // or a number. Reading problem.detail or problem.type on those would crash ApiError
+  // and lose the status, so only a plain object is used. (typeof null is "object" in
+  // JavaScript, and so is an array, hence the two extra checks.)
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    return statusOnly;
+  }
+  return /** @type {Problem} */ (body);
 }
 
 /** Shortcuts, so pages read like `api.get("/api/shifts")`. */
