@@ -27,7 +27,7 @@ js/
 
 | Page | Status |
 |---|---|
-| API layer | to do |
-| Components | to do |
+| [API layer](api-layer.md) (`js/api/client.js`: requests, CSRF token, errors, password re-entry) | built |
+| [Putting content on the page](components.md) (safe DOM helpers, components) | built (helpers); components with the core screens |
 | Navigation (permission-driven) | to do |
 | nginx configuration and headers | to do |

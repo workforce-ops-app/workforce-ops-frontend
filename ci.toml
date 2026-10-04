@@ -38,8 +38,11 @@ requires = ["package.json", "jsconfig.json"]
 
 [[operation]]
 name = "unit-test"
-run = "npx --no-install vitest run"
+run = "npx --no-install vitest run --coverage"
 requires = ["package.json", "vitest.config.js"]
+# Report summary, e.g. "23 passed · coverage 100%" (statement coverage of js/api, js/core, js/components).
+summary_patterns = ['Tests\s+(\d+) passed', 'All files\s*\|\s*([\d.]+)']
+summary_format = "{0} passed · coverage {1}%"
 
 [[operation]]
 name = "build"
