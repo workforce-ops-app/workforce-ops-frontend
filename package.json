@@ -9,11 +9,12 @@
   },
   "scripts": {
     "format": "prettier --write .",
-    "lint": "eslint . && stylelint \"css/**/*.css\" --allow-empty-input && html-validate pages",
+    "lint": "eslint . && biome lint --no-errors-on-unmatched && html-validate pages",
     "typecheck": "tsc -p jsconfig.json",
     "test": "vitest run"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@eslint/js": "10.0.1",
     "@types/node": "24.19.0",
     "eslint": "10.11.0",
@@ -22,8 +23,6 @@
     "html-validate": "11.16.1",
     "jsdom": "30.1.1",
     "prettier": "3.9.9",
-    "stylelint": "17.15.0",
-    "stylelint-config-standard": "40.0.0",
     "typescript": "7.0.2",
     "vitest": "5.0.3"
   }
