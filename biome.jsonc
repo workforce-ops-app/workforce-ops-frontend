@@ -1,0 +1,19 @@
+// Biome checks the CSS for mistakes (decision: frontend issue #24).
+//
+// Biome is used for CSS only. Prettier still formats every file, and ESLint still checks
+// the JavaScript, including the no-unsanitized rule that blocks innerHTML with data (XSS).
+// Biome is one compiled program with no JavaScript dependencies, which is why it
+// replaced stylelint (whose dependency chain carried a vulnerable library).
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  // Skip whatever git ignores (node_modules, CI output).
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  // Only the stylesheets.
+  "files": { "includes": ["css/**/*.css"] },
+  // Formatting stays with Prettier, so Biome must not format or reorder anything.
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+  // Biome's recommended rules: errors such as unknown properties or units, duplicate
+  // properties or selectors, invalid values, and empty blocks.
+  "linter": { "enabled": true, "rules": { "preset": "recommended" } },
+}
