@@ -27,6 +27,17 @@ pre-commit install
 | Lint JavaScript, CSS, and HTML | `npm run lint` |
 | Type check (JSDoc comments, no build step) | `npm run typecheck` |
 | Unit tests | `npm test` |
+| Dependency audit (with the [allowlist](#the-dependency-audit-and-its-allowlist)) | `node scripts/audit.js` |
+
+## The dependency audit and its allowlist
+
+CI's `audit` check (`node scripts/audit.js`) runs `npm audit` and fails on any **high** or **critical** security advisory in our dependencies. Advisories can be accepted one at a time in `audit-allowlist.json`, but only when all of these are true:
+
+- no fixed version exists (otherwise update instead; Dependabot usually proposes it);
+- the vulnerable code cannot be reached in a way that matters for us (for example a development tool that only reads our own files);
+- both teammates agree, in the pull request that adds the entry.
+
+Each entry records the advisory `id` (the `GHSA-...` part of its link), the `package`, the `reason` in plain words, and a `review_by` date at most two months ahead. After that date the check fails again, so the exception is looked at instead of forgotten. When a fix is released, update the package and remove the entry; the check reports entries that no longer match anything.
 
 ## Conventions specific to this repository
 

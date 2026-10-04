@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "maxNodeModuleJsDepth": 0
   },
-  "include": ["js/**/*.js", "tests/**/*.js", "*.config.js", "types/**/*.d.ts"]
+  "include": ["js/**/*.js", "scripts/**/*.js", "tests/**/*.js", "*.config.js", "types/**/*.d.ts"]
 }

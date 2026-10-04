@@ -17,7 +17,8 @@ pass_summary = "no secrets found"
 
 [[operation]]
 name = "audit"
-run = "npm audit --audit-level=high"
+# Fails on high or critical advisories, except the documented ones in audit-allowlist.json.
+run = "node scripts/audit.js"
 requires = ["package-lock.json"]
 pass_summary = "no high or critical vulnerabilities"
 

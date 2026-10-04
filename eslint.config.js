@@ -18,8 +18,8 @@ export default [
     languageOptions: { globals: globals.browser },
   },
   {
-    // Tool configuration and tests run in Node.js.
-    files: ["*.config.js", "tests/**/*.js"],
+    // Tool configuration, scripts, and tests run in Node.js.
+    files: ["*.config.js", "scripts/**/*.js", "tests/**/*.js"],
     languageOptions: { globals: globals.node },
   },
   {

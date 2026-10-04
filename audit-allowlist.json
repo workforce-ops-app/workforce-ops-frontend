@@ -1,0 +1,8 @@
+[
+  {
+    "id": "GHSA-vfj7-8cjw-p6xm",
+    "package": "braces",
+    "reason": "Deeply nested brace patterns can exhaust the stack (denial of service). braces reaches us only through stylelint (via fast-glob and micromatch), a development tool that never runs in the browser and only reads the patterns in our own configuration. No fixed version exists; npm's only fix downgrades stylelint to version 7. Remove this entry when a fixed braces is released.",
+    "review_by": "2026-11-30"
+  }
+]
