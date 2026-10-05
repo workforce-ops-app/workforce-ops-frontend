@@ -53,6 +53,8 @@ timeout_minutes = 20
 
 [[operation]]
 name = "integration-test"
-run = "npx --no-install playwright test"
+run = "npx --no-install playwright install --with-deps chromium firefox webkit && npm run test:integration"
 requires = ["package.json", "playwright.config.js"]
+summary_patterns = ['(\d+) passed']
+summary_format = "{0} browser checks passed"
 timeout_minutes = 20

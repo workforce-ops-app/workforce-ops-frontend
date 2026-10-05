@@ -1,0 +1,30 @@
+# Start the backend first, then run `docker compose up --build` here. The backend
+# creates the shared network and registers its API service under the name `api`.
+name: workforce-ops-frontend
+
+services:
+  frontend:
+    build: .
+    image: workforce-ops-frontend:local
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:8080"
+    networks:
+      - workforce-ops
+
+  # The integration profile supplies only the health response needed to prove the
+  # nginx proxy. Normal local work never starts this service; it uses the real API.
+  api-stub:
+    image: nginx:1.30.5-alpine3.24
+    profiles: [integration]
+    volumes:
+      - ./tests/integration/api-stub.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      workforce-ops:
+        aliases: [api]
+
+networks:
+  # This network belongs to the backend in normal use. The Playwright setup creates
+  # an isolated network with another name so tests cannot affect a developer's stack.
+  workforce-ops:
+    external: true
+    name: ${SHARED_NETWORK:-workforce-ops}

@@ -29,6 +29,29 @@ pre-commit install
 | Type check (JSDoc comments, no build step) | `npm run typecheck` |
 | Unit tests | `npm test` |
 | Unit tests with coverage (`js/api`, `js/core`, `js/components`) | `npx vitest run --coverage` |
+| Install integration-test browsers (first time) | `npx playwright install chromium firefox webkit` |
+| Run the nginx/API smoke tests | `npm run test:integration` |
+
+## Run the complete application locally
+
+Docker Desktop must be running. The two repositories keep separate Compose files, so
+start the backend first; it creates the shared network that the frontend joins:
+
+```
+cd ../workforce-ops-backend
+docker compose up --detach --build
+
+cd ../workforce-ops-frontend
+docker compose up --detach --build
+```
+
+Open `http://localhost:8080`. Both the pages and `/api` use this address; port 8000 is
+published for backend troubleshooting, not for browser code. Follow logs with
+`docker compose logs --follow` in the relevant repository. Stop the frontend and then
+the backend with `docker compose down` in each folder.
+
+The Playwright command creates its own temporary Docker network and API stand-in. It
+cleans both up after the tests, so it does not require or modify the local backend stack.
 
 ## Conventions specific to this repository
 
