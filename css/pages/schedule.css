@@ -1,0 +1,19 @@
+/* Department week (pages/schedule.html). Phones see the days one under another; wider
+   screens see a week grid with one column per day. */
+main.schedule {
+  max-width: 90rem;
+}
+
+.week-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space);
+}
+
+@media (width >= 64rem) {
+  .week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: calc(var(--space) / 2);
+  }
+}

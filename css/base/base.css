@@ -5,6 +5,9 @@
   --color-background: #fff;
   --color-accent: #0969da;
   --color-error: #cf222e;
+  --color-border: #d1d9e0;
+  --color-warning: #9a6700;
+  --color-warning-background: #fff8c5;
   --space: 1rem;
   --radius: 6px;
 }

@@ -34,7 +34,12 @@ The strict Content Security Policy (served by nginx) is the second defense: even
 
 ## Components
 
-`js/components/` holds reusable pieces of screen as functions that take data and return an element built with `el()`, for example `shiftCard(shift)`. Each comes with its stylesheet in `css/components/`. None exist yet; the first arrive with the core screens.
+`js/components/` holds reusable pieces of screen as functions that take data and return an element built with `el()`, for example `shiftCard(shift)`. Each comes with its stylesheet in `css/components/`.
+
+| Component | File | Shows |
+|---|---|---|
+| `shiftCard(shift, { showDepartment })` | `js/components/shift-card.js` | one shift: time in its workplace zone, who works it or "Open shift" (highlighted), details, event, notes; every user-written field as text |
+| `groupByDay(shifts)`, `daySection(key, shifts)` | `js/components/day-list.js` | shifts grouped by the day they start in their workplace zone, one section per day with a heading, or "No shifts" |
 
 ## Tests
 

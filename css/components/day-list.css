@@ -1,0 +1,26 @@
+/* Shifts grouped by day (js/components/day-list.js). */
+.day {
+  margin-bottom: var(--space);
+}
+
+.day__heading {
+  margin: 0 0 calc(var(--space) / 2);
+  font-size: 1rem;
+}
+
+.day__empty {
+  margin: 0;
+}
+
+/* Links between the schedule pages, shown at the top of each. */
+.page-nav {
+  display: flex;
+  gap: var(--space);
+  margin-bottom: var(--space);
+}
+
+.page-nav [aria-current="page"] {
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: none;
+}

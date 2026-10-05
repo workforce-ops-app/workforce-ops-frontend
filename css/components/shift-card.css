@@ -1,0 +1,38 @@
+/* One shift (js/components/shift-card.js). Open shifts, with nobody assigned yet, stand out
+   with a coloured border and label so managers spot them at a glance. */
+.shift-card {
+  margin: 0 0 calc(var(--space) / 2);
+  padding: calc(var(--space) / 2) var(--space);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-background);
+}
+
+.shift-card p {
+  margin: 0;
+}
+
+.shift-card__time {
+  font-weight: 600;
+}
+
+.shift-card__details,
+.shift-card__note {
+  color: var(--color-muted);
+}
+
+.shift-card__event {
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+/* Open shifts: a thicker coloured left edge and a coloured "Open shift" label. */
+.shift-card--open {
+  border-left: 4px solid var(--color-warning);
+  background: var(--color-warning-background);
+}
+
+.shift-card__who--open {
+  font-weight: 600;
+  color: var(--color-warning);
+}
