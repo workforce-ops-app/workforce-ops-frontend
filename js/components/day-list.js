@@ -1,9 +1,10 @@
-// Shifts grouped by calendar day: one section per day, with a heading and the day's cards.
-// Used by My shifts and the department week.
+// Shifts grouped by calendar day, shown as day cards: one white card per day, with the
+// weekday and date on the left and that day's shifts (or "No shift") on the right.
+// Used by My week and the department week.
 
 import { el } from "../core/dom.js";
-import { dayKey, formatDayHeading } from "../core/time.js";
-import { shiftCard } from "./shift-card.js";
+import { dayKey, formatDayHeading, formatDayNumber, formatWeekdayShort } from "../core/time.js";
+import { noShiftRow, shiftRow } from "./shift-card.js";
 
 /** @typedef {import("../api/shifts.js").Shift} Shift */
 
@@ -27,22 +28,33 @@ export function groupByDay(shifts) {
 }
 
 /**
- * One day's section: a heading such as "Monday, October 5" and the shift cards, or a
- * short "No shifts" line when the day is empty.
+ * One day's card.
  * @param {string} key "YYYY-MM-DD"
  * @param {Shift[]} shifts the day's shifts, in time order
- * @param {{ showDepartment?: boolean }} [options] passed on to each card
+ * @param {{ showEmployee?: boolean, today?: string }} [options] showEmployee is passed on
+ *   to each shift row; today (a day key) marks today's card
  * @returns {HTMLElement}
  */
-export function daySection(key, shifts, options = {}) {
-  const section = el(
-    "section",
-    { className: "day", attrs: { "aria-label": formatDayHeading(key) } },
-    [el("h2", { className: "day__heading", text: formatDayHeading(key) })],
+export function dayCard(key, shifts, options = {}) {
+  // The date column: a small "MON" over a large "28". Screen readers get the full date
+  // ("Monday, September 28") from the card's label instead.
+  const date = el("div", { className: "day-card__date", attrs: { "aria-hidden": "true" } }, [
+    el("span", { className: "day-card__weekday", text: formatWeekdayShort(key) }),
+    el("span", { className: "day-card__number", text: formatDayNumber(key) }),
+  ]);
+
+  // The day's shifts, or a single "No shift" row.
+  const rows = shifts.length
+    ? shifts.map((shift) => shiftRow(shift, { showEmployee: options.showEmployee }))
+    : [noShiftRow()];
+
+  const isToday = options.today === key;
+  return el(
+    "article",
+    {
+      className: isToday ? "day-card day-card--today" : "day-card",
+      attrs: { "aria-label": `${formatDayHeading(key)}${isToday ? " (today)" : ""}` },
+    },
+    [date, el("div", { className: "day-card__shifts" }, rows)],
   );
-  if (shifts.length === 0) {
-    section.append(el("p", { className: "day__empty muted", text: "No shifts" }));
-  }
-  for (const shift of shifts) section.append(shiftCard(shift, options));
-  return section;
 }

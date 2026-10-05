@@ -1,26 +1,118 @@
-/* Shifts grouped by day (js/components/day-list.js). */
-.day {
-  margin-bottom: var(--space);
+/* Day cards (js/components/day-list.js): one white rounded card per day, with the weekday
+   and date on the left and that day's shifts (or "No shift") on the right. */
+
+.days {
+  display: grid;
+  gap: 0.75rem;
 }
 
-.day__heading {
-  margin: 0 0 calc(var(--space) / 2);
-  font-size: 1rem;
+.day-card {
+  display: grid;
+  grid-template-columns: 3.75rem 1fr;
+  gap: var(--space);
+  align-items: center;
+  padding: var(--space);
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-card);
 }
 
-.day__empty {
-  margin: 0;
+/* Weekday and date: a small green "MON" over a large "28", with a divider after it. */
+.day-card__date {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  justify-content: center;
+  padding-right: var(--space);
+  border-right: 1px solid var(--color-border);
+  line-height: 1.1;
 }
 
-/* Links between the schedule pages, shown at the top of each. */
-.page-nav {
+.day-card__weekday {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
+}
+
+.day-card__number {
+  font-size: 1.75rem;
+  color: var(--color-heading);
+}
+
+.day-card__shifts {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* Today's card: a green edge, so the current day is easy to find. */
+.day-card--today {
+  box-shadow:
+    inset 4px 0 0 var(--color-accent),
+    var(--shadow-card);
+}
+
+/* A short summary card, e.g. "Time scheduled: 24 hours". */
+.summary-card {
   display: flex;
   gap: var(--space);
+  align-items: center;
+  margin-top: 0.75rem;
+  padding: 0.75rem var(--space);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-soft);
+  font-size: 1.125rem;
+}
+
+.summary-card__icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.summary-card__value {
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+/* Previous and next week, with the dates of the week shown between them. */
+.week-nav {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: var(--space);
 }
 
-.page-nav [aria-current="page"] {
+.week-nav__range {
   font-weight: 600;
-  color: var(--color-text);
+  text-align: center;
+}
+
+.week-nav__button {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-background);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-accent);
   text-decoration: none;
+}
+
+.week-nav__button:hover {
+  background: var(--color-accent-soft);
+}
+
+/* The status line ("Loading...", problems) sits quietly above the cards. */
+.status:empty {
+  display: none;
 }

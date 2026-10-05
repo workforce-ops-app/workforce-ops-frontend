@@ -2,22 +2,52 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>My shifts · Workforce Operations</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>My week · Workforce Operations</title>
     <link rel="stylesheet" href="/css/base/base.css" />
+    <link rel="stylesheet" href="/css/components/app-shell.css" />
     <link rel="stylesheet" href="/css/components/shift-card.css" />
     <link rel="stylesheet" href="/css/components/day-list.css" />
     <script type="module" src="/js/pages/my-shifts.js"></script>
   </head>
   <body>
-    <main>
-      <nav class="page-nav" aria-label="Schedules">
-        <a href="/pages/my-shifts.html" aria-current="page">My shifts</a>
-        <a href="/pages/schedule.html">Department week</a>
+    <header class="app-header">
+      <a class="app-header__brand" href="/pages/my-shifts.html">
+        <img
+          class="app-header__logo"
+          src="/icons/logo.svg"
+          alt="Workforce Operations"
+          width="48"
+          height="52"
+        />
+      </a>
+    </header>
+    <nav class="tab-bar" aria-label="Main">
+      <a class="tab-bar__link" href="/pages/my-shifts.html" aria-current="page">
+        <span class="icon icon--calendar" aria-hidden="true"></span>
+        My week
+      </a>
+      <a class="tab-bar__link" href="/pages/schedule.html">
+        <span class="icon icon--people" aria-hidden="true"></span>
+        Department
+      </a>
+    </nav>
+    <main class="app-main">
+      <h1>My week</h1>
+      <nav class="week-nav" aria-label="Weeks">
+        <a id="previous-week" class="week-nav__button" href="?">
+          <span class="icon icon--chevron-left" aria-hidden="true"></span>
+          Previous
+        </a>
+        <span id="week-range" class="week-nav__range"></span>
+        <a id="next-week" class="week-nav__button" href="?">
+          Next
+          <span class="icon icon--chevron-right" aria-hidden="true"></span>
+        </a>
       </nav>
-      <h1>My shifts</h1>
-      <p id="status" aria-live="polite">Loading your shifts…</p>
-      <div id="days"></div>
+      <p id="status" class="status" aria-live="polite">Loading your shifts…</p>
+      <div id="days" class="days"></div>
+      <div id="summary" class="summary-card" hidden></div>
     </main>
   </body>
 </html>

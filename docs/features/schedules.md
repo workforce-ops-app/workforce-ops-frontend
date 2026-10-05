@@ -1,6 +1,6 @@
 # Schedules
 
-- **Status:** My shifts and the department week are built, on sample data until the shifts API exists (backend SC1); edit mode is planned (core tier)
+- **Status:** My week and the department week are built and styled, on sample data until the shifts API exists (backend SC1); edit mode is planned (core tier)
 - **Related:** workforce-ops-app/workforce-ops-frontend#3; backend: [schedules and shifts](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/schedules.md)
 
 ## In short
@@ -10,8 +10,8 @@ Employees see their upcoming shifts and their department's week; managers plan t
 
 | Screen | Page | Who sees it | Phone / desktop |
 |---|---|---|---|
-| **My shifts**: upcoming shifts as a list, with details, notes, and event | `pages/my-shifts.html` | everyone | phone first; the home page after signing in |
-| **Department week**: one department's week, open shifts highlighted | `pages/schedule.html` | people with `schedule.view` (employees see their own department by default) | both; a day-by-day list on phones, a grid on desktop |
+| **My week**: your shifts for one week, a card per day (days off show "No shift"), previous and next week, and the hours scheduled that week | `pages/my-shifts.html` | everyone | phone first; the home page after signing in |
+| **Department week**: one department's week with who works each shift, open shifts highlighted in amber | `pages/schedule.html` | people with `schedule.view` (employees see their own department by default) | both; day cards one under another on phones and tablets, the seven days side by side on wide screens |
 | **Edit mode** of the department week: add, change, assign, make open, cancel; select several shifts for a batch change | same page, shown only with `schedule.edit` | managers, administrators, owners | desktop first; usable on a tablet |
 | **Confirm batch change**: "This will change 14 shifts." | a dialog on the same page | managers | both |
 
@@ -44,7 +44,7 @@ Each shift: `id`, `department` (`id`, `name`), `employee` (`id`, `display_name`,
 
 ## Notes
 - **Time zones:** each shift carries its `timezone`; the page formats times in that zone with `Intl.DateTimeFormat`, not in the viewer's own zone (`js/core/time.js`). A shift belongs to the day it starts in its workplace zone, so a 22:00 shift stays on its own day even though it is already the next day in UTC.
-- **Addresses:** the week page reads `?week=YYYY-MM-DD&department=<id>` (any day of the week works; without a week it shows the current one), so a week can be bookmarked or shared. Previous and next week links keep the department.
+- **Addresses:** both pages read `?week=YYYY-MM-DD` (the department week also `&department=<id>`) (any day of the week works; without a week it shows the current one), so a week can be bookmarked or shared. Previous and next week links keep the department.
 - **Edit buttons** appear only when the session's permissions include `schedule.edit`; this is a convenience, the API checks every change.
 - **Details, notes, and event text** are shown with `textContent`, never as HTML.
 - A 409 answer (double booking, time off, a shift that has ended) is shown next to the shift in plain words.

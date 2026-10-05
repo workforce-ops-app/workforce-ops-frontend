@@ -1,15 +1,38 @@
-/* Base styles shared by every page: colors, type, and layout basics. */
+/* Base styles shared by every page: colors, type, and layout basics.
+   The look: a warm off-white page, white cards with soft shadows, deep green as the accent,
+   and a serif for page headings. Every color is a token here, so pages never hard-code one. */
 :root {
-  --color-text: #1f2328;
-  --color-muted: #59636e;
+  /* Text */
+  --color-text: #1b2433;
+  --color-muted: #5b6670;
+  --color-heading: #13203a;
+
+  /* Surfaces */
+  --color-page: #f6f5f0;
   --color-background: #fff;
-  --color-accent: #0969da;
-  --color-error: #cf222e;
-  --color-border: #d1d9e0;
-  --color-warning: #9a6700;
-  --color-warning-background: #fff8c5;
+  --color-surface-soft: #f1f0e9;
+  --color-border: #e4e2da;
+
+  /* Accent: deep green */
+  --color-accent: #1f5631;
+  --color-accent-strong: #163f24;
+  --color-accent-soft: #e6efe3;
+
+  /* Status */
+  --color-error: #b42318;
+  --color-warning: #8a5a00;
+  --color-warning-background: #fff4d6;
+  --color-warning-border: #e3b341;
+
+  /* Type */
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-heading: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+
+  /* Shape and spacing */
   --space: 1rem;
   --radius: 6px;
+  --radius-card: 16px;
+  --shadow-card: 0 1px 2px rgb(20 30 25 / 4%), 0 4px 14px rgb(20 30 25 / 6%);
 }
 
 *,
@@ -20,10 +43,10 @@
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-body);
   line-height: 1.5;
   color: var(--color-text);
-  background: var(--color-background);
+  background: var(--color-page);
 }
 
 main {
@@ -32,10 +55,79 @@ main {
   padding: var(--space);
 }
 
+h1 {
+  margin: 0.25em 0 0.5em;
+  font-family: var(--font-heading);
+  font-size: 2.25rem;
+  line-height: 1.15;
+  color: var(--color-heading);
+}
+
+a {
+  color: var(--color-accent);
+}
+
+/* A clear ring around whatever the keyboard is on (WCAG 2.2: focus visible). */
+:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .muted {
   color: var(--color-muted);
 }
 
 .error {
   color: var(--color-error);
+}
+
+/* Text for screen readers only: hidden on screen, still read aloud. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Icons: an SVG file used as a mask, painted in the current text color, so an icon turns
+   green with its link or button. Decorative; the text next to it carries the meaning. */
+.icon {
+  display: inline-block;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: currentcolor;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+.icon--clock {
+  mask-image: url("/icons/clock.svg");
+}
+
+.icon--lounge {
+  mask-image: url("/icons/lounge.svg");
+}
+
+.icon--calendar {
+  mask-image: url("/icons/calendar.svg");
+}
+
+.icon--people {
+  mask-image: url("/icons/people.svg");
+}
+
+.icon--open {
+  mask-image: url("/icons/open.svg");
+}
+
+.icon--chevron-left {
+  mask-image: url("/icons/chevron-left.svg");
+}
+
+.icon--chevron-right {
+  mask-image: url("/icons/chevron-right.svg");
 }

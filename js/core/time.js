@@ -64,6 +64,56 @@ export function formatDayHeading(key) {
 }
 
 /**
+ * Format a day key in UTC (noon), so no time zone can move it to another day.
+ * @param {string} key "YYYY-MM-DD"
+ * @param {Intl.DateTimeFormatOptions} options
+ * @returns {string}
+ */
+function formatDay(key, options) {
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...options }).format(
+    new Date(`${key}T12:00:00Z`),
+  );
+}
+
+/**
+ * The short weekday of a day key, in capitals, e.g. "MON" (the day cards' small label).
+ * @param {string} key "YYYY-MM-DD"
+ * @returns {string}
+ */
+export function formatWeekdayShort(key) {
+  return formatDay(key, { weekday: "short" }).toUpperCase();
+}
+
+/**
+ * The day of the month of a day key, e.g. "28" (the day cards' large number).
+ * @param {string} key "YYYY-MM-DD"
+ * @returns {string}
+ */
+export function formatDayNumber(key) {
+  return formatDay(key, { day: "numeric" });
+}
+
+/**
+ * A week's dates for the week navigation, e.g. "Sep 28 to Oct 4".
+ * @param {string} monday "YYYY-MM-DD"
+ * @returns {string}
+ */
+export function formatWeekRange(monday) {
+  const options = /** @type {const} */ ({ month: "short", day: "numeric" });
+  return `${formatDay(monday, options)} to ${formatDay(addDays(monday, 6), options)}`;
+}
+
+/**
+ * The hours between two moments, e.g. 8 for a 9:00 to 17:00 shift (7.5 for half hours).
+ * @param {string} startsAt
+ * @param {string} endsAt
+ * @returns {number}
+ */
+export function hoursBetween(startsAt, endsAt) {
+  return (new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 3600000;
+}
+
+/**
  * The day key a number of days after (or before, if negative) another day key.
  * @param {string} key "YYYY-MM-DD"
  * @param {number} days

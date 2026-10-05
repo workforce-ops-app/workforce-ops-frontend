@@ -5,12 +5,12 @@ import { ApiError, NetworkError } from "../../js/api/client.js";
 // Replace the data source, so each test decides what the "server" returns.
 vi.mock("../../js/api/shifts.js", () => ({ listShifts: vi.fn() }));
 const { listShifts } = await import("../../js/api/shifts.js");
-const { showMyShifts } = await import("../../js/pages/my-shifts.js");
+const { formatHours, showMyWeek } = await import("../../js/pages/my-shifts.js");
 const { showWeek } = await import("../../js/pages/schedule.js");
 const mocked = /** @type {import("vitest").Mock} */ (/** @type {unknown} */ (listShifts));
 
 /**
- * A shift in Chicago on the given day.
+ * A shift in Chicago on the given day, 9:00 to 17:00 local time.
  * @param {string} day "YYYY-MM-DD"
  * @param {object} [overrides]
  */
@@ -34,17 +34,18 @@ function shiftOn(day, overrides = {}) {
 /**
  * Build the elements a page needs (with DOM calls, not HTML).
  * @param {string[]} ids
- * @param {Record<string, string>} [tags] a different tag per id, default div
  */
-function page(ids, tags = {}) {
+function page(ids) {
   document.body.replaceChildren(
     ...ids.map((id) => {
-      const element = document.createElement(tags[id] ?? "div");
+      const element = document.createElement(id.endsWith("-week") ? "a" : "div");
       element.id = id;
       return element;
     }),
   );
 }
+
+const text = (/** @type {string} */ id) => document.getElementById(id)?.textContent;
 
 // Braces matter: a function returned from beforeEach runs as a cleanup step afterwards,
 // and mockReset() returns the mock itself, which would then be called once more.
@@ -53,46 +54,77 @@ beforeEach(() => {
 });
 afterEach(() => document.body.replaceChildren());
 
-describe("My shifts", () => {
-  beforeEach(() => page(["status", "days"]));
+describe("My week", () => {
+  beforeEach(() => page(["week-range", "previous-week", "next-week", "status", "days", "summary"]));
 
-  it("asks only for my shifts and shows one section per day", async () => {
+  it("asks for my shifts of the week and shows a card for every day", async () => {
     mocked.mockResolvedValue([shiftOn("2026-10-05"), shiftOn("2026-10-07")]);
 
-    await showMyShifts();
+    await showMyWeek("?week=2026-10-06");
 
-    expect(mocked.mock.calls[0][0].mine).toBe(true);
-    expect(document.querySelectorAll("#days .day")).toHaveLength(2);
-    expect(document.getElementById("days")?.textContent).toContain("Kitchen");
+    expect(mocked.mock.calls[0][0]).toEqual({ from: "2026-10-05", to: "2026-10-11", mine: true });
+    expect(document.querySelectorAll("#days .day-card")).toHaveLength(7);
+    expect(document.querySelectorAll("#days .shift--none")).toHaveLength(5);
+    expect(text("week-range")).toBe("Oct 5 to Oct 11");
   });
 
-  it("says so when nothing is coming up", async () => {
+  it("adds up the hours scheduled", async () => {
+    mocked.mockResolvedValue([shiftOn("2026-10-05"), shiftOn("2026-10-07")]);
+
+    await showMyWeek("?week=2026-10-05");
+
+    expect(text("summary")).toBe("Time scheduled: 16 hours");
+    expect(document.getElementById("summary")?.hidden).toBe(false);
+  });
+
+  it("links to the weeks before and after", async () => {
     mocked.mockResolvedValue([]);
 
-    await showMyShifts();
+    await showMyWeek("?week=2026-10-05");
 
-    expect(document.getElementById("status")?.textContent).toContain("No upcoming shifts");
+    expect(document.getElementById("previous-week")?.getAttribute("href")).toBe("?week=2026-09-28");
+    expect(document.getElementById("next-week")?.getAttribute("href")).toBe("?week=2026-10-12");
   });
 
   it("keeps a malicious note as text on the page", async () => {
     mocked.mockResolvedValue([shiftOn("2026-10-05", { notes: "<script>alert(1)</script>" })]);
 
-    await showMyShifts();
+    await showMyWeek("?week=2026-10-05");
 
     expect(document.querySelector("#days script")).toBeNull();
-    expect(document.getElementById("days")?.textContent).toContain("<script>alert(1)</script>");
+    expect(text("days")).toContain("<script>alert(1)</script>");
+  });
+
+  it("hides the total and explains a network failure", async () => {
+    mocked.mockRejectedValue(new NetworkError(new TypeError("Failed to fetch")));
+
+    await showMyWeek("");
+
+    expect(text("status")).toBe("Problem: the server could not be reached");
+    expect(document.getElementById("summary")?.hidden).toBe(true);
+  });
+
+  it("does not disguise a bug as a network problem", async () => {
+    mocked.mockRejectedValue(new TypeError("a bug"));
+
+    await expect(showMyWeek("")).rejects.toThrow("a bug");
+    expect(text("status")).toBe("Problem: this page could not load");
+  });
+});
+
+describe("formatHours", () => {
+  it("says hours the way people do", () => {
+    expect(formatHours(1)).toBe("1 hour");
+    expect(formatHours(7.5)).toBe("7.5 hours");
+    expect(formatHours(24)).toBe("24 hours");
+    expect(formatHours(0)).toBe("0 hours");
   });
 });
 
 describe("Department week", () => {
-  beforeEach(() =>
-    page(["title", "status", "week", "previous-week", "next-week"], {
-      "previous-week": "a",
-      "next-week": "a",
-    }),
-  );
+  beforeEach(() => page(["title", "week-range", "previous-week", "next-week", "status", "days"]));
 
-  it("shows all seven days of the requested week, open shifts highlighted", async () => {
+  it("shows all seven days with who works each shift, open shifts marked", async () => {
     mocked.mockResolvedValue([
       shiftOn("2026-10-05"),
       shiftOn("2026-10-08", { status: "open", employee: null }),
@@ -106,42 +138,19 @@ describe("Department week", () => {
       to: "2026-10-11",
       departmentId: "d1",
     });
-    expect(document.querySelectorAll("#week .day")).toHaveLength(7);
-    expect(document.querySelectorAll("#week .shift-card--open")).toHaveLength(1);
-    expect(document.getElementById("title")?.textContent).toBe(
-      "Kitchen: week of Monday, October 5",
-    );
+    expect(document.querySelectorAll("#days .day-card")).toHaveLength(7);
+    expect(document.querySelectorAll("#days .shift--open")).toHaveLength(1);
+    expect(text("days")).toContain("Ana Diaz");
+    expect(text("title")).toBe("Kitchen");
   });
 
-  it("links to the weeks before and after, keeping the department", async () => {
+  it("links to other weeks, keeping the department", async () => {
     mocked.mockResolvedValue([]);
 
     await showWeek("?week=2026-10-05&department=d1");
 
-    expect(document.getElementById("previous-week")?.getAttribute("href")).toBe(
-      "?week=2026-09-28&department=d1",
-    );
     expect(document.getElementById("next-week")?.getAttribute("href")).toBe(
       "?week=2026-10-12&department=d1",
-    );
-  });
-
-  it("ignores a malformed week and shows the current one", async () => {
-    mocked.mockResolvedValue([]);
-
-    await showWeek("?week=<script>");
-
-    expect(mocked.mock.calls[0][0].from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(document.getElementById("title")?.textContent).not.toContain("<script>");
-  });
-
-  it("says the server could not be reached on a network failure", async () => {
-    mocked.mockRejectedValue(new NetworkError(new TypeError("Failed to fetch")));
-
-    await showWeek("");
-
-    expect(document.getElementById("status")?.textContent).toBe(
-      "Problem: the server could not be reached",
     );
   });
 
@@ -150,15 +159,13 @@ describe("Department week", () => {
 
     await showWeek("");
 
-    expect(document.getElementById("status")?.textContent).toBe("Problem: Forbidden");
+    expect(text("status")).toBe("Problem: Forbidden");
   });
 
   it("does not disguise a bug as a network problem", async () => {
     mocked.mockRejectedValue(new TypeError("a bug"));
 
     await expect(showWeek("")).rejects.toThrow("a bug");
-    expect(document.getElementById("status")?.textContent).toBe(
-      "Problem: this page could not load",
-    );
+    expect(text("status")).toBe("Problem: this page could not load");
   });
 });

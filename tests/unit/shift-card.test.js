@@ -1,7 +1,7 @@
-// The shift card and day sections: text only (threat T5), open shifts highlighted.
+// Shift rows and day cards: text only (threat T5), open shifts and today marked.
 import { describe, expect, it } from "vitest";
-import { daySection, groupByDay } from "../../js/components/day-list.js";
-import { shiftCard } from "../../js/components/shift-card.js";
+import { dayCard, groupByDay } from "../../js/components/day-list.js";
+import { icon, noShiftRow, shiftRow } from "../../js/components/shift-card.js";
 
 const XSS = '<img src=x onerror="alert(1)"><script>alert(2)</script>';
 
@@ -27,77 +27,96 @@ function makeShift(overrides = {}) {
   };
 }
 
-describe("shiftCard", () => {
-  it("shows the time in the workplace zone and who works it", () => {
-    const card = shiftCard(makeShift());
+describe("shiftRow", () => {
+  it("shows the time in the workplace zone, then what and where (My week)", () => {
+    const row = shiftRow(makeShift());
 
-    expect(card.textContent).toContain("9:00 AM - 5:00 PM");
-    expect(card.textContent).toContain("Ana Diaz");
-    expect(card.classList.contains("shift-card--open")).toBe(false);
+    expect(row.querySelector(".shift__time")?.textContent).toBe("9:00 AM - 5:00 PM");
+    expect(row.querySelector(".shift__meta")?.textContent).toBe("Prep line · Kitchen");
+    expect(row.querySelector(".icon--clock")).not.toBeNull();
+  });
+
+  it("shows who works it instead, for the department week", () => {
+    const row = shiftRow(makeShift(), { showEmployee: true });
+
+    expect(row.querySelector(".shift__meta")?.textContent).toBe("Ana Diaz · Prep line");
   });
 
   it("keeps HTML in every user-written field as plain text", () => {
     // A note, details, event, and even a person's name could hold an attack.
-    const card = shiftCard(
-      makeShift({
-        notes: XSS,
-        details: XSS,
-        event_name: XSS,
-        event_description: XSS,
-        employee: { id: "u1", display_name: XSS },
-      }),
+    const shift = makeShift({
+      notes: XSS,
+      details: XSS,
+      event_name: XSS,
+      event_description: XSS,
+      employee: { id: "u1", display_name: XSS },
+    });
+
+    for (const row of [shiftRow(shift), shiftRow(shift, { showEmployee: true })]) {
+      expect(row.querySelector("script")).toBeNull();
+      expect(row.querySelector("img")).toBeNull();
+      expect(row.textContent).toContain("<script>alert(2)</script>");
+    }
+  });
+
+  it("marks an open shift, with its own icon and label", () => {
+    const row = shiftRow(makeShift({ status: "open", employee: null }), { showEmployee: true });
+
+    expect(row.classList.contains("shift--open")).toBe(true);
+    expect(row.querySelector(".icon--open")).not.toBeNull();
+    expect(row.querySelector(".shift__who")?.textContent).toBe("Open shift");
+  });
+
+  it("shows the event and notes, and leaves out what is not there", () => {
+    const withEvent = shiftRow(
+      makeShift({ event_name: "Inventory night", event_description: "Count it", notes: "Keys" }),
     );
+    const bare = shiftRow(makeShift({ details: null, event_name: "Inventory night" }), {
+      showEmployee: true,
+    });
 
-    expect(card.querySelector("script")).toBeNull();
-    expect(card.querySelector("img")).toBeNull();
-    expect(card.textContent).toContain("<script>alert(2)</script>");
-  });
-
-  it("highlights an open shift", () => {
-    const card = shiftCard(makeShift({ status: "open", employee: null }));
-
-    expect(card.classList.contains("shift-card--open")).toBe(true);
-    expect(card.textContent).toContain("Open shift");
-  });
-
-  it("shows the event, and the department only when asked", () => {
-    const shift = makeShift({ event_name: "Inventory night", event_description: "Count it all" });
-
-    expect(shiftCard(shift).textContent).toContain("Event: Inventory night");
-    expect(shiftCard(shift).textContent).toContain("Count it all");
-    expect(shiftCard(shift).textContent).not.toContain("Kitchen");
-    expect(shiftCard(shift, { showDepartment: true }).textContent).toContain("Prep line · Kitchen");
+    expect(withEvent.textContent).toContain("Event: Inventory night");
+    expect(withEvent.querySelectorAll(".shift__note")).toHaveLength(2);
+    expect(bare.querySelector(".shift__meta")?.textContent).toBe("Ana Diaz");
+    expect(bare.querySelectorAll(".shift__note")).toHaveLength(0);
   });
 });
 
-describe("shiftCard with fields left empty", () => {
-  it("leaves out what is not there", () => {
-    // No details, no notes, and an event without a description.
-    const card = shiftCard(makeShift({ details: null, event_name: "Inventory night" }));
+describe("noShiftRow and icon", () => {
+  it("shows a day off", () => {
+    const row = noShiftRow();
 
-    expect(card.querySelector(".shift-card__details")).toBeNull();
-    expect(card.querySelectorAll(".shift-card__note")).toHaveLength(0);
-    expect(card.textContent).toContain("Event: Inventory night");
+    expect(row.textContent).toBe("No shift");
+    expect(row.querySelector(".icon--lounge")).not.toBeNull();
+  });
+
+  it("hides icons from screen readers (the text carries the meaning)", () => {
+    expect(icon("clock").getAttribute("aria-hidden")).toBe("true");
   });
 });
 
-describe("groupByDay and daySection", () => {
+describe("groupByDay and dayCard", () => {
   it("puts a late shift on the day it starts in its workplace zone", () => {
     // 22:30 in Chicago on October 5 is already October 6 in UTC.
-    const late = makeShift({
-      id: "late",
-      starts_at: "2026-10-06T03:30:00Z",
-      ends_at: "2026-10-06T10:00:00Z",
-    });
+    const late = makeShift({ starts_at: "2026-10-06T03:30:00Z", ends_at: "2026-10-06T10:00:00Z" });
 
     expect([...groupByDay([late]).keys()]).toEqual(["2026-10-05"]);
   });
 
-  it("names the day and says when it is empty", () => {
-    const empty = daySection("2026-10-05", []);
+  it("shows the weekday and date, labelled with the full date for screen readers", () => {
+    const card = dayCard("2026-10-05", [makeShift()]);
 
-    expect(empty.querySelector("h2")?.textContent).toBe("Monday, October 5");
-    expect(empty.textContent).toContain("No shifts");
-    expect(daySection("2026-10-05", [makeShift()]).textContent).not.toContain("No shifts");
+    expect(card.querySelector(".day-card__weekday")?.textContent).toBe("MON");
+    expect(card.querySelector(".day-card__number")?.textContent).toBe("5");
+    expect(card.getAttribute("aria-label")).toBe("Monday, October 5");
+    expect(card.querySelectorAll(".shift")).toHaveLength(1);
+  });
+
+  it("shows No shift on an empty day, and marks today", () => {
+    const card = dayCard("2026-10-05", [], { today: "2026-10-05" });
+
+    expect(card.textContent).toContain("No shift");
+    expect(card.classList.contains("day-card--today")).toBe(true);
+    expect(card.getAttribute("aria-label")).toBe("Monday, October 5 (today)");
   });
 });
