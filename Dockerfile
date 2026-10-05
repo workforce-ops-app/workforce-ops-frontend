@@ -1,7 +1,7 @@
 # The browser-facing frontend image: static files plus the nginx reverse proxy.
 # nginx serves pages itself and sends /api requests to the backend service, so the
 # browser uses one origin for the entire application (decisions 0003 and 0034).
-FROM nginx:1.30.5-alpine3.24
+FROM nginx:1.31-alpine3.24
 
 # Replace the image's root-owned default server with the project configuration.
 # The static folders keep their repository paths, which makes browser URLs match
