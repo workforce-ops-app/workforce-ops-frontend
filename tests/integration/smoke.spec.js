@@ -39,6 +39,16 @@ test("localhost accepts a Secure __Host- cookie", async ({ browserName, context,
   });
 
   const cookie = (await context.cookies()).find(({ name }) => name === "__Host-localhost-check");
+
+  // WebKit's localhost treatment depends on its host platform. Its Linux build rejects
+  // this Secure cookie over HTTP, while its Windows build stores it. That difference is
+  // the compatibility result this test is meant to preserve for Phase 2, not a failure
+  // of the nginx proxy. Actual Safari on macOS still needs a manual branded-browser test.
+  if (browserName === "webkit" && process.platform === "linux") {
+    expect(cookie).toBeUndefined();
+    return;
+  }
+
   expect(cookie).toMatchObject({
     value: "accepted",
     path: "/",
@@ -46,8 +56,7 @@ test("localhost accepts a Secure __Host- cookie", async ({ browserName, context,
     httpOnly: true,
   });
 
-  // Chromium and Firefox retain the Strict metadata. Playwright's WebKit build stores
-  // the cookie but exposes SameSite as None; nginx.md records that Safari still needs
-  // a branded-browser check before Phase 2 chooses the final session-cookie behavior.
+  // Chromium and Firefox retain the Strict metadata. Playwright's Windows WebKit build
+  // stores the cookie but exposes SameSite as None; nginx.md records the full result.
   expect(cookie?.sameSite).toBe(browserName === "webkit" ? "None" : "Strict");
 });

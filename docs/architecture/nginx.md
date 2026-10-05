@@ -62,11 +62,14 @@ files. Each directive has one job:
 The Playwright smoke test sends a `Secure; HttpOnly; SameSite=Strict; Path=/` cookie with
 the `__Host-` prefix over `http://localhost`, then confirms that the browser stored it.
 It runs with Chromium, Firefox, and WebKit, which represent the engines used by Chrome
-and Edge, Firefox, and Safari respectively. All three accept the cookie. Chromium and
-Firefox report `SameSite=Strict` back to the test; Playwright's WebKit build stores the
-cookie but reports `SameSite=None`.
+and Edge, Firefox, and Safari respectively. Chromium and Firefox accept the cookie and
+report `SameSite=Strict`. Playwright WebKit differs by host platform: its Windows build
+accepts the cookie but reports `SameSite=None`, while its Linux build rejects the cookie.
+The smoke test asserts both observed outcomes so CI records a behavioral change on either
+platform without treating their known difference as an nginx failure.
 
 This is an engine-level Phase 1 result, not a claim that every branded browser version
 has been manually tested. Before Phase 2 finalizes sessions, confirm the same behavior
 in current desktop Chrome, Edge, Firefox, and Safari on their supported operating
-systems, paying particular attention to Safari's reported SameSite behavior.
+systems. Safari on macOS is especially important because Playwright WebKit is not the
+branded Safari browser and its Windows and Linux builds already behave differently.
