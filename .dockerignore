@@ -1,0 +1,16 @@
+# Docker only needs the static application and nginx configuration. Keeping local
+# tools, reports, documentation, and Git history out makes the build context clear.
+.git
+.github
+node_modules
+coverage
+playwright-report
+test-results
+ci-results
+ci-report
+docs
+scripts
+tests
+*.log
+.env
+.env.*
