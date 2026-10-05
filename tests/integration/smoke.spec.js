@@ -31,7 +31,11 @@ test("browser-facing responses include the required security headers", async ({ 
   expect(headers["strict-transport-security"]).toBeUndefined();
 });
 
-test("localhost accepts a Secure __Host- cookie", async ({ browserName, context, page }) => {
+test("records localhost handling of a Secure __Host- cookie", async ({
+  browserName,
+  context,
+  page,
+}) => {
   await page.goto("/");
   await page.evaluate(async () => {
     const response = await fetch("/api/localhost-cookie-check", { credentials: "include" });
@@ -40,23 +44,27 @@ test("localhost accepts a Secure __Host- cookie", async ({ browserName, context,
 
   const cookie = (await context.cookies()).find(({ name }) => name === "__Host-localhost-check");
 
-  // WebKit's localhost treatment depends on its host platform. Its Linux build rejects
-  // this Secure cookie over HTTP, while its Windows build stores it. That difference is
-  // the compatibility result this test is meant to preserve for Phase 2, not a failure
-  // of the nginx proxy. Actual Safari on macOS still needs a manual branded-browser test.
-  if (browserName === "webkit" && process.platform === "linux") {
-    expect(cookie).toBeUndefined();
+  // Playwright WebKit is not branded Safari, and its localhost behavior varies by host
+  // platform. Record what it did without making today's weaker or stricter behavior a
+  // permanent requirement: a future browser improvement should not fail an nginx test.
+  if (browserName === "webkit") {
+    const outcome = cookie
+      ? `accepted; Secure=${cookie.secure}; HttpOnly=${cookie.httpOnly}; SameSite=${cookie.sameSite}`
+      : "rejected the cookie";
+    test.info().annotations.push({
+      type: "WebKit localhost cookie observation",
+      description: `${process.platform}: ${outcome}`,
+    });
     return;
   }
 
+  // Chrome/Edge and Firefox are the supported local-development browsers. For their
+  // engines, accepting a weaker cookie is a failure rather than a compatibility note.
   expect(cookie).toMatchObject({
     value: "accepted",
     path: "/",
     secure: true,
     httpOnly: true,
+    sameSite: "Strict",
   });
-
-  // Chromium and Firefox retain the Strict metadata. Playwright's Windows WebKit build
-  // stores the cookie but exposes SameSite as None; nginx.md records the full result.
-  expect(cookie?.sameSite).toBe(browserName === "webkit" ? "None" : "Strict");
 });
