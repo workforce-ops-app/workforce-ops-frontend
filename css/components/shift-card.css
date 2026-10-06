@@ -1,0 +1,59 @@
+/* One shift inside a day card (js/components/shift-card.js): a round icon, the time in
+   bold, and who or what underneath. */
+
+.shift {
+  display: grid;
+  grid-template-columns: 2.75rem 1fr;
+  gap: 0.875rem;
+  align-items: center;
+}
+
+.shift p {
+  margin: 0;
+}
+
+/* The round icon: a clock for a shift, a lounge chair for a day off. */
+.shift__icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--color-surface-soft);
+  color: var(--color-accent);
+}
+
+.shift__time {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.shift__meta,
+.shift__note {
+  font-size: 0.9375rem;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+.shift__event {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+/* A day off: just the icon and "No shift". */
+.shift--none .shift__time {
+  font-weight: 500;
+}
+
+/* An open shift, with nobody assigned yet: amber, so managers spot it at once. */
+.shift--open .shift__icon {
+  background: var(--color-warning-background);
+  color: var(--color-warning);
+}
+
+.shift--open .shift__who {
+  font-weight: 600;
+  color: var(--color-warning);
+}

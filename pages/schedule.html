@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Department week · Workforce Operations</title>
+    <link rel="stylesheet" href="/css/base/base.css" />
+    <link rel="stylesheet" href="/css/components/app-shell.css" />
+    <link rel="stylesheet" href="/css/components/shift-card.css" />
+    <link rel="stylesheet" href="/css/components/day-list.css" />
+    <link rel="stylesheet" href="/css/pages/schedule.css" />
+    <script type="module" src="/js/pages/schedule.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="app-header__brand" href="/pages/my-shifts.html">
+        <img
+          class="app-header__logo"
+          src="/icons/logo.svg"
+          alt="Workforce Operations"
+          width="48"
+          height="52"
+        />
+      </a>
+    </header>
+    <nav class="tab-bar" aria-label="Main">
+      <a class="tab-bar__link" href="/pages/my-shifts.html">
+        <span class="icon icon--calendar" aria-hidden="true"></span>
+        My week
+      </a>
+      <a class="tab-bar__link" href="/pages/schedule.html" aria-current="page">
+        <span class="icon icon--people" aria-hidden="true"></span>
+        Department
+      </a>
+    </nav>
+    <main class="app-main schedule">
+      <h1 id="title">Department week</h1>
+      <nav class="week-nav" aria-label="Weeks">
+        <a id="previous-week" class="week-nav__button" href="?">
+          <span class="icon icon--chevron-left" aria-hidden="true"></span>
+          Previous
+        </a>
+        <span id="week-range" class="week-nav__range"></span>
+        <a id="next-week" class="week-nav__button" href="?">
+          Next
+          <span class="icon icon--chevron-right" aria-hidden="true"></span>
+        </a>
+      </nav>
+      <p id="status" class="status" aria-live="polite">Loading the week…</p>
+      <div id="days" class="days days--week"></div>
+    </main>
+  </body>
+</html>

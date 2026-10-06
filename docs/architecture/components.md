@@ -34,7 +34,21 @@ The strict Content Security Policy (served by nginx) is the second defense: even
 
 ## Components
 
-`js/components/` holds reusable pieces of screen as functions that take data and return an element built with `el()`, for example `shiftCard(shift)`. Each comes with its stylesheet in `css/components/`. None exist yet; the first arrive with the core screens.
+`js/components/` holds reusable pieces of screen as functions that take data and return an element built with `el()`, for example `shiftRow(shift)`. Each comes with its stylesheet in `css/components/`.
+
+| Component | File | Shows |
+|---|---|---|
+| `shiftRow(shift, { showEmployee })`, `noShiftRow()`, `icon(name)` | `js/components/shift-card.js` | one shift: a round clock icon, the time in its workplace zone, then "role · department" (My week) or "name · role" (department week), event and notes; an open shift gets an amber icon and "Open shift"; every user-written field as text |
+| `groupByDay(shifts)`, `dayCard(key, shifts, { showEmployee, today })` | `js/components/day-list.js` | shifts grouped by the day they start in their workplace zone; one card per day with the weekday and date on the left, and that day's shift rows or "No shift"; today's card is marked |
+| App shell | `css/components/app-shell.css`, in each page's HTML | the logo at the top, and the main tabs: a bar fixed to the bottom on phones, under the logo on wider screens |
+
+## Look and feel
+
+Warm off-white pages, white cards with rounded corners and soft shadows, deep green as the accent, amber only for things that need attention (open shifts), and a serif for page headings.
+
+- **Colors, type, spacing, and shadows are tokens** in `css/base/base.css` (`--color-accent`, `--font-heading`, `--radius-card`, ...). Stylesheets use the tokens, never their own color values, so a change of palette is one edit.
+- **Icons** are small SVG files in `icons/`, used as a CSS mask (`.icon .icon--clock`) and painted in the current text color, so an icon turns green with its link. This needs no inline styles or scripts, which the Content Security Policy forbids. Icons are decorative (`aria-hidden`); the text beside them carries the meaning.
+- **Accessibility (WCAG 2.2 AA, decision 0031):** every text and background pair is at least 4.5:1 (checked; the lowest is muted text on the page at 5.4:1); keyboard focus shows a 3px green ring (`:focus-visible`); controls have visible text labels; each day card is labelled with its full date for screen readers; the main navigation comes before the content. New colors must keep the 4.5:1 minimum.
 
 ## Tests
 
