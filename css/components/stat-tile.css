@@ -1,0 +1,58 @@
+/* Summary tiles (js/components/stat-tile.js): a row of small white cards, each a label
+   over a large number. Two per row on phones, all in one row on wider screens. */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: calc(var(--space) * 1.25);
+}
+
+/* The hidden attribute must win over display: grid above. */
+.stats[hidden] {
+  display: none;
+}
+
+.stat {
+  padding: 0.875rem var(--space);
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-card);
+}
+
+.stat p {
+  margin: 0;
+}
+
+.stat__label {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.stat__value {
+  font-family: var(--font-heading);
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-heading);
+}
+
+/* Something that needs action (open shifts): amber, with an amber edge as well, so it
+   stands out without relying on the colour of the number alone. */
+.stat--attention {
+  background: var(--color-warning-background);
+  box-shadow:
+    inset 4px 0 0 var(--color-warning-border),
+    var(--shadow-card);
+}
+
+.stat--attention .stat__value {
+  color: var(--color-warning);
+}
+
+@media (width >= 48rem) {
+  .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space);
+  }
+}

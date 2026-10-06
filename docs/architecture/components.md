@@ -40,13 +40,22 @@ The strict Content Security Policy (served by nginx) is the second defense: even
 |---|---|---|
 | `shiftRow(shift, { showEmployee })`, `noShiftRow()`, `icon(name)` | `js/components/shift-card.js` | one shift: a round clock icon, the time in its workplace zone, then "role · department" (My week) or "name · role" (department week), event and notes; an open shift gets an amber icon and "Open shift"; every user-written field as text |
 | `groupByDay(shifts)`, `dayCard(key, shifts, { showEmployee, today })` | `js/components/day-list.js` | shifts grouped by the day they start in their workplace zone; one card per day with the weekday and date on the left, and that day's shift rows or "No shift"; today's card is marked |
-| App shell | `css/components/app-shell.css`, in each page's HTML | the logo at the top, and the main tabs: a bar fixed to the bottom on phones, under the logo on wider screens |
+| `weekGrid(keys, shifts, { today })`, `gridRows(shifts)` | `js/components/week-grid.js` | the department week as a `<table>`: one row per person (open shifts first, with an icon), one column per day, each person's hours at the end; today's column highlighted; day headers carry the full date for screen readers, empty cells say "No shift" |
+| `statTile(label, value, { attention })` | `js/components/stat-tile.js` | a label over a large number, e.g. "Open shifts 2"; amber with an amber edge when it needs action |
+| Forms | `css/components/form.css` | labelled fields (`.field`, `.field__label`, `.field__input`), a form-wide message (`.form__message`), and buttons (`.button`, `.button--primary`) |
+| App shell | `css/components/app-shell.css`, in each page's HTML | the brand (an empty, fixed-size logo spot and the application's name) and the main tabs: centered brand and a tab bar fixed to the bottom on phones; one white bar across the top on wider screens, brand on the left and tabs on the right |
 
 ## Look and feel
 
-Warm off-white pages, white cards with rounded corners and soft shadows, deep green as the accent, amber only for things that need attention (open shifts), and a serif for page headings.
+Warm off-white pages, white cards with rounded corners and soft shadows, deep green as the accent, amber only for things that need attention (open shifts), and a serif for page headings. The agreed reference is a phone mockup of the week screen; each page then takes the layout that suits its task (frontend issue #34):
 
-- **Colors, type, spacing, and shadows are tokens** in `css/base/base.css` (`--color-accent`, `--font-heading`, `--radius-card`, ...). Stylesheets use the tokens, never their own color values, so a change of palette is one edit.
+- **My week** (employees, phone first): one card per day, the total hours at the bottom.
+- **Department week** (managers, laptop first): the week's numbers as tiles, then a grid with one row per person. Phones get the tiles and a card per day.
+- **Sign in**: one centered card with only the form; no tabs, since nobody is signed in yet.
+
+**The logo spot is empty** until a logo is chosen. It keeps its size, so adding an `<img>` inside `.brand__logo` later moves nothing. The application's name next to it is the link's text, so the link always has a name.
+
+- **Colors, type, spacing, shapes, and shadows are tokens** in `css/base/base.css` (`--color-accent`, `--font-heading`, `--radius-card`, ...). Stylesheets use the tokens, never their own color values, so a change of palette is one edit.
 - **Icons** are small SVG files in `icons/`, used as a CSS mask (`.icon .icon--clock`) and painted in the current text color, so an icon turns green with its link. This needs no inline styles or scripts, which the Content Security Policy forbids. Icons are decorative (`aria-hidden`); the text beside them carries the meaning.
 - **Accessibility (WCAG 2.2 AA, decision 0031):** every text and background pair is at least 4.5:1 (checked; the lowest is muted text on the page at 5.4:1); keyboard focus shows a 3px green ring (`:focus-visible`); controls have visible text labels; each day card is labelled with its full date for screen readers; the main navigation comes before the content. New colors must keep the 4.5:1 minimum.
 

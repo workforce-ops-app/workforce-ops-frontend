@@ -4,7 +4,7 @@ test("placeholder page loads through nginx and reaches the API", async ({ page }
   const response = await page.goto("/");
 
   await expect(page).toHaveURL(/\/pages\/sign-in\.html$/);
-  await expect(page.getByRole("heading", { name: "Workforce Operations" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await expect(page.locator("#api-status")).toHaveText("Server status: ok");
   expect(response?.status()).toBe(200);
 });

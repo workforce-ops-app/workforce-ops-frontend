@@ -3,8 +3,8 @@
 
 .shift {
   display: grid;
-  grid-template-columns: 2.75rem 1fr;
-  gap: 0.875rem;
+  grid-template-columns: 3rem 1fr;
+  gap: var(--space);
   align-items: center;
 }
 
@@ -16,15 +16,15 @@
 .shift__icon {
   display: grid;
   place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 3rem;
+  height: 3rem;
   border-radius: 50%;
   background: var(--color-surface-soft);
   color: var(--color-accent);
 }
 
 .shift__time {
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--color-heading);
 }

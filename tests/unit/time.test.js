@@ -4,6 +4,7 @@ import {
   addDays,
   dayKey,
   formatDayHeading,
+  formatHours,
   formatTimeRange,
   mondayOf,
   zonedTimeToUtc,
@@ -85,5 +86,14 @@ describe("zonedTimeToUtc", () => {
 
     expect(dayKey(start, CHICAGO)).toBe("2026-10-05");
     expect(formatTimeRange(start, start, CHICAGO)).toBe("10:30 PM - 10:30 PM");
+  });
+});
+
+describe("formatHours", () => {
+  it("says hours the way people do", () => {
+    expect(formatHours(1)).toBe("1 hour");
+    expect(formatHours(7.5)).toBe("7.5 hours");
+    expect(formatHours(24)).toBe("24 hours");
+    expect(formatHours(0)).toBe("0 hours");
   });
 });

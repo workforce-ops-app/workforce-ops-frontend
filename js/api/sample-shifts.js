@@ -31,6 +31,8 @@ export const SAMPLE_ME = { id: sampleId("a01"), display_name: "Ana Diaz" };
 export const SAMPLE_MY_DEPARTMENT_ID = KITCHEN.id;
 const BEN = { id: sampleId("a02"), display_name: "Ben Okafor" };
 const CARA = { id: sampleId("a03"), display_name: "Cara Lund" };
+const DEV = { id: sampleId("a04"), display_name: "Dev Patel" };
+const ELI = { id: sampleId("a05"), display_name: "Eli Moreno" };
 
 /**
  * One sample shift.
@@ -88,6 +90,16 @@ function allSampleShifts() {
     // A cancelled shift: kept in the database, never shown.
     shift(8, day(5), "09:00", "17:00", { employee: CARA, status: "cancelled" }),
     shift(9, day(5), "10:00", "18:00", { department: FRONT, employee: CARA, details: "Host" }),
+    // More of the kitchen's week, so the department grid looks like a real week.
+    shift(12, day(1), "15:00", "23:00", { employee: BEN, details: "Grill" }),
+    shift(13, day(1), "10:00", "18:00", { employee: ELI, details: "Dish" }),
+    shift(14, day(2), "15:00", "23:00", { employee: DEV, details: "Grill" }),
+    shift(15, day(3), "07:00", "15:00", { employee: CARA, details: "Prep line" }),
+    shift(16, day(3), "10:00", "18:00", { employee: ELI, details: "Dish" }),
+    shift(17, day(5), "07:00", "15:00", { employee: SAMPLE_ME, details: "Prep line" }),
+    shift(18, day(5), "15:00", "23:00", { employee: DEV, details: "Grill" }),
+    shift(19, day(6), "10:00", "18:00", { employee: ELI, details: "Dish" }),
+    shift(20, day(6), "16:00", "22:00", { status: "open", details: "Dish" }),
     shift(10, day(7), "07:00", "15:00", { employee: SAMPLE_ME, details: "Prep line" }),
     shift(11, day(9), "15:00", "23:00", { status: "open", details: "Grill" }),
   ];

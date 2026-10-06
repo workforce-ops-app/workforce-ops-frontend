@@ -9,8 +9,8 @@ vi.mock("../../js/api/shifts.js", () => ({
   myDepartmentId: vi.fn(),
 }));
 const { listShifts, listDepartments, myDepartmentId } = await import("../../js/api/shifts.js");
-const { formatHours, showMyWeek } = await import("../../js/pages/my-shifts.js");
-const { showWeek } = await import("../../js/pages/schedule.js");
+const { showMyWeek } = await import("../../js/pages/my-shifts.js");
+const { showWeek, weekStats } = await import("../../js/pages/schedule.js");
 const { mondayOf } = await import("../../js/core/time.js");
 const { today } = await import("../../js/core/week.js");
 /** @param {unknown} fn */
@@ -22,7 +22,8 @@ const myDepartmentMock = asMock(myDepartmentId);
 /**
  * A shift in Chicago on the given day, 9:00 to 17:00 local time.
  * @param {string} day "YYYY-MM-DD"
- * @param {object} [overrides]
+ * @param {Partial<import("../../js/api/shifts.js").Shift>} [overrides]
+ * @returns {import("../../js/api/shifts.js").Shift}
  */
 function shiftOn(day, overrides = {}) {
   return {
@@ -128,15 +129,6 @@ describe("My week", () => {
   });
 });
 
-describe("formatHours", () => {
-  it("says hours the way people do", () => {
-    expect(formatHours(1)).toBe("1 hour");
-    expect(formatHours(7.5)).toBe("7.5 hours");
-    expect(formatHours(24)).toBe("24 hours");
-    expect(formatHours(0)).toBe("0 hours");
-  });
-});
-
 describe("Department week", () => {
   beforeEach(() => page(["title", "week-range", "previous-week", "next-week", "status", "days"]));
 
@@ -158,6 +150,29 @@ describe("Department week", () => {
     expect(document.querySelectorAll("#days .shift--open")).toHaveLength(1);
     expect(text("days")).toContain("Ana Diaz");
     expect(text("title")).toBe("Kitchen");
+  });
+
+  it("fills the grid and the week's numbers when the page has them", async () => {
+    page(["title", "week-range", "previous-week", "next-week", "status", "days", "grid", "stats"]);
+    mocked.mockResolvedValue([
+      shiftOn("2026-10-05"),
+      shiftOn("2026-10-08", { status: "open", employee: null }),
+    ]);
+
+    await showWeek("?week=2026-10-05&department=d1");
+
+    expect(document.querySelectorAll("#grid table tbody tr")).toHaveLength(2);
+    expect(document.getElementById("stats")?.hidden).toBe(false);
+    expect(document.querySelectorAll("#stats .stat")).toHaveLength(4);
+  });
+
+  it("hides the week's numbers when the week cannot load", async () => {
+    page(["title", "week-range", "previous-week", "next-week", "status", "days", "grid", "stats"]);
+    mocked.mockRejectedValue(new NetworkError(new TypeError("Failed to fetch")));
+
+    await showWeek("");
+
+    expect(document.getElementById("stats")?.hidden).toBe(true);
   });
 
   it("links to other weeks, keeping the department", async () => {
@@ -234,5 +249,25 @@ describe("Department week", () => {
 
     await expect(showWeek("")).rejects.toThrow("a bug");
     expect(text("status")).toBe("Problem: this page could not load");
+  });
+});
+
+describe("weekStats", () => {
+  it("counts shifts, open shifts, hours, and people", () => {
+    const tiles = weekStats([
+      shiftOn("2026-10-05"),
+      shiftOn("2026-10-06"),
+      shiftOn("2026-10-07", { employee: { id: "u2", display_name: "Ben Okafor" } }),
+      shiftOn("2026-10-08", { status: "open", employee: null }),
+    ]);
+
+    expect(tiles.map((t) => t.querySelector(".stat__value")?.textContent)).toEqual([
+      "4",
+      "1",
+      "24",
+      "2",
+    ]);
+    // Open shifts need action, so that tile stands out.
+    expect(tiles[1].classList.contains("stat--attention")).toBe(true);
   });
 });

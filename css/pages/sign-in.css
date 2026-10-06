@@ -1,6 +1,41 @@
-/* Sign-in page. */
-.sign-in-status {
-  padding: var(--space);
-  border: 1px solid var(--color-muted);
-  border-radius: var(--radius);
+/* Sign-in page (pages/sign-in.html): the brand, then one white card with the form,
+   centred on the page. Nothing else competes for attention. */
+
+main.sign-in {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 1.5);
+  align-items: center;
+  justify-content: center;
+  max-width: 28rem;
+  /* dvh: the visible height on phones, where the browser's bars come and go. */
+  min-height: 100dvh;
+  padding: calc(var(--space) * 2) var(--space);
+}
+
+.sign-in__brand {
+  margin: 0;
+}
+
+.sign-in__card {
+  width: 100%;
+  padding: calc(var(--space) * 1.75) calc(var(--space) * 1.5);
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-card);
+}
+
+.sign-in__card h1 {
+  margin: 0 0 0.25em;
+}
+
+.sign-in__intro {
+  margin: 0 0 calc(var(--space) * 1.5);
+}
+
+/* The server check: a quiet line under the card. */
+.sign-in__status {
+  margin: 0;
+  font-size: 0.875rem;
+  text-align: center;
 }

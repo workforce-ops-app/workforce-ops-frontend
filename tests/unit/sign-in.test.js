@@ -1,6 +1,6 @@
 // The sign-in page's status check: expected failures get a message; bugs are not hidden.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { showApiStatus } from "../../js/pages/sign-in.js";
+import { holdSignIn, showApiStatus } from "../../js/pages/sign-in.js";
 
 /** @type {import("vitest").Mock} */
 let fetchMock;
@@ -66,5 +66,21 @@ describe("showApiStatus", () => {
 
     await expect(showApiStatus()).rejects.toThrow(TypeError);
     expect(shown()).toBe("Problem: this page could not load");
+  });
+});
+
+describe("holdSignIn", () => {
+  it("keeps the form from being sent and says why", () => {
+    const message = document.createElement("p");
+    message.id = "sign-in-message";
+    message.hidden = true;
+    document.body.append(message);
+    const event = new Event("submit", { cancelable: true });
+
+    holdSignIn(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(message.hidden).toBe(false);
+    expect(message.textContent).toBe("Signing in is not connected yet.");
   });
 });

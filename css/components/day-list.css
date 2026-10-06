@@ -8,10 +8,10 @@
 
 .day-card {
   display: grid;
-  grid-template-columns: 3.75rem 1fr;
-  gap: var(--space);
+  grid-template-columns: 4rem 1fr;
+  gap: calc(var(--space) * 1.25);
   align-items: center;
-  padding: var(--space);
+  padding: calc(var(--space) * 1.125) calc(var(--space) * 1.25);
   border-radius: var(--radius-card);
   background: var(--color-background);
   box-shadow: var(--shadow-card);
@@ -36,7 +36,7 @@
 }
 
 .day-card__number {
-  font-size: 1.75rem;
+  font-size: 1.875rem;
   color: var(--color-heading);
 }
 
@@ -72,7 +72,7 @@
   height: 2.75rem;
   border-radius: 50%;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .summary-card__value {
@@ -100,7 +100,7 @@
   align-items: center;
   padding: 0.5rem 0.875rem;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-background);
   font-size: 0.9375rem;
   font-weight: 600;

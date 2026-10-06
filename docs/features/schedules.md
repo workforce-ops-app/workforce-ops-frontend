@@ -1,6 +1,6 @@
 # Schedules
 
-- **Status:** My week and the department week are built and styled, on sample data until the shifts API exists (backend SC1); edit mode is planned (core tier)
+- **Status:** My week and the department week are built and styled for the midterm, on sample data until the shifts API exists (backend SC1); edit mode is planned (core tier)
 - **Related:** workforce-ops-app/workforce-ops-frontend#3; backend: [schedules and shifts](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/schedules.md)
 
 ## In short
@@ -11,7 +11,7 @@ Employees see their upcoming shifts and their department's week; managers plan t
 | Screen | Page | Who sees it | Phone / desktop |
 |---|---|---|---|
 | **My week**: your shifts for one week, a card per day (days off show "No shift"), previous and next week, and the hours scheduled that week | `pages/my-shifts.html` | everyone | phone first; the home page after signing in |
-| **Department week**: one department's week with who works each shift, open shifts highlighted in amber | `pages/schedule.html` | people with `schedule.view` (employees see their own department by default) | both; day cards one under another on phones and tablets, the seven days side by side on wide screens |
+| **Department week**: one department's week, laid out for planning. At the top, tiles with the week's numbers (shifts, open shifts, hours scheduled, people working). Below, on a laptop, a grid with one row per person and one column per day, open shifts in their own amber row at the top, and each person's hours at the end of the row | `pages/schedule.html` | people with `schedule.view` (employees see their own department by default) | laptop first; on phones and tablets (narrower than 64rem) the tiles, then a card per day one under another |
 | **Edit mode** of the department week: add, change, assign, make open, cancel; select several shifts for a batch change | same page, shown only with `schedule.edit` | managers, administrators, owners | desktop first; usable on a tablet |
 | **Confirm batch change**: "This will change 14 shifts." | a dialog on the same page | managers | both |
 

@@ -1,69 +1,58 @@
-/* Department week (pages/schedule.html). Phones see the day cards one under another;
-   wide screens see the whole week side by side, each day a column. */
+/* Department week (pages/schedule.html), laid out for planning. Phones and tablets see the
+   week's numbers, then a card per day, one under another. Laptops see the numbers, then
+   the whole week as a grid with one row per person (css/components/week-grid.css). */
 
 main.schedule {
-  max-width: 90rem;
+  max-width: 40rem;
 }
 
-@media (width >= 75rem) {
+/* The heading and the week choice, stacked on phones. */
+.page-head {
+  margin-bottom: var(--space);
+}
+
+.page-head h1 {
+  margin-bottom: 0.375em;
+}
+
+.page-head .week-nav {
+  margin-bottom: 0;
+}
+
+/* Phones and tablets: the day cards, not the grid. */
+.week-grid-card {
+  display: none;
+}
+
+@media (width >= 64rem) {
+  main.schedule {
+    max-width: 90rem;
+    padding: calc(var(--space) * 1.5);
+  }
+
+  /* The heading on the left, the week choice on the right. */
+  .page-head {
+    display: flex;
+    gap: var(--space);
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: calc(var(--space) * 1.25);
+  }
+
+  .page-head h1 {
+    margin-bottom: 0;
+  }
+
+  .page-head .week-nav {
+    gap: var(--space);
+  }
+
+  /* Laptops: the grid, not the day cards. */
+  .week-grid-card {
+    display: block;
+  }
+
   .days--week {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    align-items: start;
-  }
-
-  /* In a narrow column the date sits above the shifts instead of beside them. */
-  .days--week .day-card {
-    grid-template-columns: 1fr;
-    align-items: start;
-  }
-
-  .days--week .day-card__date {
-    flex-direction: row;
-    gap: 0.5rem;
-    align-items: baseline;
-    padding: 0 0 0.75rem;
-    border-right: 0;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .days--week .day-card__number {
-    font-size: 1.375rem;
-  }
-
-  /* In a column there is no room for the round icon beside the text: the text takes the
-     full width, shifts are separated by a thin line, and an open shift keeps its amber
-     colour as a bar along its left edge instead of the round icon. */
-  .days--week .shift {
-    grid-template-columns: 1fr;
-  }
-
-  .days--week .shift__icon {
     display: none;
-  }
-
-  .days--week .shift + .shift {
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--color-border);
-  }
-
-  .days--week .shift--open {
-    padding-left: 0.625rem;
-    border-left: 3px solid var(--color-warning-border);
-  }
-
-  .days--week .shift__time {
-    font-size: 0.9375rem;
-  }
-
-  .days--week .shift__meta,
-  .days--week .shift__note,
-  .days--week .shift__event {
-    font-size: 0.875rem;
-  }
-
-  .days--week .day-card--today {
-    box-shadow:
-      inset 0 4px 0 var(--color-accent),
-      var(--shadow-card);
   }
 }
