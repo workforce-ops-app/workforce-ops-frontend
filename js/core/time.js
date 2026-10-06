@@ -176,15 +176,40 @@ function offsetMinutes(moment, timeZone) {
 /**
  * The UTC moment of a wall-clock time in a time zone, e.g. 9:00 on 2026-10-05 in
  * Chicago becomes "2026-10-05T14:00:00.000Z". Used to create shifts in the workplace zone.
+ *
+ * Twice a year daylight saving makes a wall-clock time tricky (US dates for 2026):
+ * - Spring forward (March 8): clocks jump from 2:00 to 3:00, so 2:30 never happens. Such
+ *   a time is moved forward by the jump: 2:30 becomes 3:30 daylight time.
+ * - Fall back (November 1): clocks go from 2:00 back to 1:00, so 1:30 happens twice. The
+ *   first one (still daylight time) is used.
+ * These are the same rules JavaScript's newer Temporal API calls "compatible".
  * @param {string} key "YYYY-MM-DD"
  * @param {string} time "HH:MM" on a 24-hour clock
  * @param {string} timeZone
  * @returns {string} an ISO 8601 moment in UTC
  */
 export function zonedTimeToUtc(key, time, timeZone) {
-  // Start by pretending the wall-clock time is UTC, then correct by the zone's offset at
-  // that moment.
-  const naive = new Date(`${key}T${time}:00Z`);
-  const offset = offsetMinutes(naive, timeZone);
-  return new Date(naive.getTime() - offset * 60000).toISOString();
+  // The wall-clock time written as if it were UTC (milliseconds). The real moment is this
+  // minus the zone's offset; the hard part is knowing which offset applies.
+  const wall = new Date(`${key}T${time}:00Z`).getTime();
+
+  // The zone's offset a day before and a day after. Time zones change their offset at most
+  // once in two days, so the right offset is one of these two (the same one on most days).
+  const day = 24 * 3600000;
+  const before = offsetMinutes(new Date(wall - day), timeZone);
+  const after = offsetMinutes(new Date(wall + day), timeZone);
+
+  // Try each offset: it is right if the zone really has that offset at the resulting
+  // moment. Checking the offset at the result, not at a first guess, is what keeps times
+  // near a daylight-saving change from ending up an hour off.
+  const matches = [...new Set([before, after])]
+    .map((offset) => wall - offset * 60000)
+    .filter((moment) => wall - offsetMinutes(new Date(moment), timeZone) * 60000 === moment)
+    .sort((a, b) => a - b);
+
+  // Both match: the time happens twice (fall back), so take the earlier. Neither matches:
+  // the time falls in the spring-forward gap, so use the offset from before the jump,
+  // which lands the same number of minutes after the jump (2:30 becomes 3:30).
+  const moment = matches.length > 0 ? matches[0] : wall - before * 60000;
+  return new Date(moment).toISOString();
 }

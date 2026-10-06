@@ -20,6 +20,16 @@ describe("requestedMonday", () => {
     expect(requestedMonday(new URLSearchParams(""), "2026-10-08")).toBe("2026-10-05");
     expect(requestedMonday(new URLSearchParams("week=<script>"), "2026-10-08")).toBe("2026-10-05");
   });
+
+  it("falls back to the current week for a well-formed day that does not exist", () => {
+    // The pattern matches, but there is no month 99 or February 30.
+    expect(requestedMonday(new URLSearchParams("week=2026-99-99"), "2026-10-08")).toBe(
+      "2026-10-05",
+    );
+    expect(requestedMonday(new URLSearchParams("week=2026-02-30"), "2026-10-08")).toBe(
+      "2026-10-05",
+    );
+  });
 });
 
 describe("weekLink", () => {

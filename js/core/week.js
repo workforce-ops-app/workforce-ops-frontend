@@ -12,15 +12,30 @@ export function today() {
 }
 
 /**
+ * Whether a value is a real calendar day written as "YYYY-MM-DD". The pattern alone lets
+ * through days that do not exist (2026-99-99, 2026-02-30), so the day is also read as a
+ * date and written back: only a real day comes back unchanged.
+ * @param {string | null} value
+ * @returns {value is string}
+ */
+export function isDayKey(value) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  // An impossible date gives "Invalid Date", whose getTime() is NaN; check that before
+  // toISOString(), which would throw on it.
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+/**
  * The Monday of the week the address asks for. Any day of a week selects that week; a
- * missing or malformed value (anything but YYYY-MM-DD) means the current week.
+ * missing, malformed, or impossible value means the current week.
  * @param {URLSearchParams} params the address's query parameters
  * @param {string} todayKey today's day key
  * @returns {string} "YYYY-MM-DD"
  */
 export function requestedMonday(params, todayKey) {
   const requested = params.get("week");
-  return mondayOf(requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) ? requested : todayKey);
+  return mondayOf(isDayKey(requested) ? requested : todayKey);
 }
 
 /**

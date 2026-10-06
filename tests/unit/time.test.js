@@ -54,6 +54,32 @@ describe("zonedTimeToUtc", () => {
     expect(zonedTimeToUtc("2026-12-07", "09:00", CHICAGO)).toBe("2026-12-07T15:00:00.000Z");
   });
 
+  // US daylight saving in 2026: clocks spring forward at 2:00 on March 8 (2:00 to 3:00)
+  // and fall back at 2:00 on November 1 (back to 1:00). Chicago is 6 hours behind UTC in
+  // standard time and 5 in daylight time.
+  it("uses the right offset on the day clocks spring forward", () => {
+    expect(zonedTimeToUtc("2026-03-08", "01:30", CHICAGO)).toBe("2026-03-08T07:30:00.000Z");
+    expect(zonedTimeToUtc("2026-03-08", "03:30", CHICAGO)).toBe("2026-03-08T08:30:00.000Z");
+    expect(zonedTimeToUtc("2026-03-08", "09:00", CHICAGO)).toBe("2026-03-08T14:00:00.000Z");
+  });
+
+  it("moves a time that never happens (2:30 in spring) forward by the jump", () => {
+    // 2:30 does not exist on March 8; it becomes 3:30 daylight time.
+    expect(zonedTimeToUtc("2026-03-08", "02:30", CHICAGO)).toBe("2026-03-08T08:30:00.000Z");
+  });
+
+  it("uses the right offset on the day clocks fall back", () => {
+    expect(zonedTimeToUtc("2026-11-01", "00:30", CHICAGO)).toBe("2026-11-01T05:30:00.000Z");
+    expect(zonedTimeToUtc("2026-11-01", "02:30", CHICAGO)).toBe("2026-11-01T08:30:00.000Z");
+    expect(zonedTimeToUtc("2026-11-01", "03:00", CHICAGO)).toBe("2026-11-01T09:00:00.000Z");
+    expect(zonedTimeToUtc("2026-11-01", "09:00", CHICAGO)).toBe("2026-11-01T15:00:00.000Z");
+  });
+
+  it("takes the first of a time that happens twice (1:30 in autumn)", () => {
+    // 1:30 happens in daylight time (06:30 UTC), then again an hour later in standard time.
+    expect(zonedTimeToUtc("2026-11-01", "01:30", CHICAGO)).toBe("2026-11-01T06:30:00.000Z");
+  });
+
   it("round-trips with dayKey and formatTimeRange", () => {
     const start = zonedTimeToUtc("2026-10-05", "22:30", CHICAGO);
 

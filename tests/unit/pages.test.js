@@ -3,11 +3,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, NetworkError } from "../../js/api/client.js";
 
 // Replace the data source, so each test decides what the "server" returns.
-vi.mock("../../js/api/shifts.js", () => ({ listShifts: vi.fn() }));
-const { listShifts } = await import("../../js/api/shifts.js");
+vi.mock("../../js/api/shifts.js", () => ({
+  listShifts: vi.fn(),
+  listDepartments: vi.fn(),
+  myDepartmentId: vi.fn(),
+}));
+const { listShifts, listDepartments, myDepartmentId } = await import("../../js/api/shifts.js");
 const { formatHours, showMyWeek } = await import("../../js/pages/my-shifts.js");
 const { showWeek } = await import("../../js/pages/schedule.js");
-const mocked = /** @type {import("vitest").Mock} */ (/** @type {unknown} */ (listShifts));
+const { mondayOf } = await import("../../js/core/time.js");
+const { today } = await import("../../js/core/week.js");
+/** @param {unknown} fn */
+const asMock = (fn) => /** @type {import("vitest").Mock} */ (fn);
+const mocked = asMock(listShifts);
+const departmentsMock = asMock(listDepartments);
+const myDepartmentMock = asMock(myDepartmentId);
 
 /**
  * A shift in Chicago on the given day, 9:00 to 17:00 local time.
@@ -51,6 +61,12 @@ const text = (/** @type {string} */ id) => document.getElementById(id)?.textCont
 // and mockReset() returns the mock itself, which would then be called once more.
 beforeEach(() => {
   mocked.mockReset();
+  // The company's departments, and the signed-in person's own one (Kitchen).
+  departmentsMock.mockReset().mockResolvedValue([
+    { id: "d1", name: "Kitchen" },
+    { id: "d2", name: "Front of House" },
+  ]);
+  myDepartmentMock.mockReset().mockResolvedValue("d1");
 });
 afterEach(() => document.body.replaceChildren());
 
@@ -152,6 +168,57 @@ describe("Department week", () => {
     expect(document.getElementById("next-week")?.getAttribute("href")).toBe(
       "?week=2026-10-12&department=d1",
     );
+  });
+
+  it("shows the person's own department when the address names none", async () => {
+    mocked.mockResolvedValue([]);
+
+    await showWeek("?week=2026-10-05");
+
+    // One department only, so shifts of different departments are never mixed.
+    expect(mocked.mock.calls[0][0]).toEqual({
+      from: "2026-10-05",
+      to: "2026-10-11",
+      departmentId: "d1",
+    });
+    expect(text("title")).toBe("Kitchen");
+  });
+
+  it("names a chosen department even when its week has no shifts", async () => {
+    mocked.mockResolvedValue([]);
+
+    await showWeek("?week=2026-10-05&department=d2");
+
+    expect(mocked.mock.calls[0][0].departmentId).toBe("d2");
+    expect(text("title")).toBe("Front of House");
+  });
+
+  it("keeps the plain heading for a department it does not know", async () => {
+    mocked.mockResolvedValue([]);
+
+    await showWeek("?week=2026-10-05&department=unknown");
+
+    expect(text("title")).toBe("Department week");
+  });
+
+  it("uses the first department for someone without a home department", async () => {
+    myDepartmentMock.mockResolvedValue(null);
+    mocked.mockResolvedValue([]);
+
+    await showWeek("?week=2026-10-05");
+
+    expect(mocked.mock.calls[0][0].departmentId).toBe("d1");
+  });
+
+  it("falls back to the current week for a day that does not exist", async () => {
+    mocked.mockResolvedValue([]);
+
+    // Well formed but impossible: the page shows this week instead of failing.
+    await showWeek("?week=2026-99-99");
+
+    const monday = mocked.mock.calls[0][0].from;
+    expect(monday).toBe(mondayOf(today()));
+    expect(document.querySelectorAll("#days .day-card")).toHaveLength(7);
   });
 
   it("shows an error answer's title", async () => {

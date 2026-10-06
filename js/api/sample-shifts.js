@@ -1,5 +1,5 @@
-// Sample shifts, until the shifts API exists (backend SC1). Delete this file when the
-// screens switch to the real API (js/api/shifts.js, USE_SAMPLE_DATA).
+// Sample shifts, until the shifts API exists (backend SC1). js/api/shifts.js loads this
+// file only while USE_SAMPLE_DATA is true; see there for how to switch to the real API.
 //
 // The shifts are built around the current week, so the screens always have something to
 // show. They are shaped exactly like the API's answer, use the demo company's names, and
@@ -12,12 +12,25 @@ import { addDays, dayKey, mondayOf, zonedTimeToUtc } from "../core/time.js";
 /** @typedef {import("./shifts.js").ShiftQuery} ShiftQuery */
 
 const TIMEZONE = "America/Chicago";
-const KITCHEN = { id: "sample-dept-kitchen", name: "Kitchen" };
-const FRONT = { id: "sample-dept-front", name: "Front of House" };
+
+/**
+ * A fixed sample ID, shaped like the API's IDs: a UUIDv7 written with hyphens (backend
+ * data model). The 7 marks the version and the 8 the variant, as in a real UUIDv7; the
+ * last group tells the samples apart (d.. departments, a.. people, plain numbers shifts).
+ * Fixed rather than random, so tests and bookmarks keep working.
+ * @param {string} suffix up to 12 hexadecimal digits
+ * @returns {string}
+ */
+const sampleId = (suffix) => `01926f3a-0000-7000-8000-${suffix.padStart(12, "0")}`;
+
+const KITCHEN = { id: sampleId("d01"), name: "Kitchen" };
+const FRONT = { id: sampleId("d02"), name: "Front of House" };
 /** The signed-in person in sample mode ("my shifts"). */
-export const SAMPLE_ME = { id: "sample-user-ana", display_name: "Ana Diaz" };
-const BEN = { id: "sample-user-ben", display_name: "Ben Okafor" };
-const CARA = { id: "sample-user-cara", display_name: "Cara Lund" };
+export const SAMPLE_ME = { id: sampleId("a01"), display_name: "Ana Diaz" };
+/** The signed-in person's own department, which the department week shows by default. */
+export const SAMPLE_MY_DEPARTMENT_ID = KITCHEN.id;
+const BEN = { id: sampleId("a02"), display_name: "Ben Okafor" };
+const CARA = { id: sampleId("a03"), display_name: "Cara Lund" };
 
 /**
  * One sample shift.
@@ -30,7 +43,7 @@ const CARA = { id: "sample-user-cara", display_name: "Cara Lund" };
  */
 function shift(n, day, start, end, rest) {
   return {
-    id: `sample-shift-${n}`,
+    id: sampleId(String(n)),
     department: KITCHEN,
     employee: null,
     starts_at: zonedTimeToUtc(day, start, TIMEZONE),
@@ -104,5 +117,5 @@ export async function sampleShifts(query) {
   );
 }
 
-/** The sample departments, for the week view's default. */
+/** The sample departments, for the department week's heading. */
 export const SAMPLE_DEPARTMENTS = [KITCHEN, FRONT];

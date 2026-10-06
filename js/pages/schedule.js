@@ -4,18 +4,22 @@
 //
 // The address says which week and department to show, so a week can be bookmarked or
 // shared: schedule.html?week=2026-10-05&department=<id>. Without a week it shows the
-// current one; without a department, every department the person may see (the API
-// limits that to their scope).
+// current one. Without a department it shows the person's own (home) department, so
+// shifts of different departments are never mixed on one page; someone without a home
+// department sees the first department of the company.
 
 import { ApiError, NetworkError } from "../api/client.js";
-import { listShifts } from "../api/shifts.js";
+import { listDepartments, listShifts, myDepartmentId } from "../api/shifts.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
 import { el, setText } from "../core/dom.js";
 import { addDays, formatWeekRange } from "../core/time.js";
 import { requestedMonday, today, weekLink } from "../core/week.js";
 
+/** The heading when the department's name is not known (e.g. an ID from an old link). */
+const DEFAULT_TITLE = "Department week";
+
 /**
- * Load one week and show it, with links to the weeks before and after.
+ * Load one department's week and show it, with links to the weeks before and after.
  * Exported for the tests; the page calls it once when it loads (below).
  * @param {string} search the address's query string, e.g. "?week=2026-10-05"
  */
@@ -28,26 +32,39 @@ export async function showWeek(search) {
   const week = document.getElementById("days");
   if (!title || !range || !previous || !next || !status || !week) return;
 
-  // Which week and department, from the address, and the links to other weeks (they keep
-  // the department).
-  const params = new URLSearchParams(search);
-  const todayKey = today();
-  const monday = requestedMonday(params, todayKey);
-  const departmentId = params.get("department");
-  setText(range, formatWeekRange(monday));
-  previous.setAttribute("href", weekLink(monday, -1, params));
-  next.setAttribute("href", weekLink(monday, 1, params));
-
+  // Everything that reads the address or the server is inside try, so a bad address or a
+  // failed request shows a message instead of leaving the page on "Loading".
   try {
-    // The seven days of the week, Monday to Sunday.
-    const shifts = await listShifts({
-      from: monday,
-      to: addDays(monday, 6),
-      departmentId: departmentId ?? undefined,
-    });
+    // Which week, from the address (an impossible ?week= falls back to the current week),
+    // and the links to other weeks (they keep the department).
+    const params = new URLSearchParams(search);
+    const todayKey = today();
+    const monday = requestedMonday(params, todayKey);
+    setText(range, formatWeekRange(monday));
+    previous.setAttribute("href", weekLink(monday, -1, params));
+    next.setAttribute("href", weekLink(monday, 1, params));
 
-    // Name the department in the heading once its shifts are known.
-    if (departmentId && shifts.length > 0) setText(title, shifts[0].department.name);
+    // Which department: the one in the address, else the person's own, else the first one.
+    // The address is only a choice of what to look at: the API still checks that the
+    // person may see that department (an ID from another company answers 404).
+    const departments = await listDepartments();
+    const departmentId =
+      params.get("department") ?? (await myDepartmentId()) ?? departments[0]?.id ?? null;
+
+    // Name the department in the heading from the departments list, not from the shifts,
+    // so a week with no shifts is still named.
+    const department = departments.find((d) => d.id === departmentId);
+    setText(title, department?.name ?? DEFAULT_TITLE);
+
+    // No department at all (a company without departments yet): nothing to show.
+    if (!departmentId) {
+      setText(status, "No departments yet.");
+      week.replaceChildren();
+      return;
+    }
+
+    // The seven days of the week, Monday to Sunday, for that one department.
+    const shifts = await listShifts({ from: monday, to: addDays(monday, 6), departmentId });
 
     // A card for all seven days, even empty ones, with who works each shift.
     setText(status, "");

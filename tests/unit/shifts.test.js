@@ -1,7 +1,18 @@
 // Shifts from the API, and the sample data used until the API exists.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SAMPLE_ME, sampleShifts } from "../../js/api/sample-shifts.js";
-import { USE_SAMPLE_DATA, fetchShifts, listShifts } from "../../js/api/shifts.js";
+import {
+  SAMPLE_DEPARTMENTS,
+  SAMPLE_ME,
+  SAMPLE_MY_DEPARTMENT_ID,
+  sampleShifts,
+} from "../../js/api/sample-shifts.js";
+import {
+  USE_SAMPLE_DATA,
+  fetchShifts,
+  listDepartments,
+  listShifts,
+  myDepartmentId,
+} from "../../js/api/shifts.js";
 import { addDays, dayKey, mondayOf } from "../../js/core/time.js";
 
 /** @type {import("vitest").Mock} */
@@ -76,11 +87,12 @@ describe("sample data (until backend SC1 exists)", () => {
   });
 
   it("filters by days, department, and person like the API", async () => {
-    const kitchen = await sampleShifts({ ...thisWeek, departmentId: "sample-dept-kitchen" });
+    const kitchen = await sampleShifts({ ...thisWeek, departmentId: SAMPLE_MY_DEPARTMENT_ID });
     const mine = await sampleShifts({ ...thisWeek, mine: true });
     const nextWeek = await sampleShifts({ from: addDays(monday, 7), to: addDays(monday, 13) });
 
-    expect(kitchen.every((s) => s.department.id === "sample-dept-kitchen")).toBe(true);
+    expect(kitchen.length).toBeGreaterThan(0);
+    expect(kitchen.every((s) => s.department.id === SAMPLE_MY_DEPARTMENT_ID)).toBe(true);
     expect(mine.every((s) => s.employee?.id === SAMPLE_ME.id)).toBe(true);
     expect(nextWeek.every((s) => dayKey(s.starts_at, s.timezone) >= addDays(monday, 7))).toBe(true);
   });
@@ -89,5 +101,29 @@ describe("sample data (until backend SC1 exists)", () => {
     const shifts = await sampleShifts(thisWeek);
 
     expect(shifts.some((s) => s.status === "open" && s.employee === null)).toBe(true);
+  });
+});
+
+describe("sample departments and IDs", () => {
+  // A hyphenated UUID with version 7 and the standard variant, as the backend sends.
+  const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+  it("give the departments and the signed-in person's own department, without the server", async () => {
+    expect(await listDepartments()).toEqual(SAMPLE_DEPARTMENTS);
+    expect(await myDepartmentId()).toBe(SAMPLE_MY_DEPARTMENT_ID);
+    expect(SAMPLE_DEPARTMENTS.map((d) => d.id)).toContain(SAMPLE_MY_DEPARTMENT_ID);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("uses IDs shaped like the API's (UUIDv7), each one different", async () => {
+    const monday = mondayOf(dayKey(new Date(), "America/Chicago"));
+    const shifts = await sampleShifts({ from: monday, to: addDays(monday, 13) });
+    const ids = [
+      ...shifts.flatMap((s) => [s.id, s.department.id, s.employee?.id ?? s.id]),
+      ...SAMPLE_DEPARTMENTS.map((d) => d.id),
+    ];
+
+    expect(ids.every((id) => UUID_V7.test(id))).toBe(true);
+    expect(new Set(shifts.map((s) => s.id)).size).toBe(shifts.length);
   });
 });
