@@ -28,35 +28,34 @@ function makeShift(overrides = {}) {
 }
 
 describe("shiftRow", () => {
-  it("shows the time in the workplace zone, then what and where (My week)", () => {
-    const row = shiftRow(makeShift());
+  it("shows only the time, as a button that opens the details (My week)", () => {
+    const row = shiftRow(makeShift({ notes: "Keys", event_name: "Inventory night" }));
 
+    expect(row.tagName).toBe("BUTTON");
+    expect(row.getAttribute("type")).toBe("button");
+    expect(row.getAttribute("aria-haspopup")).toBe("dialog");
     expect(row.querySelector(".shift__time")?.textContent).toBe("9:00 AM - 5:00 PM");
-    expect(row.querySelector(".shift__meta")?.textContent).toBe("Prep line · Kitchen");
+    // The details wait for the popup.
+    expect(row.textContent).toBe("9:00 AM - 5:00 PM");
     expect(row.querySelector(".icon--clock")).not.toBeNull();
+    expect(row.querySelector(".icon--chevron-right")).not.toBeNull();
   });
 
-  it("shows who works it instead, for the department week", () => {
+  it("adds who works it, for the department week", () => {
     const row = shiftRow(makeShift(), { showEmployee: true });
 
-    expect(row.querySelector(".shift__meta")?.textContent).toBe("Ana Diaz · Prep line");
+    expect(row.querySelector(".shift__who")?.textContent).toBe("Ana Diaz");
+    expect(row.textContent).not.toContain("Prep line");
   });
 
-  it("keeps HTML in every user-written field as plain text", () => {
-    // A note, details, event, and even a person's name could hold an attack.
-    const shift = makeShift({
-      notes: XSS,
-      details: XSS,
-      event_name: XSS,
-      event_description: XSS,
-      employee: { id: "u1", display_name: XSS },
+  it("keeps a name with HTML in it as plain text", () => {
+    const row = shiftRow(makeShift({ employee: { id: "u1", display_name: XSS } }), {
+      showEmployee: true,
     });
 
-    for (const row of [shiftRow(shift), shiftRow(shift, { showEmployee: true })]) {
-      expect(row.querySelector("script")).toBeNull();
-      expect(row.querySelector("img")).toBeNull();
-      expect(row.textContent).toContain("<script>alert(2)</script>");
-    }
+    expect(row.querySelector("script")).toBeNull();
+    expect(row.querySelector("img")).toBeNull();
+    expect(row.textContent).toContain("<script>alert(2)</script>");
   });
 
   it("marks an open shift, with its own icon and label", () => {
@@ -66,20 +65,6 @@ describe("shiftRow", () => {
     expect(row.querySelector(".icon--open")).not.toBeNull();
     expect(row.querySelector(".shift__who")?.textContent).toBe("Open shift");
   });
-
-  it("shows the event and notes, and leaves out what is not there", () => {
-    const withEvent = shiftRow(
-      makeShift({ event_name: "Inventory night", event_description: "Count it", notes: "Keys" }),
-    );
-    const bare = shiftRow(makeShift({ details: null, event_name: "Inventory night" }), {
-      showEmployee: true,
-    });
-
-    expect(withEvent.textContent).toContain("Event: Inventory night");
-    expect(withEvent.querySelectorAll(".shift__note")).toHaveLength(2);
-    expect(bare.querySelector(".shift__meta")?.textContent).toBe("Ana Diaz");
-    expect(bare.querySelectorAll(".shift__note")).toHaveLength(0);
-  });
 });
 
 describe("noShiftRow and icon", () => {
@@ -88,6 +73,8 @@ describe("noShiftRow and icon", () => {
 
     expect(row.textContent).toBe("No shift");
     expect(row.querySelector(".icon--lounge")).not.toBeNull();
+    // Nothing to open on a day off.
+    expect(row.tagName).toBe("DIV");
   });
 
   it("hides icons from screen readers (the text carries the meaning)", () => {

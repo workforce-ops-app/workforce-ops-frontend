@@ -103,13 +103,17 @@ describe("My week", () => {
     expect(document.getElementById("next-week")?.getAttribute("href")).toBe("?week=2026-10-12");
   });
 
-  it("keeps a malicious note as text on the page", async () => {
+  it("keeps a malicious note as text, shown only when the shift is opened", async () => {
     mocked.mockResolvedValue([shiftOn("2026-10-05", { notes: "<script>alert(1)</script>" })]);
 
     await showMyWeek("?week=2026-10-05");
 
-    expect(document.querySelector("#days script")).toBeNull();
-    expect(text("days")).toContain("<script>alert(1)</script>");
+    // The week shows the time only; the note waits for the popup.
+    expect(text("days")).not.toContain("<script>");
+    /** @type {HTMLButtonElement | null} */ (document.querySelector("#days button.shift"))?.click();
+    const popup = document.querySelector("dialog.shift-dialog");
+    expect(document.querySelector("script")).toBeNull();
+    expect(popup?.textContent).toContain("<script>alert(1)</script>");
   });
 
   it("hides the total and explains a network failure", async () => {

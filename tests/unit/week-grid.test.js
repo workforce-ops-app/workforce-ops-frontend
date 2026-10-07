@@ -77,7 +77,7 @@ describe("weekGrid", () => {
     expect(table.querySelectorAll(".week-grid__cell--today")).toHaveLength(1);
   });
 
-  it("keeps names, details, notes, and events as text", () => {
+  it("shows only the time in a cell, and the details as text in the popup", () => {
     const table = weekGrid(KEYS, [
       shiftOn("2026-10-05", {
         employee: { id: "u9", display_name: XSS },
@@ -86,9 +86,21 @@ describe("weekGrid", () => {
         event_name: XSS,
       }),
     ]);
+    document.body.append(table);
 
+    // The cell: just the time, as a button; the row's name is text, never HTML.
+    const button = /** @type {HTMLButtonElement} */ (table.querySelector("button.grid-shift"));
+    expect(button.textContent).toBe("9:00 AM - 5:00 PM");
     expect(table.querySelector("img, script")).toBeNull();
-    expect(table.textContent).toContain(XSS);
+    expect(table.querySelector("tbody th")?.textContent).toBe(XSS);
+
+    // The popup: every detail, as text.
+    button.click();
+    const popup = document.querySelector("dialog.shift-dialog");
+    expect(popup?.querySelector("img, script")).toBeNull();
+    expect(popup?.textContent).toContain(XSS);
+    popup?.remove();
+    table.remove();
   });
 
   it("says so when the week has no shifts", () => {

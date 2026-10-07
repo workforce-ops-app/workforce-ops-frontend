@@ -116,3 +116,12 @@
 .status:empty {
   display: none;
 }
+
+/* Small phones: a narrower date column, leaving room for the shift's time. */
+@media (width < 26rem) {
+  .day-card {
+    grid-template-columns: 3.25rem 1fr;
+    gap: var(--space);
+    padding: var(--space);
+  }
+}

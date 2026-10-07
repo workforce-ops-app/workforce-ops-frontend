@@ -7,6 +7,9 @@
 // <th scope="row"> for people) let a screen reader say "Tuesday, Ben Okafor, 3:00 PM ..."
 // for any cell, which a layout made of divs cannot do.
 //
+// Each shift shows only its time; clicking it opens the details popup
+// (js/components/shift-dialog.js), so a busy week stays readable.
+//
 // Names, details, notes, and event text are written by users, so everything goes through
 // el(), which only ever sets text (stored cross-site scripting, threat T5).
 
@@ -21,6 +24,7 @@ import {
 } from "../core/time.js";
 import { groupByDay } from "./day-list.js";
 import { icon } from "./shift-card.js";
+import { opensShift } from "./shift-dialog.js";
 
 /** @typedef {import("../api/shifts.js").Shift} Shift */
 
@@ -60,24 +64,19 @@ export function gridRows(shifts) {
 }
 
 /**
- * One shift inside a grid cell: the time, the role, and the event or note if there is one.
+ * One shift inside a grid cell: just its time, as a button. The row already says who
+ * works it; clicking opens everything else (role, event, notes) in the details popup.
  * @param {Shift} shift
  * @returns {HTMLElement}
  */
 function gridShift(shift) {
   const isOpen = shift.status === "open";
-  const parts = [
-    el("p", {
-      className: "grid-shift__time",
-      text: formatTimeRange(shift.starts_at, shift.ends_at, shift.timezone),
-    }),
-  ];
-  if (shift.details) parts.push(el("p", { className: "grid-shift__meta", text: shift.details }));
-  if (shift.event_name) {
-    parts.push(el("p", { className: "grid-shift__event", text: `Event: ${shift.event_name}` }));
-  }
-  if (shift.notes) parts.push(el("p", { className: "grid-shift__note", text: shift.notes }));
-  return el("div", { className: isOpen ? "grid-shift grid-shift--open" : "grid-shift" }, parts);
+  const button = el("button", {
+    className: isOpen ? "grid-shift grid-shift--open" : "grid-shift",
+    text: formatTimeRange(shift.starts_at, shift.ends_at, shift.timezone),
+    attrs: { type: "button" },
+  });
+  return opensShift(button, shift);
 }
 
 /**
