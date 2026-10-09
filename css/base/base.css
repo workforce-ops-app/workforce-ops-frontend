@@ -142,6 +142,14 @@ a {
   mask-image: url("/icons/open.svg");
 }
 
+.icon--note {
+  mask-image: url("/icons/note.svg");
+}
+
+.icon--event {
+  mask-image: url("/icons/event.svg");
+}
+
 .icon--chevron-left {
   mask-image: url("/icons/chevron-left.svg");
 }

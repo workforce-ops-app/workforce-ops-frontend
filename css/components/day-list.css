@@ -46,11 +46,22 @@
   min-width: 0;
 }
 
-/* Today's card: a green edge, so the current day is easy to find. */
+/* Today's card: a soft green background, the same green as today's column in the
+   department grid, so the current day is easy to find. Screen readers hear "(today)" in
+   the card's label, so the colour is not the only sign. */
 .day-card--today {
-  box-shadow:
-    inset 4px 0 0 var(--color-accent),
-    var(--shadow-card);
+  background: var(--color-accent-soft);
+}
+
+/* On the green card, the round icons and the hover highlight turn white, so they keep
+   their shape (an open shift keeps its amber circle). */
+.day-card--today .shift:not(.shift--open) .shift__icon,
+.day-card--today button.shift:hover {
+  background: var(--color-background);
+}
+
+.day-card--today button.shift:not(.shift--open):hover .shift__icon {
+  background: var(--color-accent-soft);
 }
 
 /* A short summary card, e.g. "Time scheduled: 24 hours". */

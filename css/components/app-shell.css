@@ -118,14 +118,15 @@
     background: transparent;
   }
 
+  /* The 3px at the bottom keeps room for the underline of the current tab (below). */
   .tab-bar__link {
+    position: relative;
     flex: none;
     flex-direction: row;
     gap: 0.5rem;
     max-width: none;
-    padding: 1.125rem 0.875rem 1rem;
+    padding: 1.125rem 0.875rem calc(1rem + 3px);
     border-top: 0;
-    border-bottom: 3px solid transparent;
     font-size: 0.9375rem;
   }
 
@@ -138,7 +139,17 @@
     color: var(--color-accent);
   }
 
-  .tab-bar__link[aria-current="page"] {
-    border-bottom-color: var(--color-accent);
+  /* The current tab's underline runs under its words only, not under the icon, so it
+     sits centred under the text. It starts after the padding, the icon (1.25rem), and
+     the gap (0.5rem), and stops at the padding on the right. */
+  .tab-bar__link[aria-current="page"]::after {
+    position: absolute;
+    right: 0.875rem;
+    bottom: 0;
+    left: calc(0.875rem + 1.25rem + 0.5rem);
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background: var(--color-accent);
+    content: "";
   }
 }

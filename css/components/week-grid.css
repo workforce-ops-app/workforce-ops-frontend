@@ -1,6 +1,7 @@
 /* The week grid (js/components/week-grid.js): one white card holding a table with one row
-   per person and one column per day. Each shift is a small soft block with its time, which
-   opens the details popup; open shifts are amber, in their own row at the top. */
+   per person and one column per day. Each shift is a small soft block with its time (and
+   icons for an event or notes), which opens the details popup. One day's column is
+   highlighted: the one under the mouse or keyboard focus, else today's. */
 
 .week-grid-card {
   /* If the window is too narrow for all seven days, the table scrolls sideways inside its
@@ -68,12 +69,13 @@
   color: var(--color-heading);
 }
 
-/* Today's column: a soft green band from the header to the bottom, and the date in a
-   green circle, so the current day is easy to find. */
-.week-grid__day--today,
-.week-grid__cell--today {
+/* The highlighted day: a soft green band from the header to the bottom. The script moves
+   the class from column to column, so this one rule serves both hover and today. */
+.week-grid__col--active {
   background: var(--color-accent-soft);
 }
+
+/* Today's date sits in a green circle, whichever column is highlighted. */
 
 .week-grid__day--today .week-grid__number {
   display: inline-grid;
@@ -99,27 +101,14 @@
   color: var(--color-heading);
 }
 
-/* The open-shifts row: amber name with its icon. */
-.week-grid__row--open .week-grid__person {
-  color: var(--color-warning);
-}
-
-.week-grid__row--open .week-grid__person-label {
-  display: inline-flex;
-  gap: 0.375rem;
-  align-items: flex-start;
-}
-
-.week-grid__row--open .icon {
-  width: 1.25rem;
-  height: 1.25rem;
-  margin-top: 0.0625rem;
-}
-
-/* One shift in a cell: a button with just its time. It brightens on hover and focus to
-   say it can be opened. */
+/* One shift in a cell: a button with its time, and the event and notes icons after it
+   (on the next line when the cell is too narrow). It brightens on hover to say it can be
+   opened. */
 .grid-shift {
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.375rem;
+  align-items: center;
   width: 100%;
   padding: 0.5rem 0.625rem;
   border: 0;
@@ -134,27 +123,24 @@
   cursor: pointer;
 }
 
+.grid-shift__time {
+  white-space: nowrap;
+}
+
+/* The icons only; their words are for screen readers (shift-card.css styles the rest). */
+.grid-shift .shift-extras {
+  margin-top: 0;
+}
+
 .grid-shift + .grid-shift {
   margin-top: 0.5rem;
 }
 
+/* Hovering a shift also highlights its column green, so the shift itself turns white to
+   stand out from that band. */
 .grid-shift:hover {
-  background: var(--color-accent-soft);
+  background: var(--color-background);
   box-shadow: var(--shadow-card);
-}
-
-/* An open shift: amber block with an amber edge (and its row is named "Open shifts"). */
-.grid-shift--open {
-  border-left-color: var(--color-warning-border);
-  background: var(--color-warning-background);
-  color: var(--color-warning);
-}
-
-.grid-shift--open:hover {
-  background: var(--color-warning-background);
-  box-shadow:
-    inset 0 0 0 1px var(--color-warning-border),
-    var(--shadow-card);
 }
 
 /* A week without shifts: one centred line across the whole table. */

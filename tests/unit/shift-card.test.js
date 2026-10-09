@@ -1,7 +1,8 @@
-// Shift rows and day cards: text only (threat T5), open shifts and today marked.
+// Shift rows and day cards: text only (threat T5), open shifts and today marked, and
+// markers for shifts with an event or notes.
 import { describe, expect, it } from "vitest";
 import { dayCard, groupByDay } from "../../js/components/day-list.js";
-import { icon, noShiftRow, shiftRow } from "../../js/components/shift-card.js";
+import { icon, noShiftRow, shiftExtras, shiftRow } from "../../js/components/shift-card.js";
 
 const XSS = '<img src=x onerror="alert(1)"><script>alert(2)</script>';
 
@@ -28,15 +29,17 @@ function makeShift(overrides = {}) {
 }
 
 describe("shiftRow", () => {
-  it("shows only the time, as a button that opens the details (My week)", () => {
+  it("shows the time and markers, as a button that opens the details (My week)", () => {
     const row = shiftRow(makeShift({ notes: "Keys", event_name: "Inventory night" }));
 
     expect(row.tagName).toBe("BUTTON");
     expect(row.getAttribute("type")).toBe("button");
     expect(row.getAttribute("aria-haspopup")).toBe("dialog");
     expect(row.querySelector(".shift__time")?.textContent).toBe("9:00 AM - 5:00 PM");
-    // The details wait for the popup.
-    expect(row.textContent).toBe("9:00 AM - 5:00 PM");
+    // Markers say there is an event and notes; the details themselves wait for the popup.
+    expect(row.textContent).toBe("9:00 AM - 5:00 PMEventNotes");
+    expect(row.querySelector(".icon--event")).not.toBeNull();
+    expect(row.querySelector(".icon--note")).not.toBeNull();
     expect(row.querySelector(".icon--clock")).not.toBeNull();
     expect(row.querySelector(".icon--chevron-right")).not.toBeNull();
   });
@@ -64,6 +67,21 @@ describe("shiftRow", () => {
     expect(row.classList.contains("shift--open")).toBe(true);
     expect(row.querySelector(".icon--open")).not.toBeNull();
     expect(row.querySelector(".shift__who")?.textContent).toBe("Open shift");
+  });
+});
+
+describe("shiftExtras", () => {
+  it("shows a word and an icon for each, or nothing for a plain shift", () => {
+    expect(shiftExtras(makeShift())).toBeNull();
+    expect(shiftExtras(makeShift({ notes: "Keys" }))?.textContent).toBe("Notes");
+    expect(shiftExtras(makeShift({ event_name: "Inventory" }))?.textContent).toBe("Event");
+  });
+
+  it("keeps the words for screen readers when only icons fit", () => {
+    const extras = shiftExtras(makeShift({ notes: "Keys" }), { compact: true });
+
+    expect(extras?.querySelector(".visually-hidden")?.textContent).toBe("Notes");
+    expect(extras?.querySelector(".icon--note")?.getAttribute("aria-hidden")).toBe("true");
   });
 });
 

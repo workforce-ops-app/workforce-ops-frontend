@@ -4,11 +4,13 @@ import {
   SAMPLE_DEPARTMENTS,
   SAMPLE_ME,
   SAMPLE_MY_DEPARTMENT_ID,
+  samplePeople,
   sampleShifts,
 } from "../../js/api/sample-shifts.js";
 import {
   USE_SAMPLE_DATA,
   fetchShifts,
+  listDepartmentPeople,
   listDepartments,
   listShifts,
   myDepartmentId,
@@ -115,12 +117,29 @@ describe("sample departments and IDs", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("give each department's people, some of them without a shift this week", async () => {
+    const kitchen = await listDepartmentPeople(SAMPLE_MY_DEPARTMENT_ID);
+    const monday = mondayOf(dayKey(new Date(), "America/Chicago"));
+    const shifts = await sampleShifts({
+      from: monday,
+      to: addDays(monday, 6),
+      departmentId: SAMPLE_MY_DEPARTMENT_ID,
+    });
+    const working = new Set(shifts.map((s) => s.employee?.id));
+
+    expect(kitchen).toContainEqual(SAMPLE_ME);
+    expect(kitchen.some((person) => !working.has(person.id))).toBe(true);
+    expect(await listDepartmentPeople("unknown")).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("uses IDs shaped like the API's (UUIDv7), each one different", async () => {
     const monday = mondayOf(dayKey(new Date(), "America/Chicago"));
     const shifts = await sampleShifts({ from: monday, to: addDays(monday, 13) });
     const ids = [
       ...shifts.flatMap((s) => [s.id, s.department.id, s.employee?.id ?? s.id]),
       ...SAMPLE_DEPARTMENTS.map((d) => d.id),
+      ...SAMPLE_DEPARTMENTS.flatMap((d) => samplePeople(d.id).map((p) => p.id)),
     ];
 
     expect(ids.every((id) => UUID_V7.test(id))).toBe(true);

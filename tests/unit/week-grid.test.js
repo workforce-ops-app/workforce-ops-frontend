@@ -1,5 +1,6 @@
-// The week grid and the summary tiles: rows per person, open shifts first, text only
-// (threat T5), today marked, and a table a screen reader can navigate.
+// The week grid and the summary tiles: rows per person (open shifts left to their own
+// section), text only (threat T5), one day's column highlighted (today unless the mouse
+// or focus is on another), and a table a screen reader can navigate.
 import { describe, expect, it } from "vitest";
 import { statTile } from "../../js/components/stat-tile.js";
 import { gridRows, weekGrid } from "../../js/components/week-grid.js";
@@ -34,8 +35,18 @@ function shiftOn(day, overrides = {}) {
 
 const BEN = { id: "u2", display_name: "Ben Okafor" };
 
+/**
+ * The day keys of the highlighted cells, header included.
+ * @param {HTMLElement} table
+ * @returns {(string | undefined)[]}
+ */
+const highlighted = (table) =>
+  [...table.querySelectorAll(".week-grid__col--active")].map(
+    (cell) => /** @type {HTMLElement} */ (cell).dataset.day,
+  );
+
 describe("gridRows", () => {
-  it("puts open shifts first, then one row per person by name", () => {
+  it("makes one row per person by name, and leaves open shifts out", () => {
     const rows = gridRows([
       shiftOn("2026-10-05", { employee: BEN }),
       shiftOn("2026-10-06"),
@@ -43,8 +54,8 @@ describe("gridRows", () => {
       shiftOn("2026-10-08"),
     ]);
 
-    expect(rows.map((r) => r.label)).toEqual(["Open shifts", "Ana Diaz", "Ben Okafor"]);
-    expect(rows[1].shifts).toHaveLength(2);
+    expect(rows.map((r) => r.label)).toEqual(["Ana Diaz", "Ben Okafor"]);
+    expect(rows[0].shifts).toHaveLength(2);
   });
 });
 
@@ -60,13 +71,14 @@ describe("weekGrid", () => {
     expect(row?.querySelectorAll(".grid-shift")).toHaveLength(2);
   });
 
-  it("marks open shifts with an icon and words, not colour alone", () => {
-    const table = weekGrid(KEYS, [shiftOn("2026-10-06", { status: "open", employee: null })]);
+  it("leaves open shifts out of the grid (they have their own section)", () => {
+    const table = weekGrid(KEYS, [
+      shiftOn("2026-10-05"),
+      shiftOn("2026-10-06", { status: "open", employee: null }),
+    ]);
 
-    const name = table.querySelector(".week-grid__row--open th");
-    expect(name?.textContent).toBe("Open shifts");
-    expect(name?.querySelector(".icon--open")).not.toBeNull();
-    expect(table.querySelectorAll(".grid-shift--open")).toHaveLength(1);
+    expect(table.querySelectorAll("tbody tr")).toHaveLength(1);
+    expect(table.querySelectorAll(".grid-shift")).toHaveLength(1);
   });
 
   it("highlights today's column and names it for screen readers", () => {
@@ -74,7 +86,58 @@ describe("weekGrid", () => {
 
     const today = table.querySelector(".week-grid__day--today");
     expect(today?.textContent).toContain("Wednesday, October 7 (today)");
-    expect(table.querySelectorAll(".week-grid__cell--today")).toHaveLength(1);
+    // The header and the one row's cell, both on today.
+    expect(highlighted(table)).toEqual(["2026-10-07", "2026-10-07"]);
+  });
+
+  it("moves the highlight to the day under the mouse, and back to today after", () => {
+    const table = weekGrid(KEYS, [shiftOn("2026-10-05")], { today: "2026-10-07" });
+    const monday = /** @type {HTMLElement} */ (table.querySelector("button.grid-shift"));
+
+    // Pointer events bubble from the shift up to the table, like in a browser.
+    monday.dispatchEvent(new Event("pointerover", { bubbles: true }));
+    expect(highlighted(table)).toEqual(["2026-10-05", "2026-10-05"]);
+
+    // The names column is not a day: the highlight goes back to today.
+    table.querySelector("tbody th")?.dispatchEvent(new Event("pointerover", { bubbles: true }));
+    expect(highlighted(table)).toEqual(["2026-10-07", "2026-10-07"]);
+
+    monday.dispatchEvent(new Event("pointerover", { bubbles: true }));
+    table.dispatchEvent(new Event("pointerleave"));
+    expect(highlighted(table)).toEqual(["2026-10-07", "2026-10-07"]);
+  });
+
+  it("follows keyboard focus too", () => {
+    const table = weekGrid(KEYS, [shiftOn("2026-10-05")], { today: "2026-10-07" });
+    document.body.append(table);
+
+    /** @type {HTMLElement} */ (table.querySelector("button.grid-shift")).focus();
+    expect(highlighted(table)).toEqual(["2026-10-05", "2026-10-05"]);
+
+    // Focus leaving the grid brings the highlight back to today.
+    /** @type {HTMLElement} */ (document.activeElement).blur();
+    expect(highlighted(table)).toEqual(["2026-10-07", "2026-10-07"]);
+    table.remove();
+  });
+
+  it("highlights nothing in a week without today", () => {
+    const table = weekGrid(KEYS, [shiftOn("2026-10-05")], { today: "2026-10-20" });
+
+    expect(highlighted(table)).toEqual([]);
+  });
+
+  it("marks a shift with an event or notes, with words for screen readers", () => {
+    const table = weekGrid(KEYS, [
+      shiftOn("2026-10-05", { notes: "Bring the keys", event_name: "Inventory" }),
+      shiftOn("2026-10-06", { id: "plain" }),
+    ]);
+
+    const [marked, plain] = table.querySelectorAll("button.grid-shift");
+    expect(marked.querySelector(".icon--event")).not.toBeNull();
+    expect(marked.querySelector(".icon--note")).not.toBeNull();
+    // Only icons on screen; the words are for screen readers, never the note itself.
+    expect(marked.textContent).toBe("9:00 AM - 5:00 PMEventNotes");
+    expect(plain.querySelector(".shift-extras")).toBeNull();
   });
 
   it("shows only the time in a cell, and the details as text in the popup", () => {
@@ -88,9 +151,10 @@ describe("weekGrid", () => {
     ]);
     document.body.append(table);
 
-    // The cell: just the time, as a button; the row's name is text, never HTML.
+    // The cell: the time and the markers' words, as a button; the row's name is text,
+    // never HTML.
     const button = /** @type {HTMLButtonElement} */ (table.querySelector("button.grid-shift"));
-    expect(button.textContent).toBe("9:00 AM - 5:00 PM");
+    expect(button.textContent).toBe("9:00 AM - 5:00 PMEventNotes");
     expect(table.querySelector("img, script")).toBeNull();
     expect(table.querySelector("tbody th")?.textContent).toBe(XSS);
 
@@ -103,11 +167,11 @@ describe("weekGrid", () => {
     table.remove();
   });
 
-  it("says so when the week has no shifts", () => {
-    const table = weekGrid(KEYS, []);
+  it("says so when nobody is scheduled this week", () => {
+    const table = weekGrid(KEYS, [shiftOn("2026-10-06", { status: "open", employee: null })]);
 
     expect(table.querySelector(".week-grid__empty")?.textContent).toBe(
-      "No shifts planned this week.",
+      "Nobody is scheduled this week.",
     );
     expect(table.querySelector(".week-grid__empty")?.getAttribute("colspan")).toBe("9");
   });

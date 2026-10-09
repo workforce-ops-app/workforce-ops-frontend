@@ -1,7 +1,8 @@
 // One shift inside a day card, kept simple: a round icon, the time in bold, who works it
-// (department week only), and a chevron. It is a button: clicking it opens the shift's
-// details in a popup (js/components/shift-dialog.js), so the week stays easy to scan.
-// Used by My week and the department week.
+// (department week only), small "Event" and "Notes" markers when the shift has them, and
+// a chevron. It is a button: clicking it opens the shift's details in a popup
+// (js/components/shift-dialog.js), so the week stays easy to scan.
+// Used by My week and the department week; the week grid reuses the markers.
 //
 // Names are written by users, so everything goes through el(), which only ever sets text:
 // a name containing <script> shows those characters and never runs (stored cross-site
@@ -30,6 +31,36 @@ export function icon(name) {
  */
 function roundIcon(name) {
   return el("span", { className: "shift__icon" }, [icon(name)]);
+}
+
+/**
+ * Small markers for what a shift carries besides its time: an event, notes, or both. They
+ * tell people which shifts are worth opening; the event and notes themselves stay in the
+ * popup, so the week stays short.
+ * @param {Shift} shift
+ * @param {{ compact?: boolean }} [options] compact: icons only, for the grid's narrow
+ *   cells; the words are then kept for screen readers only
+ * @returns {HTMLElement | null} null when the shift has neither
+ */
+export function shiftExtras(shift, options = {}) {
+  /** @type {[string, string][]} icon name and word for each marker */
+  const markers = [];
+  if (shift.event_name) markers.push(["event", "Event"]);
+  if (shift.notes) markers.push(["note", "Notes"]);
+  if (markers.length === 0) return null;
+
+  return el(
+    "span",
+    { className: "shift-extras" },
+    markers.map(([name, word]) =>
+      el("span", { className: "shift-extras__item" }, [
+        // The icon is decorative; the word next to it says what it means, so the marker
+        // never depends on the picture alone.
+        icon(name),
+        el("span", { className: options.compact ? "visually-hidden" : undefined, text: word }),
+      ]),
+    ),
+  );
 }
 
 /**
@@ -62,6 +93,10 @@ export function shiftRow(shift, options = {}) {
       }),
     );
   }
+
+  // A last line with the markers, when the shift has an event or notes.
+  const extras = shiftExtras(shift);
+  if (extras) text.append(extras);
 
   const button = el(
     "button",

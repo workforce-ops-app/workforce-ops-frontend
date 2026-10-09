@@ -1,0 +1,134 @@
+/* The sections under the department week (js/components/week-sections.js): open shifts,
+   then unscheduled employees. Each is a white card like the grid, with a heading and a
+   count badge. Open shifts are amber blocks in rows that fill the width; unscheduled
+   people are name tags. */
+
+.week-section {
+  margin-top: calc(var(--space) * 1.25);
+  padding: calc(var(--space) * 1.25);
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-card);
+}
+
+.week-section__title {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0 0 var(--space);
+  font-size: 1.125rem;
+}
+
+/* The count after the heading, as a small round badge. */
+.week-section__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-soft);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--color-heading);
+}
+
+/* Open shifts need action, so their count is amber. */
+.week-section--open .week-section__count {
+  background: var(--color-warning-background);
+  color: var(--color-warning);
+}
+
+.week-section__empty {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+/* The open shifts: as many per row as fit, each at least 15rem wide. */
+.open-shifts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One open shift: an amber block with the open icon, the day, the time, and the role. */
+.open-shift {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  align-items: start;
+  width: 100%;
+  height: 100%;
+  padding: 0.75rem var(--space);
+  border: 0;
+  border-left: 3px solid var(--color-warning-border);
+  border-radius: var(--radius);
+  background: var(--color-warning-background);
+  font: inherit;
+  color: var(--color-warning);
+  text-align: left;
+  cursor: pointer;
+}
+
+.open-shift:hover {
+  box-shadow:
+    inset 0 0 0 1px var(--color-warning-border),
+    var(--shadow-card);
+}
+
+.open-shift > .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.0625rem;
+}
+
+/* The lines of text are spans (a button may only hold inline elements), stacked here. */
+.open-shift__text {
+  display: grid;
+  min-width: 0;
+}
+
+.open-shift__day {
+  font-weight: 600;
+}
+
+.open-shift__time {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.open-shift__role {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+/* The event and notes markers sit under the text, lined up with it. */
+.open-shift > .shift-extras {
+  grid-column: 2;
+}
+
+/* The unscheduled people: name tags that wrap onto as many lines as needed. */
+.people-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.people-tag {
+  padding: 0.375rem 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-soft);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-heading);
+  overflow-wrap: anywhere;
+}

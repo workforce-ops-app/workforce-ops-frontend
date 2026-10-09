@@ -7,8 +7,10 @@ vi.mock("../../js/api/shifts.js", () => ({
   listShifts: vi.fn(),
   listDepartments: vi.fn(),
   myDepartmentId: vi.fn(),
+  listDepartmentPeople: vi.fn(),
 }));
-const { listShifts, listDepartments, myDepartmentId } = await import("../../js/api/shifts.js");
+const { listShifts, listDepartments, myDepartmentId, listDepartmentPeople } =
+  await import("../../js/api/shifts.js");
 const { showMyWeek } = await import("../../js/pages/my-shifts.js");
 const { showWeek, weekStats } = await import("../../js/pages/schedule.js");
 const { mondayOf } = await import("../../js/core/time.js");
@@ -18,6 +20,7 @@ const asMock = (fn) => /** @type {import("vitest").Mock} */ (fn);
 const mocked = asMock(listShifts);
 const departmentsMock = asMock(listDepartments);
 const myDepartmentMock = asMock(myDepartmentId);
+const peopleMock = asMock(listDepartmentPeople);
 
 /**
  * A shift in Chicago on the given day, 9:00 to 17:00 local time.
@@ -68,6 +71,11 @@ beforeEach(() => {
     { id: "d2", name: "Front of House" },
   ]);
   myDepartmentMock.mockReset().mockResolvedValue("d1");
+  // The department's people: Ana (who has the test shifts) and Ben (who has none).
+  peopleMock.mockReset().mockResolvedValue([
+    { id: "u1", display_name: "Ana Diaz" },
+    { id: "u2", display_name: "Ben Okafor" },
+  ]);
 });
 afterEach(() => document.body.replaceChildren());
 
@@ -165,18 +173,59 @@ describe("Department week", () => {
 
     await showWeek("?week=2026-10-05&department=d1");
 
-    expect(document.querySelectorAll("#grid table tbody tr")).toHaveLength(2);
+    // One row: Ana. The open shift is not a row of the grid.
+    expect(document.querySelectorAll("#grid table tbody tr")).toHaveLength(1);
     expect(document.getElementById("stats")?.hidden).toBe(false);
     expect(document.querySelectorAll("#stats .stat")).toHaveLength(4);
   });
 
-  it("hides the week's numbers when the week cannot load", async () => {
-    page(["title", "week-range", "previous-week", "next-week", "status", "days", "grid", "stats"]);
+  it("shows the open shifts and the people without a shift under the week", async () => {
+    page(["title", "week-range", "previous-week", "next-week", "status", "days", "sections"]);
+    mocked.mockResolvedValue([
+      shiftOn("2026-10-05"),
+      shiftOn("2026-10-08", { status: "open", employee: null }),
+    ]);
+
+    await showWeek("?week=2026-10-05&department=d1");
+
+    expect(peopleMock).toHaveBeenCalledWith("d1");
+    expect(document.querySelectorAll("#sections button.open-shift")).toHaveLength(1);
+    const names = [...document.querySelectorAll("#sections .people-tag")].map((t) => t.textContent);
+    expect(names).toEqual(["Ben Okafor"]);
+  });
+
+  it("leaves out the unscheduled list for someone who may not list people", async () => {
+    page(["title", "week-range", "previous-week", "next-week", "status", "days", "sections"]);
+    mocked.mockResolvedValue([shiftOn("2026-10-05")]);
+    peopleMock.mockRejectedValue(new ApiError(403, { title: "Forbidden" }));
+
+    await showWeek("?week=2026-10-05&department=d1");
+
+    // The week itself still shows; only that one section is missing.
+    expect(text("status")).toBe("");
+    expect(document.querySelectorAll("#days .day-card")).toHaveLength(7);
+    expect(document.querySelector("#sections .people-tags")).toBeNull();
+    expect(document.querySelector("#sections .week-section--open")).not.toBeNull();
+  });
+
+  it("hides the week's numbers and sections when the week cannot load", async () => {
+    page([
+      "title",
+      "week-range",
+      "previous-week",
+      "next-week",
+      "status",
+      "days",
+      "grid",
+      "stats",
+      "sections",
+    ]);
     mocked.mockRejectedValue(new NetworkError(new TypeError("Failed to fetch")));
 
     await showWeek("");
 
     expect(document.getElementById("stats")?.hidden).toBe(true);
+    expect(document.getElementById("sections")?.childElementCount).toBe(0);
   });
 
   it("links to other weeks, keeping the department", async () => {

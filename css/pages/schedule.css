@@ -1,6 +1,8 @@
 /* Department week (pages/schedule.html), laid out for planning. Phones and tablets see the
    week's numbers, then a card per day, one under another. Laptops see the numbers, then
-   the whole week as a grid with one row per person (css/components/week-grid.css). */
+   the whole week as a grid with one row per person (css/components/week-grid.css) and the
+   open shifts in a section under it. Both then list the people without a shift
+   (css/components/week-sections.css). */
 
 main.schedule {
   max-width: 40rem;
@@ -19,8 +21,10 @@ main.schedule {
   margin-bottom: 0;
 }
 
-/* Phones and tablets: the day cards, not the grid. */
-.week-grid-card {
+/* Phones and tablets: the day cards, not the grid. The open shifts are already in the
+   day cards, so their own section is left out too. */
+.week-grid-card,
+.week-section--open {
   display: none;
 }
 
@@ -47,8 +51,9 @@ main.schedule {
     gap: var(--space);
   }
 
-  /* Laptops: the grid, not the day cards. */
-  .week-grid-card {
+  /* Laptops: the grid and the open shifts section, not the day cards. */
+  .week-grid-card,
+  .week-section--open {
     display: block;
   }
 
