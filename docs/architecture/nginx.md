@@ -20,8 +20,10 @@ project joins that existing network, where Docker DNS resolves the backend servi
 
 The important files are:
 
-- `Dockerfile`: copies only the static application and nginx configuration, then runs
-  nginx as its built-in non-root user.
+- `Dockerfile`: copies only the static application (`pages/`, `css/`, `js/`, `icons/`,
+  each by name) and nginx configuration, then runs nginx as its built-in non-root user.
+  A new top-level folder the pages load files from must be added here too; the smoke
+  test requests one file from each folder, so a missing one fails CI.
 - `nginx/nginx.conf`: serves static files, defines the proxy, and adds headers.
 - `docker-compose.yml`: publishes nginx on `127.0.0.1:8080` and joins the shared network.
 - `tests/integration/`: starts an isolated API stand-in and checks the complete browser
