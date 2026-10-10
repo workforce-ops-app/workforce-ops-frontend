@@ -79,3 +79,12 @@
 .button--wide {
   width: 100%;
 }
+
+.field__input--invalid {
+  border-color: var(--color-danger, #c0392b);
+}
+
+.field__input--invalid:focus {
+  border-color: var(--color-danger, #c0392b);
+  outline-color: var(--color-danger, #c0392b);
+}
