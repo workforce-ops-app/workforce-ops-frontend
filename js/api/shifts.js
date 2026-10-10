@@ -63,6 +63,20 @@ export async function listDepartments() {
 }
 
 /**
+ * Everyone whose home department is the given one, for the department week's
+ * "Unscheduled employees" section. From GET /api/users (backend organization feature,
+ * workforce-ops-backend#54, after the midterm), filtered to the department.
+ * The API answers only with the people the signed-in person may see (user.view and its
+ * scope); someone without that right gets 403, and the page then leaves the section out.
+ * @param {string} departmentId
+ * @returns {Promise<EmployeeRef[]>}
+ */
+export async function listDepartmentPeople(departmentId) {
+  if (USE_SAMPLE_DATA) return (await sampleData()).samplePeople(departmentId);
+  return fetchAll(new URLSearchParams({ department_id: departmentId }), "/api/users");
+}
+
+/**
  * The signed-in person's own (home) department, which the department week shows when the
  * address names none. From GET /api/sessions/current, which already answers "who am I"
  * on every page; null for someone without a home department.

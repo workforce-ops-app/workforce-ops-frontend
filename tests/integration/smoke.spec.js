@@ -4,7 +4,7 @@ test("placeholder page loads through nginx and reaches the API", async ({ page }
   const response = await page.goto("/");
 
   await expect(page).toHaveURL(/\/pages\/sign-in\.html$/);
-  await expect(page.getByRole("heading", { name: "Workforce Operations" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await expect(page.locator("#api-status")).toHaveText("Server status: ok");
   expect(response?.status()).toBe(200);
 });
@@ -14,6 +14,21 @@ test("API health response is forwarded through nginx", async ({ request }) => {
 
   expect(response.status()).toBe(200);
   await expect(response.json()).resolves.toEqual({ status: "ok" });
+});
+
+// Every folder the pages load files from must be in the image. The Dockerfile copies
+// each one by name, so a folder left out there is missing only in the container, and
+// opening the files straight from the repository would never show it.
+test("every static folder is served by the image", async ({ request }) => {
+  for (const path of [
+    "/pages/my-shifts.html",
+    "/css/base/base.css",
+    "/js/core/dom.js",
+    "/icons/clock.svg",
+  ]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(200);
+  }
 });
 
 test("browser-facing responses include the required security headers", async ({ request }) => {

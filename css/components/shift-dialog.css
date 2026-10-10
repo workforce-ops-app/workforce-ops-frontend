@@ -1,0 +1,65 @@
+/* The shift details popup (js/components/shift-dialog.js): a white card in the middle of
+   the screen over a dimmed page, with the day, the time, a short list of facts, and a
+   Close button. */
+
+.shift-dialog {
+  width: min(26rem, calc(100% - 2rem));
+  padding: calc(var(--space) * 1.5);
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-raised);
+  color: var(--color-text);
+}
+
+/* The page behind the popup, dimmed so the popup stands out. */
+.shift-dialog::backdrop {
+  background: var(--color-backdrop);
+}
+
+.shift-dialog__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  line-height: 1.2;
+  color: var(--color-heading);
+}
+
+.shift-dialog__time {
+  margin: 0.25rem 0 var(--space);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+/* "Open shift": amber, with words, so it is not shown by colour alone. */
+.shift-dialog__open {
+  margin: 0 0 var(--space);
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid var(--color-warning-border);
+  border-radius: var(--radius);
+  background: var(--color-warning-background);
+  font-weight: 600;
+  color: var(--color-warning);
+}
+
+/* The facts: a small muted label over each value ("Role" over "Prep line"). */
+.shift-dialog__facts {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0 0 calc(var(--space) * 1.5);
+}
+
+.shift-dialog__facts dt {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.shift-dialog__facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

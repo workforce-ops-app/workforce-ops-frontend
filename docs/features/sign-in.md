@@ -1,6 +1,6 @@
 # Sign in and your account
 
-- **Status:** planned (core tier)
+- **Status:** the sign-in screen's layout is built (a centered card with email, password, and one message area); sending the form arrives with UI2 once the backend's sign-in (S2) exists. Until then the page keeps the form from being sent and says so. The other screens are planned (core tier)
 - **Related:** workforce-ops-app/workforce-ops-frontend#3; backend: [authentication](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/architecture/authentication.md), [company structure](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/organization.md)
 
 ## In short
@@ -36,3 +36,4 @@ All go through `js/api/client.js` ([architecture](../architecture/README.md)); t
 - **Re-entry:** when a request fails with the problem type `reauth-required`, `client.js` opens the pop-up, sends the password, and repeats the original request once.
 - The session cookie is `HttpOnly`, so no script can read it; the page only ever holds the CSRF token, in memory.
 - Password fields use `autocomplete="current-password"` or `"new-password"` so password managers work, and allow pasting.
+- **The form uses `method="post"`.** The script sends it, but if the script ever fails to load and the browser sends the form itself, the password travels in the request body. With the default `GET` it would end up in the address bar, the browser history, and server logs.

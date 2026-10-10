@@ -8,30 +8,31 @@
     <link rel="stylesheet" href="/css/components/app-shell.css" />
     <link rel="stylesheet" href="/css/components/shift-card.css" />
     <link rel="stylesheet" href="/css/components/day-list.css" />
+    <link rel="stylesheet" href="/css/components/form.css" />
+    <link rel="stylesheet" href="/css/components/shift-dialog.css" />
     <script type="module" src="/js/pages/my-shifts.js"></script>
   </head>
   <body>
-    <header class="app-header">
-      <a class="app-header__brand" href="/pages/my-shifts.html">
-        <img
-          class="app-header__logo"
-          src="/icons/logo.svg"
-          alt="Workforce Operations"
-          width="48"
-          height="52"
-        />
-      </a>
-    </header>
-    <nav class="tab-bar" aria-label="Main">
-      <a class="tab-bar__link" href="/pages/my-shifts.html" aria-current="page">
-        <span class="icon icon--calendar" aria-hidden="true"></span>
-        My week
-      </a>
-      <a class="tab-bar__link" href="/pages/schedule.html">
-        <span class="icon icon--people" aria-hidden="true"></span>
-        Department
-      </a>
-    </nav>
+    <!-- The app shell: the brand, then the main tabs. The logo spot is empty until a logo
+         is chosen; the name next to it is the link's text, so it is never unnamed. -->
+    <div class="app-shell-top">
+      <header class="app-header">
+        <a class="brand" href="/pages/my-shifts.html">
+          <span class="brand__logo" aria-hidden="true"></span>
+          <span class="brand__name">Workforce Operations</span>
+        </a>
+      </header>
+      <nav class="tab-bar" aria-label="Main">
+        <a class="tab-bar__link" href="/pages/my-shifts.html" aria-current="page">
+          <span class="icon icon--calendar" aria-hidden="true"></span>
+          My week
+        </a>
+        <a class="tab-bar__link" href="/pages/schedule.html">
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Department
+        </a>
+      </nav>
+    </div>
     <main class="app-main">
       <h1>My week</h1>
       <nav class="week-nav" aria-label="Weeks">

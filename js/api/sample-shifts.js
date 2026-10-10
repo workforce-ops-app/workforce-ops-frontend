@@ -4,7 +4,7 @@
 // The shifts are built around the current week, so the screens always have something to
 // show. They are shaped exactly like the API's answer, use the demo company's names, and
 // cover what the screens must handle: assigned and open shifts, an event, notes, two
-// departments, and a cancelled shift that must not appear.
+// departments, a cancelled shift that must not appear, and people without any shift.
 
 import { addDays, dayKey, mondayOf, zonedTimeToUtc } from "../core/time.js";
 
@@ -31,6 +31,18 @@ export const SAMPLE_ME = { id: sampleId("a01"), display_name: "Ana Diaz" };
 export const SAMPLE_MY_DEPARTMENT_ID = KITCHEN.id;
 const BEN = { id: sampleId("a02"), display_name: "Ben Okafor" };
 const CARA = { id: sampleId("a03"), display_name: "Cara Lund" };
+const DEV = { id: sampleId("a04"), display_name: "Dev Patel" };
+const ELI = { id: sampleId("a05"), display_name: "Eli Moreno" };
+// People with no shift this week, for the "Unscheduled employees" section.
+const FAY = { id: sampleId("a06"), display_name: "Fay Nguyen" };
+const GIL = { id: sampleId("a07"), display_name: "Gil Brooks" };
+const HANA = { id: sampleId("a08"), display_name: "Hana Ito" };
+
+/** Each department's people (their home department), as GET /api/users lists them. */
+const PEOPLE_BY_DEPARTMENT = new Map([
+  [KITCHEN.id, [SAMPLE_ME, BEN, CARA, DEV, ELI, FAY, GIL]],
+  [FRONT.id, [HANA]],
+]);
 
 /**
  * One sample shift.
@@ -88,6 +100,16 @@ function allSampleShifts() {
     // A cancelled shift: kept in the database, never shown.
     shift(8, day(5), "09:00", "17:00", { employee: CARA, status: "cancelled" }),
     shift(9, day(5), "10:00", "18:00", { department: FRONT, employee: CARA, details: "Host" }),
+    // More of the kitchen's week, so the department grid looks like a real week.
+    shift(12, day(1), "15:00", "23:00", { employee: BEN, details: "Grill" }),
+    shift(13, day(1), "10:00", "18:00", { employee: ELI, details: "Dish" }),
+    shift(14, day(2), "15:00", "23:00", { employee: DEV, details: "Grill" }),
+    shift(15, day(3), "07:00", "15:00", { employee: CARA, details: "Prep line" }),
+    shift(16, day(3), "10:00", "18:00", { employee: ELI, details: "Dish" }),
+    shift(17, day(5), "07:00", "15:00", { employee: SAMPLE_ME, details: "Prep line" }),
+    shift(18, day(5), "15:00", "23:00", { employee: DEV, details: "Grill" }),
+    shift(19, day(6), "10:00", "18:00", { employee: ELI, details: "Dish" }),
+    shift(20, day(6), "16:00", "22:00", { status: "open", details: "Dish" }),
     shift(10, day(7), "07:00", "15:00", { employee: SAMPLE_ME, details: "Prep line" }),
     shift(11, day(9), "15:00", "23:00", { status: "open", details: "Grill" }),
   ];
@@ -115,6 +137,15 @@ export async function sampleShifts(query) {
       // In time order, as the API returns them.
       .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
   );
+}
+
+/**
+ * The people of one department, the way the API filters them.
+ * @param {string} departmentId
+ * @returns {import("./shifts.js").EmployeeRef[]}
+ */
+export function samplePeople(departmentId) {
+  return PEOPLE_BY_DEPARTMENT.get(departmentId) ?? [];
 }
 
 /** The sample departments, for the department week's heading. */

@@ -8,46 +8,64 @@
     <link rel="stylesheet" href="/css/components/app-shell.css" />
     <link rel="stylesheet" href="/css/components/shift-card.css" />
     <link rel="stylesheet" href="/css/components/day-list.css" />
+    <link rel="stylesheet" href="/css/components/form.css" />
+    <link rel="stylesheet" href="/css/components/shift-dialog.css" />
+    <link rel="stylesheet" href="/css/components/stat-tile.css" />
+    <link rel="stylesheet" href="/css/components/week-grid.css" />
+    <link rel="stylesheet" href="/css/components/week-sections.css" />
     <link rel="stylesheet" href="/css/pages/schedule.css" />
     <script type="module" src="/js/pages/schedule.js"></script>
   </head>
   <body>
-    <header class="app-header">
-      <a class="app-header__brand" href="/pages/my-shifts.html">
-        <img
-          class="app-header__logo"
-          src="/icons/logo.svg"
-          alt="Workforce Operations"
-          width="48"
-          height="52"
-        />
-      </a>
-    </header>
-    <nav class="tab-bar" aria-label="Main">
-      <a class="tab-bar__link" href="/pages/my-shifts.html">
-        <span class="icon icon--calendar" aria-hidden="true"></span>
-        My week
-      </a>
-      <a class="tab-bar__link" href="/pages/schedule.html" aria-current="page">
-        <span class="icon icon--people" aria-hidden="true"></span>
-        Department
-      </a>
-    </nav>
-    <main class="app-main schedule">
-      <h1 id="title">Department week</h1>
-      <nav class="week-nav" aria-label="Weeks">
-        <a id="previous-week" class="week-nav__button" href="?">
-          <span class="icon icon--chevron-left" aria-hidden="true"></span>
-          Previous
+    <!-- The app shell: the brand, then the main tabs. The logo spot is empty until a logo
+         is chosen; the name next to it is the link's text, so it is never unnamed. -->
+    <div class="app-shell-top">
+      <header class="app-header">
+        <a class="brand" href="/pages/my-shifts.html">
+          <span class="brand__logo" aria-hidden="true"></span>
+          <span class="brand__name">Workforce Operations</span>
         </a>
-        <span id="week-range" class="week-nav__range"></span>
-        <a id="next-week" class="week-nav__button" href="?">
-          Next
-          <span class="icon icon--chevron-right" aria-hidden="true"></span>
+      </header>
+      <nav class="tab-bar" aria-label="Main">
+        <a class="tab-bar__link" href="/pages/my-shifts.html">
+          <span class="icon icon--calendar" aria-hidden="true"></span>
+          My week
+        </a>
+        <a class="tab-bar__link" href="/pages/schedule.html" aria-current="page">
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Department
         </a>
       </nav>
+    </div>
+    <main class="app-main schedule">
+      <!-- Page heading and week choice on one line on a laptop, stacked on a phone. -->
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Department week</p>
+          <h1 id="title">Department week</h1>
+        </div>
+        <nav class="week-nav" aria-label="Weeks">
+          <a id="previous-week" class="week-nav__button" href="?">
+            <span class="icon icon--chevron-left" aria-hidden="true"></span>
+            Previous
+          </a>
+          <span id="week-range" class="week-nav__range"></span>
+          <a id="next-week" class="week-nav__button" href="?">
+            Next
+            <span class="icon icon--chevron-right" aria-hidden="true"></span>
+          </a>
+        </nav>
+      </div>
       <p id="status" class="status" aria-live="polite">Loading the week…</p>
+      <!-- The week's numbers: shifts, open shifts, hours, people. -->
+      <section id="stats" class="stats" aria-label="This week in numbers" hidden></section>
+      <!-- The same week twice: a grid for laptops, a card per day for phones. The stylesheet
+           shows only one of them; the hidden one is skipped by screen readers too. -->
+      <div id="grid" class="week-grid-card"></div>
       <div id="days" class="days days--week"></div>
+      <!-- Under the week: open shifts (laptops only; phones see them in the day cards) and
+           the people without a shift this week. -->
+      <div id="sections"></div>
     </main>
   </body>
 </html>

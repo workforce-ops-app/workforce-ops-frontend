@@ -1,48 +1,106 @@
 /* One shift inside a day card (js/components/shift-card.js): a round icon, the time in
-   bold, and who or what underneath. */
+   bold, who works it (department week), and a chevron. It is a button that opens the
+   shift's details, so it gets a hover and focus effect; a day off is plain text. */
 
 .shift {
   display: grid;
-  grid-template-columns: 2.75rem 1fr;
-  gap: 0.875rem;
+  grid-template-columns: 3rem 1fr auto;
+  gap: var(--space);
   align-items: center;
 }
 
-.shift p {
-  margin: 0;
+/* The button version: no browser button look, the full width of the card, and a soft
+   rounded highlight on hover. The negative margin lets the highlight reach a little past
+   the content without moving it. */
+button.shift {
+  width: calc(100% + 1rem);
+  margin: -0.5rem;
+  padding: 0.5rem;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.shift:hover {
+  background: var(--color-surface-soft);
+}
+
+/* The chevron says "this opens something"; it turns green on hover and focus. */
+.shift > .icon--chevron-right {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--color-muted);
+}
+
+button.shift:hover > .icon--chevron-right,
+button.shift:focus-visible > .icon--chevron-right {
+  color: var(--color-accent);
+}
+
+/* The lines of text are spans (a button may only hold inline elements), stacked here. */
+.shift__text {
+  display: grid;
+  min-width: 0;
 }
 
 /* The round icon: a clock for a shift, a lounge chair for a day off. */
 .shift__icon {
   display: grid;
   place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 3rem;
+  height: 3rem;
   border-radius: 50%;
   background: var(--color-surface-soft);
   color: var(--color-accent);
 }
 
+/* The time stays on one line ("7:00 AM - 3:00 PM"), never broken before "PM". */
 .shift__time {
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
   font-weight: 600;
+  white-space: nowrap;
   color: var(--color-heading);
 }
 
-.shift__meta,
-.shift__note {
+.shift__who {
   font-size: 0.9375rem;
   color: var(--color-muted);
   overflow-wrap: anywhere;
 }
 
-.shift__event {
-  font-size: 0.9375rem;
+/* The markers for a shift with an event or notes: a small green icon and a word each, on a
+   line of their own under the time. The week grid shows the icons only. */
+.shift-extras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
   font-weight: 600;
+  color: var(--color-muted);
+}
+
+.shift-extras__item {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.shift-extras .icon {
+  width: 0.9375rem;
+  height: 0.9375rem;
   color: var(--color-accent);
 }
 
-/* A day off: just the icon and "No shift". */
+/* A day off: just the icon and "No shift", no chevron. */
+.shift--none {
+  grid-template-columns: 3rem 1fr;
+}
+
 .shift--none .shift__time {
   font-weight: 500;
 }
@@ -56,4 +114,32 @@
 .shift--open .shift__who {
   font-weight: 600;
   color: var(--color-warning);
+}
+
+/* On hover the row turns soft, so the icon circle turns white to keep its shape visible
+   (an open shift keeps its amber circle). Last, so it wins over the rules above. */
+button.shift:not(.shift--open):hover .shift__icon {
+  background: var(--color-background);
+}
+
+/* Small phones: a little less space around the icon and a slightly smaller time, so the
+   whole time fits on one line next to the chevron. */
+@media (width < 26rem) {
+  .shift {
+    grid-template-columns: 2.75rem 1fr auto;
+    gap: 0.75rem;
+  }
+
+  .shift--none {
+    grid-template-columns: 2.75rem 1fr;
+  }
+
+  .shift__icon {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .shift__time {
+    font-size: 1rem;
+  }
 }

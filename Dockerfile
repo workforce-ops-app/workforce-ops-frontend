@@ -11,6 +11,7 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY pages /usr/share/nginx/html/pages
 COPY css /usr/share/nginx/html/css
 COPY js /usr/share/nginx/html/js
+COPY icons /usr/share/nginx/html/icons
 
 # nginx listens on an unprivileged port and writes temporary files under /tmp, so
 # its master process and workers can both run as this ordinary account.

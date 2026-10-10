@@ -8,10 +8,10 @@
 
 .day-card {
   display: grid;
-  grid-template-columns: 3.75rem 1fr;
-  gap: var(--space);
+  grid-template-columns: 4rem 1fr;
+  gap: calc(var(--space) * 1.25);
   align-items: center;
-  padding: var(--space);
+  padding: calc(var(--space) * 1.125) calc(var(--space) * 1.25);
   border-radius: var(--radius-card);
   background: var(--color-background);
   box-shadow: var(--shadow-card);
@@ -36,7 +36,7 @@
 }
 
 .day-card__number {
-  font-size: 1.75rem;
+  font-size: 1.875rem;
   color: var(--color-heading);
 }
 
@@ -46,11 +46,22 @@
   min-width: 0;
 }
 
-/* Today's card: a green edge, so the current day is easy to find. */
+/* Today's card: a soft green background, the same green as today's column in the
+   department grid, so the current day is easy to find. Screen readers hear "(today)" in
+   the card's label, so the colour is not the only sign. */
 .day-card--today {
-  box-shadow:
-    inset 4px 0 0 var(--color-accent),
-    var(--shadow-card);
+  background: var(--color-accent-soft);
+}
+
+/* On the green card, the round icons and the hover highlight turn white, so they keep
+   their shape (an open shift keeps its amber circle). */
+.day-card--today .shift:not(.shift--open) .shift__icon,
+.day-card--today button.shift:hover {
+  background: var(--color-background);
+}
+
+.day-card--today button.shift:not(.shift--open):hover .shift__icon {
+  background: var(--color-accent-soft);
 }
 
 /* A short summary card, e.g. "Time scheduled: 24 hours". */
@@ -72,7 +83,7 @@
   height: 2.75rem;
   border-radius: 50%;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .summary-card__value {
@@ -100,7 +111,7 @@
   align-items: center;
   padding: 0.5rem 0.875rem;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-background);
   font-size: 0.9375rem;
   font-weight: 600;
@@ -115,4 +126,13 @@
 /* The status line ("Loading...", problems) sits quietly above the cards. */
 .status:empty {
   display: none;
+}
+
+/* Small phones: a narrower date column, leaving room for the shift's time. */
+@media (width < 26rem) {
+  .day-card {
+    grid-template-columns: 3.25rem 1fr;
+    gap: var(--space);
+    padding: var(--space);
+  }
 }

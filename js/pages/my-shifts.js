@@ -6,19 +6,8 @@ import { ApiError, NetworkError } from "../api/client.js";
 import { listShifts } from "../api/shifts.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
 import { el, setText } from "../core/dom.js";
-import { addDays, formatWeekRange, hoursBetween } from "../core/time.js";
+import { addDays, formatHours, formatWeekRange, hoursBetween } from "../core/time.js";
 import { requestedMonday, today, weekLink } from "../core/week.js";
-
-/**
- * Hours as people say them: "1 hour", "7.5 hours", "24 hours".
- * @param {number} hours
- * @returns {string}
- */
-export function formatHours(hours) {
-  // At most one decimal place, without a trailing ".0".
-  const rounded = Math.round(hours * 10) / 10;
-  return `${rounded} ${rounded === 1 ? "hour" : "hours"}`;
-}
 
 /**
  * Load one week of the person's shifts and show it.

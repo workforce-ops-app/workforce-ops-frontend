@@ -114,6 +114,25 @@ export function hoursBetween(startsAt, endsAt) {
 }
 
 /**
+ * Hours rounded to at most one decimal place, e.g. 7.5 or 24 (no trailing ".0").
+ * @param {number} hours
+ * @returns {number}
+ */
+export function roundHours(hours) {
+  return Math.round(hours * 10) / 10;
+}
+
+/**
+ * Hours as people say them: "1 hour", "7.5 hours", "24 hours".
+ * @param {number} hours
+ * @returns {string}
+ */
+export function formatHours(hours) {
+  const rounded = roundHours(hours);
+  return `${rounded} ${rounded === 1 ? "hour" : "hours"}`;
+}
+
+/**
  * The day key a number of days after (or before, if negative) another day key.
  * @param {string} key "YYYY-MM-DD"
  * @param {number} days

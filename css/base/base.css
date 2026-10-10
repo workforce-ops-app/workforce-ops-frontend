@@ -12,11 +12,14 @@
   --color-background: #fff;
   --color-surface-soft: #f1f0e9;
   --color-border: #e4e2da;
+  /* The dimmed page behind a popup. */
+  --color-backdrop: rgb(19 32 58 / 45%);
 
   /* Accent: deep green */
   --color-accent: #1f5631;
   --color-accent-strong: #163f24;
   --color-accent-soft: #e6efe3;
+  --color-on-accent: #fff;
 
   /* Status */
   --color-error: #b42318;
@@ -32,7 +35,9 @@
   --space: 1rem;
   --radius: 6px;
   --radius-card: 16px;
+  --radius-pill: 999px;
   --shadow-card: 0 1px 2px rgb(20 30 25 / 4%), 0 4px 14px rgb(20 30 25 / 6%);
+  --shadow-raised: 0 2px 6px rgb(20 30 25 / 8%), 0 18px 48px rgb(20 30 25 / 18%);
 }
 
 *,
@@ -55,12 +60,25 @@ main {
   padding: var(--space);
 }
 
+/* Page headings: a large serif, like a printed schedule's title ("My week"). */
 h1 {
   margin: 0.25em 0 0.5em;
   font-family: var(--font-heading);
-  font-size: 2.25rem;
-  line-height: 1.15;
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.1;
   color: var(--color-heading);
+}
+
+/* A small line above a page heading that says what kind of page it is, e.g.
+   "Department week" above "Kitchen". */
+.eyebrow {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent);
 }
 
 a {
@@ -122,6 +140,14 @@ a {
 
 .icon--open {
   mask-image: url("/icons/open.svg");
+}
+
+.icon--note {
+  mask-image: url("/icons/note.svg");
+}
+
+.icon--event {
+  mask-image: url("/icons/event.svg");
 }
 
 .icon--chevron-left {

@@ -1,0 +1,81 @@
+/* Forms: labelled fields and buttons, shared by every page with a form (sign-in now,
+   editing shifts and time off later). Each field has a visible label above it, not only a
+   placeholder, so the label stays readable while typing (WCAG 2.2: labels). */
+
+.form {
+  display: grid;
+  gap: var(--space);
+}
+
+.field {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.field__label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.field__input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.625rem 0.875rem;
+  /* The border is muted text colour, not the light card border, so the box itself has
+     3:1 contrast against the white card (WCAG 2.2: non-text contrast). */
+  border: 1px solid var(--color-muted);
+  border-radius: 10px;
+  background: var(--color-background);
+  font: inherit;
+  color: var(--color-text);
+}
+
+.field__input:focus-visible {
+  border-color: var(--color-accent);
+}
+
+/* A form-wide message, e.g. "Email or password is incorrect." */
+.form__message {
+  margin: 0;
+  padding: 0.75rem 0.875rem;
+  border-left: 4px solid var(--color-error);
+  border-radius: var(--radius);
+  background: var(--color-surface-soft);
+  color: var(--color-error);
+}
+
+/* The hidden attribute must win over the padding and border above. */
+.form__message[hidden] {
+  display: none;
+}
+
+.button {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.625rem 1.25rem;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  background: var(--color-background);
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.button--primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.button--primary:hover {
+  border-color: var(--color-accent-strong);
+  background: var(--color-accent-strong);
+}
+
+.button--wide {
+  width: 100%;
+}
