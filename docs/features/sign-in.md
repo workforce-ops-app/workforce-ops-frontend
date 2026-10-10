@@ -1,10 +1,22 @@
 # Sign in and your account
 
-- **Status:** the sign-in screen's layout is built (a centered card with email, password, and one message area); sending the form arrives with UI2 once the backend's sign-in (S2) exists. Until then the page keeps the form from being sent and says so. The other screens are planned (core tier)
+- **Status:** the sign-in screen is implemented and connected to backend authentication (S2). Users can enter their email and password, receive inline validation errors, and sign in through a server-side session. Successful sign-in redirects to My Shifts. Failed authentication displays the same generic error message regardless of the reason. Shared session state, permission-aware navigation, and the header sign-out button are handled separately in UI1 (#13). The remaining account-management screens are planned.
 - **Related:** workforce-ops-app/workforce-ops-frontend#3; backend: [authentication](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/architecture/authentication.md), [company structure](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/organization.md)
 
 ## In short
 The screens for getting in and out: signing in with email and password, setting a password from a setup or reset link, the pop-up that asks for the password again before a risky action, and a small "my account" page for changing your password and asking for a name change. Kept short on purpose; details are added when the screens are built.
+
+## Current implementation
+
+The sign-in page (`pages/sign-in.html`) uses `js/pages/sign-in.js` to validate input and submit credentials through `js/api/sessions.js`.
+
+- Required fields and email formatting are validated before contacting the backend, with inline error messages instead of browser popups.
+- `POST /api/sessions` authenticates the user and creates a server-side session. The browser handles the secure, HttpOnly session cookie.
+- Successful authentication redirects to `/pages/my-shifts.html`.
+- Incorrect credentials produce a generic error that does not reveal whether an email address belongs to an account.
+- Network failures display a separate connection error, and the submit button is disabled while a request is in progress.
+
+Session checks across pages, permission-aware navigation, and the shared sign-out button are implemented separately in UI1 (#13).
 
 ## Screens
 
