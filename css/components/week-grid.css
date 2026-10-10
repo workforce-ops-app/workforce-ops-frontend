@@ -25,6 +25,18 @@
   border-bottom: 1px solid var(--color-border);
   text-align: left;
   vertical-align: top;
+  /* The day highlight (below) fades between columns instead of jumping. The transition
+     sits on every cell, not only the highlighted ones, so the old column fades out while
+     the new one fades in. */
+  transition: background-color 0.15s ease-in-out;
+}
+
+/* People who ask their system for less motion get the instant switch. */
+@media (prefers-reduced-motion: reduce) {
+  .week-grid th,
+  .week-grid td {
+    transition: none;
+  }
 }
 
 .week-grid tbody tr:last-child > * {
