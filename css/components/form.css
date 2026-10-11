@@ -81,10 +81,10 @@
 }
 
 .field__input--invalid {
-  border-color: var(--color-danger, #c0392b);
+  border-color: var(--color-error);
 }
 
 .field__input--invalid:focus {
-  border-color: var(--color-danger, #c0392b);
-  outline-color: var(--color-danger, #c0392b);
+  border-color: var(--color-error);
+  outline-color: var(--color-error);
 }

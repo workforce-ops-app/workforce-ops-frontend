@@ -1,6 +1,6 @@
 // Tests for backend availability, sign-in, and form validation.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { handleSignIn, showApiStatus } from "../../js/pages/sign-in.js";
+import { handleSignIn, resetSignInForm, showApiStatus } from "../../js/pages/sign-in.js";
 
 /** @type {import("vitest").Mock} */
 let fetchMock;
@@ -75,6 +75,7 @@ describe("handleSignIn", () => {
    */
   function createForm() {
     const form = document.createElement("form");
+    form.id = "sign-in-form";
 
     const email = document.createElement("input");
     email.id = "email";
@@ -104,13 +105,14 @@ describe("handleSignIn", () => {
 
   /**
    * @param {HTMLFormElement} form
+   * @param {((path: string) => void) | undefined} [navigate]
    */
-  function submit(form) {
+  function submit(form, navigate) {
     const event = new Event("submit", { cancelable: true });
     Object.defineProperty(event, "currentTarget", {
       value: form,
     });
-    return { event, promise: handleSignIn(event) };
+    return { event, promise: handleSignIn(event, navigate) };
   }
 
   it("prevents the normal form submission", async () => {
@@ -143,6 +145,68 @@ describe("handleSignIn", () => {
     expect(message.textContent).toContain("Email or password is incorrect");
     expect(button.disabled).toBe(false);
     expect(button.textContent).toBe("Sign in");
+  });
+
+  it("redirects a successful sign-in to My Shifts", async () => {
+    const { form } = createForm();
+    const navigate = vi.fn();
+
+    fetchMock.mockResolvedValue(json(201, JSON.stringify({ user: { id: "user-1" } })));
+
+    await submit(form, navigate).promise;
+
+    expect(navigate).toHaveBeenCalledOnce();
+    expect(navigate).toHaveBeenCalledWith("/pages/my-shifts.html");
+  });
+
+  it("shows a server error with its reference number", async () => {
+    const { form, message, button } = createForm();
+
+    fetchMock.mockResolvedValue(
+      json(
+        500,
+        JSON.stringify({
+          title: "Internal Server Error",
+          error_id: "error-reference-123",
+        }),
+      ),
+    );
+
+    await submit(form).promise;
+
+    expect(message.textContent).toBe(
+      "Something went wrong. Please try again. Reference: error-reference-123.",
+    );
+    expect(message.hidden).toBe(false);
+    expect(button.disabled).toBe(false);
+  });
+
+  it("does not disguise an unexpected error as a server failure", async () => {
+    const { form, message } = createForm();
+
+    // A successful answer with unreadable JSON fails outside the API's expected
+    // ApiError and NetworkError paths, representing a bug that must remain visible.
+    fetchMock.mockResolvedValue(json(200, "not-json"));
+
+    await expect(submit(form).promise).rejects.toThrow(SyntaxError);
+    expect(message.hidden).toBe(true);
+  });
+
+  it("explains when a rate-limited sign-in can be retried", async () => {
+    const { form, message } = createForm();
+
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ title: "Too Many Requests" }), {
+        status: 429,
+        headers: { "Content-Type": "application/problem+json", "Retry-After": "30" },
+      }),
+    );
+
+    await submit(form).promise;
+
+    expect(message.textContent).toBe(
+      "Too many attempts. Please try again later. Try again in 30 seconds.",
+    );
   });
 
   it("handles a network failure", async () => {
@@ -242,5 +306,33 @@ describe("handleSignIn", () => {
     expect(message.hidden).toBe(false);
     expect(password.getAttribute("aria-invalid")).toBe("true");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("resets sensitive form state after a cached back navigation", () => {
+    const { form, message, button } = createForm();
+    const email = form.querySelector("#email");
+    const password = form.querySelector("#password");
+
+    if (!(email instanceof HTMLInputElement) || !(password instanceof HTMLInputElement)) {
+      throw new Error("Sign-in inputs not found.");
+    }
+
+    email.classList.add("field__input--invalid");
+    email.setAttribute("aria-invalid", "true");
+    email.setAttribute("aria-describedby", "sign-in-message");
+    password.value = "secret-password";
+    message.hidden = false;
+    button.disabled = true;
+    button.textContent = "Signing in...";
+
+    resetSignInForm(new PageTransitionEvent("pageshow", { persisted: true }));
+
+    expect(email.value).toBe("");
+    expect(password.value).toBe("");
+    expect(email.classList.contains("field__input--invalid")).toBe(false);
+    expect(email.hasAttribute("aria-invalid")).toBe(false);
+    expect(message.hidden).toBe(true);
+    expect(button.disabled).toBe(false);
+    expect(button.textContent).toBe("Sign in");
   });
 });

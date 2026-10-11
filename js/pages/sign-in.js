@@ -41,8 +41,9 @@ export async function showApiStatus() {
 /**
  * Handle a sign-in form submission.
  * @param {Event} event
+ * @param {(path: string) => void} [navigate]
  */
-export async function handleSignIn(event) {
+export async function handleSignIn(event, navigate = (path) => window.location.assign(path)) {
   event.preventDefault();
 
   const form = event.currentTarget;
@@ -68,6 +69,8 @@ export async function handleSignIn(event) {
   // Prevent duplicate requests.
   if (button.disabled) return;
 
+  // Whitespace around an email is accidental, but every password character is
+  // significant and must reach the backend exactly as entered.
   const email = emailInput.value.trim();
   const password = passwordInput.value;
 
@@ -85,25 +88,26 @@ export async function handleSignIn(event) {
 
   let errorMessage = "";
 
+  // Connect a field to the shared message so sighted users and assistive
+  // technology receive the same validation feedback.
+  /** @param {HTMLInputElement} input */
+  const markInvalid = (input) => {
+    input.classList.add("field__input--invalid");
+    input.setAttribute("aria-invalid", "true");
+    input.setAttribute("aria-describedby", "sign-in-message");
+    input.focus();
+  };
+
   // Validate the form before contacting the server.
   if (!email) {
     errorMessage = "Please enter your email address.";
-    emailInput.classList.add("field__input--invalid");
-    emailInput.setAttribute("aria-invalid", "true");
-    emailInput.setAttribute("aria-describedby", "sign-in-message");
-    emailInput.focus();
+    markInvalid(emailInput);
   } else if (!emailInput.checkValidity()) {
     errorMessage = "Please enter a valid email address.";
-    emailInput.classList.add("field__input--invalid");
-    emailInput.setAttribute("aria-invalid", "true");
-    emailInput.setAttribute("aria-describedby", "sign-in-message");
-    emailInput.focus();
+    markInvalid(emailInput);
   } else if (!password) {
     errorMessage = "Please enter your password.";
-    passwordInput.classList.add("field__input--invalid");
-    passwordInput.setAttribute("aria-invalid", "true");
-    passwordInput.setAttribute("aria-describedby", "sign-in-message");
-    passwordInput.focus();
+    markInvalid(passwordInput);
   }
 
   if (errorMessage) {
@@ -120,18 +124,25 @@ export async function handleSignIn(event) {
     await signIn(email, password);
 
     // The browser handles the HttpOnly session cookie.
-    window.location.assign("/pages/my-shifts.html");
+    navigate("/pages/my-shifts.html");
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       setText(
         message,
         "Email or password is incorrect. After several failed attempts, sign-in is paused for a while.",
       );
+    } else if (error instanceof ApiError && error.status === 429) {
+      const wait = error.retryAfter ? ` Try again in ${error.retryAfter} seconds.` : "";
+      setText(message, `Too many attempts. Please try again later.${wait}`);
+    } else if (error instanceof ApiError) {
+      const reference = error.errorId ? ` Reference: ${error.errorId}.` : "";
+      setText(message, `Something went wrong. Please try again.${reference}`);
     } else if (error instanceof NetworkError) {
       setText(message, "Unable to reach the server. Please try again.");
     } else {
-      setText(message, "Something went wrong. Please try again.");
-      console.error("Sign-in failed:", error);
+      // This is a bug in our code, not an expected request failure. Preserve its
+      // original stack and let the browser report it for diagnosis.
+      throw error;
     }
 
     message.hidden = false;
@@ -168,8 +179,12 @@ document.querySelectorAll("#sign-in-form input").forEach((input) => {
   });
 });
 
-// Restore the form when returning through the browser's back-forward cache.
-window.addEventListener("pageshow", () => {
+/**
+ * Restore the form when returning through the browser's back-forward cache.
+ * Exported for the tests; the page registers it for pageshow below.
+ * @param {PageTransitionEvent} event
+ */
+export function resetSignInForm(event) {
   const form = document.getElementById("sign-in-form");
 
   if (!(form instanceof HTMLFormElement)) return;
@@ -180,4 +195,20 @@ window.addEventListener("pageshow", () => {
 
   button.disabled = false;
   button.textContent = "Sign in";
-});
+
+  // Back-forward cache can restore sensitive field values from the previous page.
+  // Clear them on a cached return so a shared computer does not expose a password.
+  if (event.persisted) {
+    form.reset();
+    form.querySelectorAll("input").forEach((input) => {
+      input.value = "";
+      input.classList.remove("field__input--invalid");
+      input.removeAttribute("aria-invalid");
+      input.removeAttribute("aria-describedby");
+    });
+    const message = document.getElementById("sign-in-message");
+    if (message) message.hidden = true;
+  }
+}
+
+window.addEventListener("pageshow", resetSignInForm);

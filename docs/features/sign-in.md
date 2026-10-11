@@ -1,6 +1,6 @@
 # Sign in and your account
 
-- **Status:** the sign-in screen is implemented and connected to backend authentication (S2). Users can enter their email and password, receive inline validation errors, and sign in through a server-side session. Successful sign-in redirects to My Shifts. Failed authentication displays the same generic error message regardless of the reason. Shared session state, permission-aware navigation, and the header sign-out button are handled separately in UI1 (#13). The remaining account-management screens are planned.
+- **Status:** the sign-in screen is connected to backend authentication (S2). Shared session behavior and the remaining account-management screens are planned.
 - **Related:** workforce-ops-app/workforce-ops-frontend#3; backend: [authentication](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/architecture/authentication.md), [company structure](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/organization.md)
 
 ## In short
@@ -14,9 +14,10 @@ The sign-in page (`pages/sign-in.html`) uses `js/pages/sign-in.js` to validate i
 - `POST /api/sessions` authenticates the user and creates a server-side session. The browser handles the secure, HttpOnly session cookie.
 - Successful authentication redirects to `/pages/my-shifts.html`.
 - Incorrect credentials produce a generic error that does not reveal whether an email address belongs to an account.
-- Network failures display a separate connection error, and the submit button is disabled while a request is in progress.
+- Server failures include a reference number when one is available, rate limits explain when to retry, and network failures display a separate connection error.
+- The submit button is disabled while a request is in progress, and cached back-navigation clears the password for shared-computer safety.
 
-Session checks across pages, permission-aware navigation, and the shared sign-out button are implemented separately in UI1 (#13).
+Session checks across pages, permission-aware navigation, and the shared sign-out button will be added in UI1 (#13).
 
 ## Screens
 
