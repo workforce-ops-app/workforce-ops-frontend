@@ -47,6 +47,7 @@ sequenceDiagram
 - **Hidden is not forbidden** (threat model E8): un-hiding a menu entry or button in the browser's developer tools only leads to a page or request the server refuses (403).
 - **Fixed sign-in address:** the redirect target is a constant, never taken from the address bar, so the redirect cannot be turned into an open redirect.
 - **Names are text:** the display name is set with `textContent`, so a name containing HTML is shown, not run.
+- **Back after signing out:** a browser can show a page again from its back/forward cache without running any script, which would show the last person's schedule on a shared computer. `startSignedInPage` reloads such a page (`reloadIfRestored`), so the session is checked again and a signed-out visitor goes to sign-in.
 
 **Explain in the presentation** (course topics: AJAX and CSRF): `loadSession()` (a background request that fills in the page without reloading it, and the token it hands to the API client), and why the hidden menu entry is not the security control.
 
@@ -57,4 +58,4 @@ sequenceDiagram
 
 ## Tests
 
-`tests/unit/session.test.js`: one request per page, the token handed to the client, a 401 going to sign-in, other failures thrown on and retried later, nothing written to browser storage, `can()`, and signing out (including an already-ended session and a failed sign-out). `tests/unit/app-shell.test.js`: menu entries by permission, the name and button, a name containing HTML shown as text, a signed-out visitor never loading the page, an unreachable server still loading it, one sign-out request per click, and a failed sign-out. `tests/integration/smoke.spec.js`: both schedule pages send a signed-out visitor to the sign-in page in real browsers.
+`tests/unit/session.test.js`: one request per page, the token handed to the client, a 401 going to sign-in, other failures thrown on and retried later, nothing written to browser storage, `can()`, and signing out (including an already-ended session and a failed sign-out). `tests/unit/app-shell.test.js`: menu entries by permission, the name and button, a name containing HTML shown as text, a signed-out visitor never loading the page, a page restored from the back/forward cache being reloaded, an unreachable server still loading it, one sign-out request per click, and a failed sign-out. `tests/integration/smoke.spec.js`: both schedule pages send a signed-out visitor to the sign-in page in real browsers.

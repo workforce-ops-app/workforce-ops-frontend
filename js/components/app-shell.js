@@ -65,6 +65,19 @@ export function accountItems(session, navigate) {
 }
 
 /**
+ * What to do when the browser shows this page again from its back/forward cache: the
+ * page comes back exactly as it was, schedule included, without running any script. After
+ * signing out on a shared computer, Back would show the last person's schedule. Reloading
+ * asks the server again, so a signed-out visitor goes to the sign-in page instead.
+ * Exported for the tests; startSignedInPage registers it.
+ * @param {PageTransitionEvent} event
+ * @param {() => void} [reload]
+ */
+export function reloadIfRestored(event, reload = () => window.location.reload()) {
+  if (event.persisted) reload();
+}
+
+/**
  * Load the session, fill in the frame, then show the page.
  *
  * - Signed out (401): the visitor is on the way to the sign-in page; showPage never runs.
@@ -76,6 +89,8 @@ export function accountItems(session, navigate) {
  * @param {(path: string) => void} [navigate]
  */
 export async function startSignedInPage(showPage, navigate) {
+  window.addEventListener("pageshow", (event) => reloadIfRestored(event));
+
   /** @type {import("../core/session.js").SessionInfo | null | undefined} */
   let session;
   try {

@@ -9,7 +9,7 @@ vi.mock("../../js/api/sessions.js", () => ({
 }));
 const { getCurrentSession, signOut: endSession } = await import("../../js/api/sessions.js");
 const { forgetSession, SIGN_IN_PAGE } = await import("../../js/core/session.js");
-const { startSignedInPage } = await import("../../js/components/app-shell.js");
+const { reloadIfRestored, startSignedInPage } = await import("../../js/components/app-shell.js");
 /** @param {unknown} fn */
 const asMock = (fn) => /** @type {import("vitest").Mock} */ (fn);
 const fetchSession = asMock(getCurrentSession);
@@ -124,6 +124,20 @@ describe("startSignedInPage", () => {
     fetchSession.mockRejectedValue(new TypeError("bug"));
 
     await expect(startSignedInPage(vi.fn(), vi.fn())).rejects.toBeInstanceOf(TypeError);
+  });
+});
+
+describe("returning with the Back button", () => {
+  it("reloads a page the browser restored from its cache, so the session is checked again", () => {
+    const reload = vi.fn();
+    reloadIfRestored(/** @type {PageTransitionEvent} */ ({ persisted: true }), reload);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("does nothing on a normal page load", () => {
+    const reload = vi.fn();
+    reloadIfRestored(/** @type {PageTransitionEvent} */ ({ persisted: false }), reload);
+    expect(reload).not.toHaveBeenCalled();
   });
 });
 
