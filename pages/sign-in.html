@@ -25,7 +25,9 @@
         <!-- method="post": if the script ever fails to load and the browser sends the form
              itself, the password travels in the request body. With the default (GET) it
              would land in the address bar, the browser history, and server logs. -->
-        <form id="sign-in-form" class="form" method="post">
+        <!-- novalidate is safe because the script performs the same required and email
+             checks, then presents accessible inline errors instead of browser popups. -->
+        <form id="sign-in-form" class="form" method="post" novalidate>
           <div class="field">
             <label class="field__label" for="email">Email</label>
             <!-- autocomplete="username" and "current-password" let password managers fill
