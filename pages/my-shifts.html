@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/css/components/day-list.css" />
     <link rel="stylesheet" href="/css/components/form.css" />
     <link rel="stylesheet" href="/css/components/shift-dialog.css" />
+    <link rel="stylesheet" href="/css/components/week-nav.css" />
     <script type="module" src="/js/pages/my-shifts.js"></script>
   </head>
   <body>
@@ -43,6 +44,9 @@
       <!-- The signed-in person's name and the sign-out button, filled in by the script. -->
       <div id="account" class="account" hidden></div>
     </div>
+    <!-- Shown while the session loads, in the place where the page will appear. It says
+         nothing about the page, so a signed-out visitor on the way to sign in sees only this. -->
+    <p id="page-loading" class="page-loading" role="status">Loading…</p>
     <!-- The page itself starts hidden too, so a signed-out visitor never sees it, not even
          for a moment before going to the sign-in page. startSignedInPage shows it once the
          session has loaded (or the server could not be asked, so the page can say so). -->
@@ -60,8 +64,11 @@
         </a>
       </nav>
       <p id="status" class="status" aria-live="polite">Loading your shifts…</p>
-      <div id="days" class="days"></div>
-      <div id="summary" class="summary-card" hidden></div>
+      <!-- The week itself, dimmed while another week loads (css/components/week-nav.css). -->
+      <div class="week-content">
+        <div id="days" class="days"></div>
+        <div id="summary" class="summary-card" hidden></div>
+      </div>
     </main>
   </body>
 </html>

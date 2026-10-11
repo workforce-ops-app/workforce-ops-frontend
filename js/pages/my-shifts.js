@@ -6,13 +6,15 @@ import { ApiError, NetworkError } from "../api/client.js";
 import { listShifts } from "../api/shifts.js";
 import { startSignedInPage } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
+import { followWeekLinks } from "../components/week-nav.js";
 import { el, setText } from "../core/dom.js";
 import { addDays, formatHours, formatWeekRange, hoursBetween } from "../core/time.js";
 import { requestedMonday, today, weekLink } from "../core/week.js";
 
 /**
  * Load one week of the person's shifts and show it.
- * Exported for the tests; the page calls it once when it loads (below).
+ * Exported for the tests; the page calls it when it loads and for each week chosen with
+ * Previous, Next, Back, or Forward (below).
  * @param {string} search the address's query string, e.g. "?week=2026-10-05"
  */
 export async function showMyWeek(search) {
@@ -57,8 +59,10 @@ export async function showMyWeek(search) {
     );
     summary.hidden = false;
   } catch (error) {
-    // The two failures a page expects get a plain-language message.
+    // The two failures a page expects get a plain-language message. The week still on
+    // screen may be the one before (when moving between weeks), so it goes.
     summary.hidden = true;
+    days.replaceChildren();
     if (error instanceof ApiError || error instanceof NetworkError) {
       const message = error instanceof ApiError ? error.title : "the server could not be reached";
       status.replaceChildren(el("span", { className: "error", text: `Problem: ${message}` }));
@@ -74,5 +78,8 @@ export async function showMyWeek(search) {
 }
 
 // Once the session has loaded (signed-out visitors go to the sign-in page instead), show
-// the week the address asks for.
-startSignedInPage(() => showMyWeek(window.location.search));
+// the week the address asks for. Other weeks then load in place (components/week-nav.js).
+startSignedInPage(() => {
+  followWeekLinks(showMyWeek);
+  return showMyWeek(window.location.search);
+});
