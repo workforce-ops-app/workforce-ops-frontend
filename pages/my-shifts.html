@@ -43,7 +43,10 @@
       <!-- The signed-in person's name and the sign-out button, filled in by the script. -->
       <div id="account" class="account" hidden></div>
     </div>
-    <main class="app-main">
+    <!-- The page itself starts hidden too, so a signed-out visitor never sees it, not even
+         for a moment before going to the sign-in page. startSignedInPage shows it once the
+         session has loaded (or the server could not be asked, so the page can say so). -->
+    <main class="app-main" hidden>
       <h1>My week</h1>
       <nav class="week-nav" aria-label="Weeks">
         <a id="previous-week" class="week-nav__button" href="?">

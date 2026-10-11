@@ -3,7 +3,8 @@
 //
 // Each page script starts with startSignedInPage(showPage): it loads the session first, so
 // a signed-out visitor goes straight to the sign-in page, then fills in the frame, then
-// shows the page itself.
+// shows the page itself. The page's <main> starts hidden in the HTML, so a signed-out
+// visitor never sees it, not even for a moment.
 
 import { ApiError, NetworkError } from "../api/client.js";
 import { el, setText } from "../core/dom.js";
@@ -80,9 +81,11 @@ export function reloadIfRestored(event, reload = () => window.location.reload())
 /**
  * Load the session, fill in the frame, then show the page.
  *
- * - Signed out (401): the visitor is on the way to the sign-in page; showPage never runs.
- * - The session could not be loaded for another reason (server down, 500): showPage runs
- *   anyway, so the page shows its usual "Problem: ..." message from its own request.
+ * - Signed out (401): the visitor is on the way to the sign-in page; the page stays hidden
+ *   and showPage never runs.
+ * - The session could not be loaded for another reason (server down, 500): the page is
+ *   shown and showPage runs anyway, so it shows its usual "Problem: ..." message from its
+ *   own request.
  * - A bug in our own code is thrown on.
  *
  * @param {() => Promise<void>} showPage the page's own loading, e.g. showMyWeek
@@ -109,5 +112,10 @@ export async function startSignedInPage(showPage, navigate) {
     }
     applyPermissions();
   }
+
+  // Only now show the page (its <main> starts hidden in the HTML). A signed-out visitor
+  // returned above and never sees it.
+  const main = document.querySelector("main");
+  if (main) main.hidden = false;
   await showPage();
 }

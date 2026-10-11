@@ -154,9 +154,11 @@
   }
 }
 
-/* A tab the person may not use stays hidden (the display above would otherwise show it). */
+/* A tab the person may not use stays hidden (the display above would otherwise show it),
+   and so does the page until the session has loaded. */
 .tab-bar__link[hidden],
-.account[hidden] {
+.account[hidden],
+.app-main[hidden] {
   display: none;
 }
 

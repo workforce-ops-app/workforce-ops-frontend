@@ -30,7 +30,7 @@ function sessionWith(permissions, name = "Ana Diaz") {
   };
 }
 
-/** The frame as the pages have it: two tabs that start hidden, and the account spot. */
+/** The frame as the pages have it: two tabs, the account spot, and the page, all hidden. */
 function frame() {
   /**
    * @param {string} id
@@ -46,10 +46,14 @@ function frame() {
   const account = document.createElement("div");
   account.id = "account";
   account.hidden = true;
+  const main = document.createElement("main");
+  main.id = "page";
+  main.hidden = true;
   document.body.replaceChildren(
     tab("my-week", "schedule.view_self"),
     tab("department", "schedule.view"),
     account,
+    main,
   );
 }
 
@@ -73,7 +77,22 @@ describe("startSignedInPage", () => {
 
     expect(byId("my-week").hidden).toBe(false);
     expect(byId("department").hidden).toBe(true);
+    expect(byId("page").hidden).toBe(false);
     expect(showPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the page only once the session has loaded", async () => {
+    /** @type {(value: unknown) => void} */
+    let answer = () => {};
+    fetchSession.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+
+    const started = startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+    // The server has not answered yet: the page is still hidden.
+    expect(byId("page").hidden).toBe(true);
+
+    answer(sessionWith(["schedule.view_self"]));
+    await started;
+    expect(byId("page").hidden).toBe(false);
   });
 
   it("shows the person's name and a sign-out button", async () => {
@@ -106,6 +125,8 @@ describe("startSignedInPage", () => {
     expect(navigate).toHaveBeenCalledWith(SIGN_IN_PAGE);
     expect(showPage).not.toHaveBeenCalled();
     expect(byId("account").hidden).toBe(true);
+    // Not even the heading or the week buttons appear before the browser leaves.
+    expect(byId("page").hidden).toBe(true);
   });
 
   it("still loads the page when the server is unreachable, so it can say so", async () => {
@@ -115,6 +136,8 @@ describe("startSignedInPage", () => {
     await startSignedInPage(showPage, vi.fn());
 
     expect(showPage).toHaveBeenCalledTimes(1);
+    // The page is shown, so its "Problem: ..." message can be read.
+    expect(byId("page").hidden).toBe(false);
     // Nothing is shown that depends on knowing who is signed in.
     expect(byId("department").hidden).toBe(true);
     expect(byId("account").hidden).toBe(true);

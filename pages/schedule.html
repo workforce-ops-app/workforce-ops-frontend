@@ -52,7 +52,10 @@
       <!-- The signed-in person's name and the sign-out button, filled in by the script. -->
       <div id="account" class="account" hidden></div>
     </div>
-    <main class="app-main schedule">
+    <!-- The page itself starts hidden too, so a signed-out visitor never sees it, not even
+         for a moment before going to the sign-in page. startSignedInPage shows it once the
+         session has loaded (or the server could not be asked, so the page can say so). -->
+    <main class="app-main schedule" hidden>
       <!-- Page heading and week choice on one line on a laptop, stacked on a phone. -->
       <div class="page-head">
         <div>

@@ -18,6 +18,28 @@ test("a signed-in page sends a signed-out visitor to the sign-in page", async ({
   }
 });
 
+// While the "who am I" answer is on its way, the signed-in page must not show itself: a
+// signed-out visitor should never glimpse its heading or week buttons before leaving.
+test("a signed-in page stays hidden until the session has loaded", async ({ page }) => {
+  for (const path of ["/pages/my-shifts.html", "/pages/schedule.html"]) {
+    // Hold the answer back until the page has been checked, then let the 401 through.
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((resolve) => (release = () => resolve(undefined)));
+    await page.route("**/api/sessions/current", async (route) => {
+      await held;
+      await route.continue();
+    });
+
+    await page.goto(path, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("main"), path).toBeHidden();
+
+    release();
+    await expect(page, path).toHaveURL(/\/pages\/sign-in\.html$/);
+    await page.unroute("**/api/sessions/current");
+  }
+});
+
 test("API health response is forwarded through nginx", async ({ request }) => {
   const response = await request.get("/api/health");
 
