@@ -20,6 +20,7 @@ import {
   listShifts,
   myDepartmentId,
 } from "../api/shifts.js";
+import { startSignedInPage } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
 import { statTile } from "../components/stat-tile.js";
 import { weekGrid } from "../components/week-grid.js";
@@ -170,5 +171,6 @@ export async function showWeek(search) {
   }
 }
 
-// Show the week the address asks for, once when the page opens.
-showWeek(window.location.search);
+// Once the session has loaded (signed-out visitors go to the sign-in page instead), show
+// the week the address asks for.
+startSignedInPage(() => showWeek(window.location.search));

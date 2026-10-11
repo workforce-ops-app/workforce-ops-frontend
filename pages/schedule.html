@@ -17,8 +17,10 @@
     <script type="module" src="/js/pages/schedule.js"></script>
   </head>
   <body>
-    <!-- The app shell: the brand, then the main tabs. The logo spot is empty until a logo
-         is chosen; the name next to it is the link's text, so it is never unnamed. -->
+    <!-- The app shell: the brand, the main tabs, then who is signed in. The logo spot is
+         empty until a logo is chosen; the name next to it is the link's text, so it is
+         never unnamed. Each tab names the permission it needs (data-permission) and starts
+         hidden; js/components/app-shell.js shows the ones the person may use. -->
     <div class="app-shell-top">
       <header class="app-header">
         <a class="brand" href="/pages/my-shifts.html">
@@ -27,17 +29,33 @@
         </a>
       </header>
       <nav class="tab-bar" aria-label="Main">
-        <a class="tab-bar__link" href="/pages/my-shifts.html">
+        <a
+          class="tab-bar__link"
+          href="/pages/my-shifts.html"
+          data-permission="schedule.view_self"
+          hidden
+        >
           <span class="icon icon--calendar" aria-hidden="true"></span>
           My week
         </a>
-        <a class="tab-bar__link" href="/pages/schedule.html" aria-current="page">
+        <a
+          class="tab-bar__link"
+          href="/pages/schedule.html"
+          aria-current="page"
+          data-permission="schedule.view"
+          hidden
+        >
           <span class="icon icon--people" aria-hidden="true"></span>
           Department
         </a>
       </nav>
+      <!-- The signed-in person's name and the sign-out button, filled in by the script. -->
+      <div id="account" class="account" hidden></div>
     </div>
-    <main class="app-main schedule">
+    <!-- The page itself starts hidden too, so a signed-out visitor never sees it, not even
+         for a moment before going to the sign-in page. startSignedInPage shows it once the
+         session has loaded (or the server could not be asked, so the page can say so). -->
+    <main class="app-main schedule" hidden>
       <!-- Page heading and week choice on one line on a laptop, stacked on a phone. -->
       <div class="page-head">
         <div>

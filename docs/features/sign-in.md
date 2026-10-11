@@ -1,6 +1,6 @@
 # Sign in and your account
 
-- **Status:** the sign-in screen is connected to backend authentication (S2). Shared session behavior and the remaining account-management screens are planned.
+- **Status:** the sign-in screen is connected to backend authentication (S2). Every signed-in page loads the session, shows the person's name and a Sign out button, and sends signed-out visitors here (UI1, [session and navigation](../architecture/session-and-navigation.md)). The remaining account-management screens are planned.
 - **Related:** workforce-ops-app/workforce-ops-frontend#3; backend: [authentication](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/architecture/authentication.md), [company structure](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/organization.md)
 
 ## In short
@@ -17,7 +17,7 @@ The sign-in page (`pages/sign-in.html`) uses `js/pages/sign-in.js` to validate i
 - Server failures include a reference number when one is available, rate limits explain when to retry, and network failures display a separate connection error.
 - The submit button is disabled while a request is in progress, and cached back-navigation clears the password for shared-computer safety.
 
-Session checks across pages, permission-aware navigation, and the shared sign-out button will be added in UI1 (#13).
+Every signed-in page loads the session first, shows only the menu entries the person may use, and has a Sign out button in the header (UI1, #13; [session and navigation](../architecture/session-and-navigation.md)).
 
 ## Screens
 

@@ -36,7 +36,7 @@ As modules arrive, each gets its own file in `js/api/` (for example `js/api/shif
 | The path must start with `/api/`, otherwise an error is thrown before anything is sent | a full URL would carry the session cookie to another site |
 | `credentials: "same-origin"` | the session cookie goes to our own address only ([0003](https://github.com/workforce-ops-app/.github/blob/main/docs/decisions/0003-same-origin-deployment.md)) |
 | `Accept: application/json` always; `Content-Type: application/json` and a JSON body only when there is a body | the API speaks JSON; a GET has no body |
-| `X-CSRF-Token` on every request except GET, when a token is set (`setCsrfToken`, at sign-in) | another site cannot read the token, so it cannot forge a request that changes something (threat model S4) |
+| `X-CSRF-Token` on every request except GET, when a token is set (`setCsrfToken`, called by `js/core/session.js` with the token from `GET /api/sessions/current` on every page; see [session and navigation](session-and-navigation.md)) | another site cannot read the token, so it cannot forge a request that changes something (threat model S4) |
 
 ## Answers
 

@@ -9,6 +9,9 @@ vi.mock("../../js/api/shifts.js", () => ({
   myDepartmentId: vi.fn(),
   listDepartmentPeople: vi.fn(),
 }));
+// The pages start through the frame (session first); here each test calls the page's own
+// loading directly, so the frame is replaced by a stub that does nothing.
+vi.mock("../../js/components/app-shell.js", () => ({ startSignedInPage: vi.fn() }));
 const { listShifts, listDepartments, myDepartmentId, listDepartmentPeople } =
   await import("../../js/api/shifts.js");
 const { showMyWeek } = await import("../../js/pages/my-shifts.js");
