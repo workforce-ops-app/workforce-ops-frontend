@@ -9,6 +9,15 @@ test("placeholder page loads through nginx and reaches the API", async ({ page }
   expect(response?.status()).toBe(200);
 });
 
+// Signed-in pages ask the API "who am I" first. Without a session the answer is 401, and
+// the page must send the visitor to sign in instead of showing an empty schedule.
+test("a signed-in page sends a signed-out visitor to the sign-in page", async ({ page }) => {
+  for (const path of ["/pages/my-shifts.html", "/pages/schedule.html"]) {
+    await page.goto(path);
+    await expect(page, path).toHaveURL(/\/pages\/sign-in\.html$/);
+  }
+});
+
 test("API health response is forwarded through nginx", async ({ request }) => {
   const response = await request.get("/api/health");
 

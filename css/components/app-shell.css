@@ -153,3 +153,50 @@
     content: "";
   }
 }
+
+/* A tab the person may not use stays hidden (the display above would otherwise show it). */
+.tab-bar__link[hidden],
+.account[hidden] {
+  display: none;
+}
+
+/* Who is signed in, and the sign-out button. On phones a small line under the brand; on
+   wider screens it sits at the right end of the top bar (rule in the media query below). */
+.account {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem var(--space) 0;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.account__name {
+  overflow-wrap: anywhere;
+}
+
+/* A quiet text button: signing out is always available but never the main action. */
+.account__sign-out {
+  min-height: 2.75rem;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.account__sign-out:disabled {
+  color: var(--color-muted);
+  cursor: wait;
+}
+
+@media (width >= 48rem) {
+  .account {
+    padding: 0;
+  }
+}

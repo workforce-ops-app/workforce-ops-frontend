@@ -4,6 +4,7 @@
 
 import { ApiError, NetworkError } from "../api/client.js";
 import { listShifts } from "../api/shifts.js";
+import { startSignedInPage } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
 import { el, setText } from "../core/dom.js";
 import { addDays, formatHours, formatWeekRange, hoursBetween } from "../core/time.js";
@@ -72,5 +73,6 @@ export async function showMyWeek(search) {
   }
 }
 
-// Show the week the address asks for, once when the page opens.
-showMyWeek(window.location.search);
+// Once the session has loaded (signed-out visitors go to the sign-in page instead), show
+// the week the address asks for.
+startSignedInPage(() => showMyWeek(window.location.search));

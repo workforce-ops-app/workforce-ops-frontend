@@ -1,0 +1,60 @@
+# Session and navigation
+
+**In short:** every signed-in page first asks the server who is signed in and what they may do. Someone who is not signed in is sent to the sign-in page. For everyone else the page shows their name and a sign-out button, and only the menu entries they can use. The answer also carries the anti-forgery (CSRF) token that every change must send. Hiding a menu entry or a button only keeps the screen tidy: the server checks every request, so it is never a security control on its own.
+
+## How a page starts
+
+```mermaid
+sequenceDiagram
+    participant Page as Page script
+    participant Shell as app-shell.js
+    participant Session as core/session.js
+    participant API as GET /api/sessions/current
+    Page->>Shell: startSignedInPage(showPage)
+    Shell->>Session: loadSession()
+    Session->>API: who am I? (session cookie sent by the browser)
+    alt signed in (200)
+        API-->>Session: user, company, permissions, csrf_token
+        Session->>Session: keep it in memory; setCsrfToken(token)
+        Shell->>Shell: name and sign-out button; show permitted menu entries
+        Shell->>Page: showPage()
+    else not signed in (401)
+        API-->>Session: 401
+        Session->>Page: go to /pages/sign-in.html (the page never loads)
+    else server down or 500
+        API-->>Session: error
+        Shell->>Page: showPage() anyway, so it shows its usual "Problem: ..."
+    end
+```
+
+## The pieces
+
+| Piece | File | Does |
+|---|---|---|
+| `loadSession()` | `js/core/session.js` | `GET /api/sessions/current`, once per page (callers share one request); keeps the answer in memory and hands `csrf_token` to `setCsrfToken`; on 401 forgets everything and goes to the sign-in page; other failures are thrown on |
+| `currentSession()`, `can(permission)` | `js/core/session.js` | the loaded session, and whether the person holds a permission somewhere; both answer "nothing" before the session has loaded |
+| `signOut()` | `js/core/session.js` | `DELETE /api/sessions/current` (with the CSRF token, like any change), then forgets the session and goes to the sign-in page; a 401 counts as already signed out, any other failure keeps the person on the page |
+| `startSignedInPage(showPage)` | `js/components/app-shell.js` | the start of every signed-in page: session, then the frame, then the page |
+| `applyPermissions()` | `js/components/app-shell.js` | shows each element marked `data-permission="<code>"` only when `can(code)`; such elements start `hidden` in the HTML, so nothing flashes while the session loads |
+| `accountItems(session)` | `js/components/app-shell.js` | the name (as text) and the Sign out button for the `#account` spot in the header; one request per click, and a plain message when signing out fails |
+
+**Menu entries and their permissions:** My week needs `schedule.view_self`; Department needs `schedule.view` (an administrator can remove it from the Employee role, and the tab then disappears).
+
+## Security notes
+
+- **The session cookie is HttpOnly:** no script can read it. The page only keeps the person, their permissions, and the CSRF token, **in memory**, never in `localStorage` or `sessionStorage`; they are gone when the tab closes.
+- **CSRF** (threat model S4): the token comes with the session and is sent as `X-CSRF-Token` on every POST, PATCH, PUT, and DELETE by `js/api/client.js` ([API layer](api-layer.md)). Another site can make the browser send our cookie but cannot read the token.
+- **Hidden is not forbidden** (threat model E8): un-hiding a menu entry or button in the browser's developer tools only leads to a page or request the server refuses (403).
+- **Fixed sign-in address:** the redirect target is a constant, never taken from the address bar, so the redirect cannot be turned into an open redirect.
+- **Names are text:** the display name is set with `textContent`, so a name containing HTML is shown, not run.
+
+**Explain in the presentation** (course topics: AJAX and CSRF): `loadSession()` (a background request that fills in the page without reloading it, and the token it hands to the API client), and why the hidden menu entry is not the security control.
+
+## Not yet
+
+- A session that expires while a page is open shows the page's usual "Problem: Unauthorized" on the next request; sending the person to sign in at that moment comes later.
+- The password re-entry pop-up (`reauth-required`) comes with the account screens (#21).
+
+## Tests
+
+`tests/unit/session.test.js`: one request per page, the token handed to the client, a 401 going to sign-in, other failures thrown on and retried later, nothing written to browser storage, `can()`, and signing out (including an already-ended session and a failed sign-out). `tests/unit/app-shell.test.js`: menu entries by permission, the name and button, a name containing HTML shown as text, a signed-out visitor never loading the page, an unreachable server still loading it, one sign-out request per click, and a failed sign-out. `tests/integration/smoke.spec.js`: both schedule pages send a signed-out visitor to the sign-in page in real browsers.
