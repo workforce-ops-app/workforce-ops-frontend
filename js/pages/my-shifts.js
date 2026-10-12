@@ -20,18 +20,27 @@ import { requestedMonday, today, weekLink } from "../core/week.js";
 export async function showMyWeek(search) {
   const range = document.getElementById("week-range");
   const previous = document.getElementById("previous-week");
+  const current = document.getElementById("current-week");
   const next = document.getElementById("next-week");
   const status = document.getElementById("status");
   const days = document.getElementById("days");
   const summary = document.getElementById("summary");
-  if (!range || !previous || !next || !status || !days || !summary) return;
+  if (!range || !previous || !current || !next || !status || !days || !summary) return;
 
   // Which week, from the address, and the links to the weeks before and after.
   const params = new URLSearchParams(search);
   const todayKey = today();
   const monday = requestedMonday(params, todayKey);
+  const currentMonday = requestedMonday(new URLSearchParams(), todayKey);
   setText(range, formatWeekRange(monday));
   previous.setAttribute("href", weekLink(monday, -1, params));
+  if (monday === currentMonday) {
+    current.removeAttribute("href");
+    current.setAttribute("aria-disabled", "true");
+  } else {
+    current.setAttribute("href", weekLink(currentMonday, 0, params));
+    current.removeAttribute("aria-disabled");
+  }
   next.setAttribute("href", weekLink(monday, 1, params));
 
   try {

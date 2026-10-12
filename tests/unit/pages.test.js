@@ -83,7 +83,9 @@ beforeEach(() => {
 afterEach(() => document.body.replaceChildren());
 
 describe("My week", () => {
-  beforeEach(() => page(["week-range", "previous-week", "next-week", "status", "days", "summary"]));
+  beforeEach(() =>
+    page(["week-range", "previous-week", "current-week", "next-week", "status", "days", "summary"]),
+  );
 
   it("asks for my shifts of the week and shows a card for every day", async () => {
     mocked.mockResolvedValue([shiftOn("2026-10-05"), shiftOn("2026-10-07")]);
@@ -112,6 +114,24 @@ describe("My week", () => {
 
     expect(document.getElementById("previous-week")?.getAttribute("href")).toBe("?week=2026-09-28");
     expect(document.getElementById("next-week")?.getAttribute("href")).toBe("?week=2026-10-12");
+  });
+
+  it("links back to the current week and disables that link while showing it", async () => {
+    mocked.mockResolvedValue([]);
+    const currentMonday = mondayOf(today());
+
+    await showMyWeek("?week=2026-10-05");
+
+    expect(document.getElementById("current-week")?.getAttribute("href")).toBe(
+      `?week=${currentMonday}`,
+    );
+    expect(document.getElementById("current-week")?.getAttribute("aria-disabled")).toBe(
+      currentMonday === "2026-10-05" ? "true" : null,
+    );
+
+    await showMyWeek(`?week=${currentMonday}`);
+    expect(document.getElementById("current-week")?.hasAttribute("href")).toBe(false);
+    expect(document.getElementById("current-week")?.getAttribute("aria-disabled")).toBe("true");
   });
 
   it("keeps a malicious note as text, shown only when the shift is opened", async () => {
@@ -159,7 +179,9 @@ describe("My week", () => {
 });
 
 describe("Department week", () => {
-  beforeEach(() => page(["title", "week-range", "previous-week", "next-week", "status", "days"]));
+  beforeEach(() =>
+    page(["title", "week-range", "previous-week", "current-week", "next-week", "status", "days"]),
+  );
 
   it("shows all seven days with who works each shift, open shifts marked", async () => {
     mocked.mockResolvedValue([
@@ -182,7 +204,17 @@ describe("Department week", () => {
   });
 
   it("fills the grid and the week's numbers when the page has them", async () => {
-    page(["title", "week-range", "previous-week", "next-week", "status", "days", "grid", "stats"]);
+    page([
+      "title",
+      "week-range",
+      "previous-week",
+      "current-week",
+      "next-week",
+      "status",
+      "days",
+      "grid",
+      "stats",
+    ]);
     mocked.mockResolvedValue([
       shiftOn("2026-10-05"),
       shiftOn("2026-10-08", { status: "open", employee: null }),
@@ -197,7 +229,16 @@ describe("Department week", () => {
   });
 
   it("shows the open shifts and the people without a shift under the week", async () => {
-    page(["title", "week-range", "previous-week", "next-week", "status", "days", "sections"]);
+    page([
+      "title",
+      "week-range",
+      "previous-week",
+      "current-week",
+      "next-week",
+      "status",
+      "days",
+      "sections",
+    ]);
     mocked.mockResolvedValue([
       shiftOn("2026-10-05"),
       shiftOn("2026-10-08", { status: "open", employee: null }),
@@ -212,7 +253,16 @@ describe("Department week", () => {
   });
 
   it("leaves out the unscheduled list for someone who may not list people", async () => {
-    page(["title", "week-range", "previous-week", "next-week", "status", "days", "sections"]);
+    page([
+      "title",
+      "week-range",
+      "previous-week",
+      "current-week",
+      "next-week",
+      "status",
+      "days",
+      "sections",
+    ]);
     mocked.mockResolvedValue([shiftOn("2026-10-05")]);
     peopleMock.mockRejectedValue(new ApiError(403, { title: "Forbidden" }));
 
@@ -230,6 +280,7 @@ describe("Department week", () => {
       "title",
       "week-range",
       "previous-week",
+      "current-week",
       "next-week",
       "status",
       "days",
@@ -246,7 +297,16 @@ describe("Department week", () => {
   });
 
   it("removes the week before when the next one cannot load", async () => {
-    page(["title", "week-range", "previous-week", "next-week", "status", "days", "grid"]);
+    page([
+      "title",
+      "week-range",
+      "previous-week",
+      "current-week",
+      "next-week",
+      "status",
+      "days",
+      "grid",
+    ]);
     mocked.mockResolvedValueOnce([shiftOn("2026-10-05")]);
     await showWeek("?week=2026-10-05");
     mocked.mockRejectedValueOnce(new ApiError(403, { title: "Forbidden" }));
@@ -266,6 +326,10 @@ describe("Department week", () => {
     expect(document.getElementById("next-week")?.getAttribute("href")).toBe(
       "?week=2026-10-12&department=d1",
     );
+    expect(document.getElementById("current-week")?.getAttribute("href")).toBe(
+      `?week=${mondayOf(today())}&department=d1`,
+    );
+    expect(document.getElementById("current-week")?.hasAttribute("aria-disabled")).toBe(false);
   });
 
   it("shows the person's own department when the address names none", async () => {
