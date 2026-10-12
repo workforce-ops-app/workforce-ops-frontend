@@ -1,21 +1,6 @@
-// Shifts from the API, and the sample data used until the API exists.
+// Shifts, departments, and people from the API: the requests sent and the pages followed.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  SAMPLE_DEPARTMENTS,
-  SAMPLE_ME,
-  SAMPLE_MY_DEPARTMENT_ID,
-  samplePeople,
-  sampleShifts,
-} from "../../js/api/sample-shifts.js";
-import {
-  USE_SAMPLE_DATA,
-  fetchShifts,
-  listDepartmentPeople,
-  listDepartments,
-  listShifts,
-  myDepartmentId,
-} from "../../js/api/shifts.js";
-import { addDays, dayKey, mondayOf } from "../../js/core/time.js";
+import { listDepartmentPeople, listDepartments, listShifts } from "../../js/api/shifts.js";
 
 /** @type {import("vitest").Mock} */
 let fetchMock;
@@ -41,13 +26,17 @@ function page(items, nextCursor) {
   });
 }
 
-describe("fetchShifts (the real API, used once backend SC1 exists)", () => {
-  it("asks for the right days, department, and person", async () => {
+/** The address of the nth request sent (0 = the first). */
+const requested = (/** @type {number} */ n) =>
+  new URL(fetchMock.mock.calls[n][0], "http://localhost");
+
+describe("listShifts", () => {
+  it("asks the server for the right days, department, and person", async () => {
     fetchMock.mockResolvedValue(page([], null));
 
-    await fetchShifts({ from: "2026-10-05", to: "2026-10-11", departmentId: "d 1", mine: true });
+    await listShifts({ from: "2026-10-05", to: "2026-10-11", departmentId: "d 1", mine: true });
 
-    const url = new URL(fetchMock.mock.calls[0][0], "http://localhost");
+    const url = requested(0);
     expect(url.pathname).toBe("/api/shifts");
     expect(Object.fromEntries(url.searchParams)).toEqual({
       from: "2026-10-05",
@@ -57,92 +46,70 @@ describe("fetchShifts (the real API, used once backend SC1 exists)", () => {
     });
   });
 
+  it("leaves out the filters the page did not ask for", async () => {
+    fetchMock.mockResolvedValue(page([], null));
+
+    await listShifts({ from: "2026-10-05", to: "2026-10-11" });
+
+    expect(Object.fromEntries(requested(0).searchParams)).toEqual({
+      from: "2026-10-05",
+      to: "2026-10-11",
+    });
+  });
+
   it("follows the pages until next_cursor is null", async () => {
     fetchMock
       .mockResolvedValueOnce(page([{ id: "1" }], "cursor-a"))
       .mockResolvedValueOnce(page([{ id: "2" }], null));
 
-    const shifts = await fetchShifts({ from: "2026-10-05", to: "2026-10-11" });
+    const shifts = await listShifts({ from: "2026-10-05", to: "2026-10-11" });
 
     expect(shifts.map((s) => s.id)).toEqual(["1", "2"]);
-    expect(new URL(fetchMock.mock.calls[1][0], "http://localhost").searchParams.get("cursor")).toBe(
-      "cursor-a",
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(requested(1).searchParams.get("cursor")).toBe("cursor-a");
+    // The filters stay on every page.
+    expect(requested(1).searchParams.get("from")).toBe("2026-10-05");
+  });
+
+  it("passes an error answer on to the page", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ title: "Not Found", status: 404 }), {
+        status: 404,
+        headers: { "Content-Type": "application/problem+json" },
+      }),
     );
-  });
-});
 
-describe("sample data (until backend SC1 exists)", () => {
-  const monday = mondayOf(dayKey(new Date(), "America/Chicago"));
-  const thisWeek = { from: monday, to: addDays(monday, 6) };
-
-  it("is what the screens use for now, without calling the server", async () => {
-    expect(USE_SAMPLE_DATA).toBe(true);
-    expect((await listShifts(thisWeek)).length).toBeGreaterThan(0);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("never includes cancelled shifts, and stays in time order", async () => {
-    const shifts = await sampleShifts(thisWeek);
-
-    expect(shifts.every((s) => s.status !== "cancelled")).toBe(true);
-    expect(shifts.map((s) => s.starts_at)).toEqual([...shifts.map((s) => s.starts_at)].sort());
-  });
-
-  it("filters by days, department, and person like the API", async () => {
-    const kitchen = await sampleShifts({ ...thisWeek, departmentId: SAMPLE_MY_DEPARTMENT_ID });
-    const mine = await sampleShifts({ ...thisWeek, mine: true });
-    const nextWeek = await sampleShifts({ from: addDays(monday, 7), to: addDays(monday, 13) });
-
-    expect(kitchen.length).toBeGreaterThan(0);
-    expect(kitchen.every((s) => s.department.id === SAMPLE_MY_DEPARTMENT_ID)).toBe(true);
-    expect(mine.every((s) => s.employee?.id === SAMPLE_ME.id)).toBe(true);
-    expect(nextWeek.every((s) => dayKey(s.starts_at, s.timezone) >= addDays(monday, 7))).toBe(true);
-  });
-
-  it("includes an open shift, for the week view to highlight", async () => {
-    const shifts = await sampleShifts(thisWeek);
-
-    expect(shifts.some((s) => s.status === "open" && s.employee === null)).toBe(true);
-  });
-});
-
-describe("sample departments and IDs", () => {
-  // A hyphenated UUID with version 7 and the standard variant, as the backend sends.
-  const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-
-  it("give the departments and the signed-in person's own department, without the server", async () => {
-    expect(await listDepartments()).toEqual(SAMPLE_DEPARTMENTS);
-    expect(await myDepartmentId()).toBe(SAMPLE_MY_DEPARTMENT_ID);
-    expect(SAMPLE_DEPARTMENTS.map((d) => d.id)).toContain(SAMPLE_MY_DEPARTMENT_ID);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("give each department's people, some of them without a shift this week", async () => {
-    const kitchen = await listDepartmentPeople(SAMPLE_MY_DEPARTMENT_ID);
-    const monday = mondayOf(dayKey(new Date(), "America/Chicago"));
-    const shifts = await sampleShifts({
-      from: monday,
-      to: addDays(monday, 6),
-      departmentId: SAMPLE_MY_DEPARTMENT_ID,
+    await expect(listShifts({ from: "2026-10-05", to: "2026-10-11" })).rejects.toMatchObject({
+      status: 404,
     });
-    const working = new Set(shifts.map((s) => s.employee?.id));
-
-    expect(kitchen).toContainEqual(SAMPLE_ME);
-    expect(kitchen.some((person) => !working.has(person.id))).toBe(true);
-    expect(await listDepartmentPeople("unknown")).toEqual([]);
-    expect(fetchMock).not.toHaveBeenCalled();
   });
+});
 
-  it("uses IDs shaped like the API's (UUIDv7), each one different", async () => {
-    const monday = mondayOf(dayKey(new Date(), "America/Chicago"));
-    const shifts = await sampleShifts({ from: monday, to: addDays(monday, 13) });
-    const ids = [
-      ...shifts.flatMap((s) => [s.id, s.department.id, s.employee?.id ?? s.id]),
-      ...SAMPLE_DEPARTMENTS.map((d) => d.id),
-      ...SAMPLE_DEPARTMENTS.flatMap((d) => samplePeople(d.id).map((p) => p.id)),
-    ];
+describe("listDepartments", () => {
+  it("asks GET /api/departments, without filters, and follows the pages", async () => {
+    fetchMock
+      .mockResolvedValueOnce(page([{ id: "d1", name: "Front of House" }], "next"))
+      .mockResolvedValueOnce(page([{ id: "d2", name: "Kitchen" }], null));
 
-    expect(ids.every((id) => UUID_V7.test(id))).toBe(true);
-    expect(new Set(shifts.map((s) => s.id)).size).toBe(shifts.length);
+    const departments = await listDepartments();
+
+    expect(departments).toEqual([
+      { id: "d1", name: "Front of House" },
+      { id: "d2", name: "Kitchen" },
+    ]);
+    expect(requested(0).pathname).toBe("/api/departments");
+    expect(requested(0).search).toBe("");
+  });
+});
+
+describe("listDepartmentPeople", () => {
+  it("asks GET /api/users for one department", async () => {
+    fetchMock.mockResolvedValue(page([{ id: "u1", display_name: "Ana Diaz" }], null));
+
+    const people = await listDepartmentPeople("d1");
+
+    expect(people).toEqual([{ id: "u1", display_name: "Ana Diaz" }]);
+    expect(requested(0).pathname).toBe("/api/users");
+    expect(requested(0).searchParams.get("department_id")).toBe("d1");
   });
 });

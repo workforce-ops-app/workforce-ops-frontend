@@ -1,15 +1,17 @@
 // Shifts from the API: the functions the schedule screens use.
 //
-// Until the shifts API exists (backend SC1, workforce-ops-backend#61), the screens read
-// sample data shaped exactly like its answer (sample-shifts.js). That file is loaded only
-// when it is needed (import() below), so with USE_SAMPLE_DATA set to false the browser
-// never asks for it. Connecting the real API (frontend task 17):
-//   1. set USE_SAMPLE_DATA to false: the screens now use the API, nothing else changes;
-//   2. delete sample-shifts.js, sampleData() and the USE_SAMPLE_DATA branches below (the
-//      type check names every line that still refers to them).
+// Course topics: REST and AJAX. Each function asks the server for one collection (shifts,
+// departments, people) with a GET, in the background, and the page then fills itself in
+// from the JSON answer without reloading. Every request goes through js/api/client.js, so
+// the session cookie goes to our own server only and every failure becomes an ApiError or
+// a NetworkError the page can explain.
 //
-// The API answer, agreed for SC1 (decision 0026: JSON, snake_case, UTC moments, paged
-// lists with a cursor):
+// The server decides what each person may see: it filters every list to the signed-in
+// person's company, and to what their schedule.view scope covers. These functions only
+// pass on what the page asks for; asking for another company's department answers 404.
+//
+// The API answer (backend schedules feature, decision 0026: JSON, snake_case, UTC moments,
+// paged lists with a cursor):
 //   GET /api/shifts?from=YYYY-MM-DD&to=YYYY-MM-DD[&department_id=...][&mine=true][&cursor=...]
 //   { "items": [Shift, ...], "next_cursor": "..." | null }
 // where a Shift is
@@ -32,33 +34,27 @@ import { api } from "./client.js";
  *   from and to are day keys ("YYYY-MM-DD"), both included
  */
 
-/** Sample data until backend SC1 exists; see the top of this file. */
-export const USE_SAMPLE_DATA = true;
-
 /**
- * The sample data module, loaded the first time it is needed. A dynamic import() is still
- * a same-site script, so the Content Security Policy (script-src 'self') allows it.
- */
-function sampleData() {
-  return import("./sample-shifts.js");
-}
-
-/**
- * The shifts the screens show: sample data for now, the real API once it exists.
+ * Every shift matching the query, from GET /api/shifts, following the pages.
  * @param {ShiftQuery} query
  * @returns {Promise<Shift[]>}
  */
 export async function listShifts(query) {
-  return USE_SAMPLE_DATA ? (await sampleData()).sampleShifts(query) : fetchShifts(query);
+  // Build the query string. URLSearchParams escapes every value, so an ID or date can
+  // never break out of its parameter.
+  const params = new URLSearchParams({ from: query.from, to: query.to });
+  if (query.departmentId) params.set("department_id", query.departmentId);
+  if (query.mine) params.set("mine", "true");
+  return fetchAll(params, "/api/shifts");
 }
 
 /**
- * The company's departments, for naming the department a week belongs to.
- * From GET /api/departments (backend organization feature), paged like every list.
+ * The company's active departments (id and name only), sorted by name, for naming the
+ * department a week belongs to. From GET /api/departments, which anyone signed in may
+ * call (backend organization feature, workforce-ops-backend#88).
  * @returns {Promise<DepartmentRef[]>}
  */
 export async function listDepartments() {
-  if (USE_SAMPLE_DATA) return (await sampleData()).SAMPLE_DEPARTMENTS;
   return fetchAll(new URLSearchParams(), "/api/departments");
 }
 
@@ -67,39 +63,13 @@ export async function listDepartments() {
  * "Unscheduled employees" section. From GET /api/users (backend organization feature,
  * workforce-ops-backend#54, after the midterm), filtered to the department.
  * The API answers only with the people the signed-in person may see (user.view and its
- * scope); someone without that right gets 403, and the page then leaves the section out.
+ * scope). Someone without that right gets 403, and until the endpoint exists every call
+ * gets 404; the page leaves the section out in both cases.
  * @param {string} departmentId
  * @returns {Promise<EmployeeRef[]>}
  */
 export async function listDepartmentPeople(departmentId) {
-  if (USE_SAMPLE_DATA) return (await sampleData()).samplePeople(departmentId);
   return fetchAll(new URLSearchParams({ department_id: departmentId }), "/api/users");
-}
-
-/**
- * The signed-in person's own (home) department, which the department week shows when the
- * address names none. From GET /api/sessions/current, which already answers "who am I"
- * on every page; null for someone without a home department.
- * @returns {Promise<string | null>}
- */
-export async function myDepartmentId() {
-  if (USE_SAMPLE_DATA) return (await sampleData()).SAMPLE_MY_DEPARTMENT_ID;
-  const session = await api.get("/api/sessions/current");
-  return session.user?.department_id ?? null;
-}
-
-/**
- * Every shift matching the query, from GET /api/shifts, following the pages.
- * @param {ShiftQuery} query
- * @returns {Promise<Shift[]>}
- */
-export async function fetchShifts(query) {
-  // Build the query string. URLSearchParams escapes every value, so an ID or date can
-  // never break out of its parameter.
-  const params = new URLSearchParams({ from: query.from, to: query.to });
-  if (query.departmentId) params.set("department_id", query.departmentId);
-  if (query.mine) params.set("mine", "true");
-  return fetchAll(params, "/api/shifts");
 }
 
 /**

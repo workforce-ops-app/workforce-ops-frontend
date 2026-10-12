@@ -32,7 +32,7 @@ sequenceDiagram
 | Piece | File | Does |
 |---|---|---|
 | `loadSession()` | `js/core/session.js` | `GET /api/sessions/current`, once per page (callers share one request); keeps the answer in memory and hands `csrf_token` to `setCsrfToken`; on 401 forgets everything and goes to the sign-in page; other failures are thrown on |
-| `currentSession()`, `can(permission)` | `js/core/session.js` | the loaded session, and whether the person holds a permission somewhere; both answer "nothing" before the session has loaded |
+| `currentSession()`, `can(permission)` | `js/core/session.js` | the loaded session, and whether the person holds a permission somewhere; both answer "nothing" before the session has loaded. Pages read them instead of asking the server again: the department week takes its default department from `user.department_id` and asks for the department's people only with `user.view` |
 | `signOut()` | `js/core/session.js` | `DELETE /api/sessions/current` (with the CSRF token, like any change), then forgets the session and goes to the sign-in page; a 401 counts as already signed out, any other failure keeps the person on the page |
 | `startSignedInPage(showPage)` | `js/components/app-shell.js` | the start of every signed-in page: session, then the frame, then the page; the page's `<main>` starts `hidden` in the HTML and is shown only after the session check, so a signed-out visitor never sees the heading or week buttons before going to sign in. A "Loading..." line stands in its place until then; it says nothing about the page |
 | `applyPermissions()` | `js/components/app-shell.js` | shows each element marked `data-permission="<code>"` only when `can(code)`; such elements start `hidden` in the HTML, so nothing flashes while the session loads |
