@@ -84,15 +84,7 @@ afterEach(() => document.body.replaceChildren());
 
 describe("My week", () => {
   beforeEach(() =>
-    page([
-      "week-range",
-      "previous-week",
-      "current-week",
-      "next-week",
-      "status",
-      "days",
-      "summary",
-    ]),
+    page(["week-range", "previous-week", "current-week", "next-week", "status", "days", "summary"]),
   );
 
   it("asks for my shifts of the week and shows a card for every day", async () => {
@@ -185,15 +177,7 @@ describe("My week", () => {
 
 describe("Department week", () => {
   beforeEach(() =>
-    page([
-      "title",
-      "week-range",
-      "previous-week",
-      "current-week",
-      "next-week",
-      "status",
-      "days",
-    ]),
+    page(["title", "week-range", "previous-week", "current-week", "next-week", "status", "days"]),
   );
 
   it("shows all seven days with who works each shift, open shifts marked", async () => {

@@ -63,9 +63,7 @@ describe("followWeekLinks", () => {
     );
 
     expect(window.location.search).toBe("?week=2026-10-05&department=d1");
-    await vi.waitFor(() =>
-      expect(showWeek).toHaveBeenCalledWith("?week=2026-10-05&department=d1"),
-    );
+    await vi.waitFor(() => expect(showWeek).toHaveBeenCalledWith("?week=2026-10-05&department=d1"));
   });
 
   it("leaves a click that opens a new tab to the browser", () => {
