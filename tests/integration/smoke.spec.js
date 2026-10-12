@@ -77,6 +77,18 @@ test("browser-facing responses include the required security headers", async ({ 
   expect(headers["strict-transport-security"]).toBeUndefined();
 });
 
+test("pages and scripts are checked with nginx before every use", async ({ request }) => {
+  for (const path of ["/pages/sign-in.html", "/css/base/base.css", "/js/core/dom.js"]) {
+    const response = await request.get(path);
+    expect(response.headers()["cache-control"], path).toBe("no-cache");
+    // The cache header must not replace the security headers (an nginx pitfall).
+    expect(response.headers()["content-security-policy"], path).toContain("script-src 'self'");
+  }
+  // nginx leaves /api answers alone: the backend sets their caching itself.
+  const api = await request.get("/api/health");
+  expect(api.headers()["cache-control"]).toBeUndefined();
+});
+
 test("records localhost handling of a Secure __Host- cookie", async ({
   browserName,
   context,
