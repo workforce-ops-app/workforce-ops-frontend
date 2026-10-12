@@ -24,6 +24,7 @@ import { startSignedInPage } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
 import { statTile } from "../components/stat-tile.js";
 import { weekGrid } from "../components/week-grid.js";
+import { followWeekLinks } from "../components/week-nav.js";
 import { openShiftsSection, unscheduledSection } from "../components/week-sections.js";
 import { el, setText } from "../core/dom.js";
 import { addDays, formatWeekRange, hoursBetween, roundHours } from "../core/time.js";
@@ -69,7 +70,8 @@ async function peopleOrNull(departmentId) {
 
 /**
  * Load one department's week and show it, with links to the weeks before and after.
- * Exported for the tests; the page calls it once when it loads (below).
+ * Exported for the tests; the page calls it when it loads and for each week chosen with
+ * Previous, Next, Back, or Forward (below).
  * @param {string} search the address's query string, e.g. "?week=2026-10-05"
  */
 export async function showWeek(search) {
@@ -154,9 +156,12 @@ export async function showWeek(search) {
       stats.hidden = false;
     }
   } catch (error) {
-    // The two failures a page expects get a plain-language message; the tiles and the
-    // sections would only show stale or empty content, so they are hidden.
+    // The two failures a page expects get a plain-language message. Whatever week is still
+    // on screen (the one before, when moving between weeks) is not this week's, so the
+    // tiles, the grid, the day cards, and the sections all go.
     if (stats) stats.hidden = true;
+    week.replaceChildren();
+    grid?.replaceChildren();
     sections?.replaceChildren();
     if (error instanceof ApiError || error instanceof NetworkError) {
       const message = error instanceof ApiError ? error.title : "the server could not be reached";
@@ -172,5 +177,8 @@ export async function showWeek(search) {
 }
 
 // Once the session has loaded (signed-out visitors go to the sign-in page instead), show
-// the week the address asks for.
-startSignedInPage(() => showWeek(window.location.search));
+// the week the address asks for. Other weeks then load in place (components/week-nav.js).
+startSignedInPage(() => {
+  followWeekLinks(showWeek);
+  return showWeek(window.location.search);
+});

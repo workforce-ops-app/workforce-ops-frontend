@@ -136,6 +136,20 @@ describe("My week", () => {
     expect(document.getElementById("summary")?.hidden).toBe(true);
   });
 
+  it("removes the week before when the next one cannot load", async () => {
+    // Moving between weeks keeps the page; a failed week must not leave the last one on
+    // screen under the new week's dates.
+    mocked.mockResolvedValueOnce([shiftOn("2026-10-05")]);
+    await showMyWeek("?week=2026-10-05");
+    mocked.mockRejectedValueOnce(new NetworkError(new TypeError("Failed to fetch")));
+
+    await showMyWeek("?week=2026-10-12");
+
+    expect(text("week-range")).toBe("Oct 12 to Oct 18");
+    expect(document.querySelectorAll("#days .day-card")).toHaveLength(0);
+    expect(text("status")).toBe("Problem: the server could not be reached");
+  });
+
   it("does not disguise a bug as a network problem", async () => {
     mocked.mockRejectedValue(new TypeError("a bug"));
 
@@ -229,6 +243,19 @@ describe("Department week", () => {
 
     expect(document.getElementById("stats")?.hidden).toBe(true);
     expect(document.getElementById("sections")?.childElementCount).toBe(0);
+  });
+
+  it("removes the week before when the next one cannot load", async () => {
+    page(["title", "week-range", "previous-week", "next-week", "status", "days", "grid"]);
+    mocked.mockResolvedValueOnce([shiftOn("2026-10-05")]);
+    await showWeek("?week=2026-10-05");
+    mocked.mockRejectedValueOnce(new ApiError(403, { title: "Forbidden" }));
+
+    await showWeek("?week=2026-10-12");
+
+    expect(document.getElementById("days")?.childElementCount).toBe(0);
+    expect(document.getElementById("grid")?.childElementCount).toBe(0);
+    expect(text("status")).toBe("Problem: Forbidden");
   });
 
   it("links to other weeks, keeping the department", async () => {

@@ -113,9 +113,11 @@ export async function startSignedInPage(showPage, navigate) {
     applyPermissions();
   }
 
-  // Only now show the page (its <main> starts hidden in the HTML). A signed-out visitor
-  // returned above and never sees it.
+  // Only now show the page (its <main> starts hidden in the HTML), in place of the
+  // "Loading..." line. A signed-out visitor returned above and never sees it.
   const main = document.querySelector("main");
   if (main) main.hidden = false;
+  const loading = document.getElementById("page-loading");
+  if (loading) loading.hidden = true;
   await showPage();
 }

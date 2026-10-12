@@ -1,0 +1,24 @@
+/* While another week loads in place (js/components/week-nav.js), the old week stays where
+   it is, dimmed, until the new one replaces it: nothing disappears, so nothing below it
+   moves. The dimming waits 0.2s, so a quick answer swaps the week without any flicker;
+   coming back is immediate. The week buttons and the heading are not dimmed. */
+.week-content {
+  transition: opacity 0.15s ease-in-out;
+}
+
+[aria-busy="true"] .week-content {
+  opacity: 0.5;
+  transition-delay: 0.2s;
+}
+
+/* People who ask their system for less motion get the dimming without the fade (it still
+   waits, so a quick answer still causes no flicker). */
+@media (prefers-reduced-motion: reduce) {
+  .week-content {
+    transition: none;
+  }
+
+  [aria-busy="true"] .week-content {
+    transition: opacity 0s linear 0.2s;
+  }
+}
