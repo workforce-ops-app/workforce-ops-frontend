@@ -157,9 +157,18 @@
 /* A tab the person may not use stays hidden (the display above would otherwise show it),
    and so does the page until the session has loaded. */
 .tab-bar__link[hidden],
-.account[hidden],
-.app-main[hidden] {
+.app-main[hidden],
+.page-loading[hidden] {
   display: none;
+}
+
+/* "Loading..." while the session loads: placed and sized like the top of the page, so the
+   page's heading appears where this line was. */
+.page-loading {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--space);
+  color: var(--color-muted);
 }
 
 /* Who is signed in, and the sign-out button. On phones a small line under the brand; on
@@ -169,6 +178,8 @@
   gap: 0.75rem;
   align-items: center;
   justify-content: center;
+  /* As tall as the sign-out button (plus the space above it), even while still empty. */
+  min-height: calc(2.75rem + 0.5rem);
   padding: 0.5rem var(--space) 0;
   font-size: 0.875rem;
   color: var(--color-muted);
@@ -197,8 +208,21 @@
   cursor: wait;
 }
 
+/* On phones the account line keeps its place while it waits for the name, so the page
+   does not move down when the name appears. It is invisible (and skipped by screen
+   readers) until then. */
+.account[hidden] {
+  visibility: hidden;
+}
+
 @media (width >= 48rem) {
   .account {
+    min-height: 0;
     padding: 0;
+  }
+
+  /* In the top bar the empty spot takes no room anyway. */
+  .account[hidden] {
+    display: none;
   }
 }

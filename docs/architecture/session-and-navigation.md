@@ -34,7 +34,7 @@ sequenceDiagram
 | `loadSession()` | `js/core/session.js` | `GET /api/sessions/current`, once per page (callers share one request); keeps the answer in memory and hands `csrf_token` to `setCsrfToken`; on 401 forgets everything and goes to the sign-in page; other failures are thrown on |
 | `currentSession()`, `can(permission)` | `js/core/session.js` | the loaded session, and whether the person holds a permission somewhere; both answer "nothing" before the session has loaded |
 | `signOut()` | `js/core/session.js` | `DELETE /api/sessions/current` (with the CSRF token, like any change), then forgets the session and goes to the sign-in page; a 401 counts as already signed out, any other failure keeps the person on the page |
-| `startSignedInPage(showPage)` | `js/components/app-shell.js` | the start of every signed-in page: session, then the frame, then the page; the page's `<main>` starts `hidden` in the HTML and is shown only after the session check, so a signed-out visitor never sees the heading or week buttons before going to sign in |
+| `startSignedInPage(showPage)` | `js/components/app-shell.js` | the start of every signed-in page: session, then the frame, then the page; the page's `<main>` starts `hidden` in the HTML and is shown only after the session check, so a signed-out visitor never sees the heading or week buttons before going to sign in. A "Loading..." line stands in its place until then; it says nothing about the page |
 | `applyPermissions()` | `js/components/app-shell.js` | shows each element marked `data-permission="<code>"` only when `can(code)`; such elements start `hidden` in the HTML, so nothing flashes while the session loads |
 | `accountItems(session)` | `js/components/app-shell.js` | the name (as text) and the Sign out button for the `#account` spot in the header; one request per click, and a plain message when signing out fails |
 
@@ -51,11 +51,17 @@ sequenceDiagram
 
 **Explain in the presentation** (course topics: AJAX and CSRF): `loadSession()` (a background request that fills in the page without reloading it, and the token it hands to the API client), and why the hidden menu entry is not the security control.
 
+## Moving between weeks
+
+Previous and Next do not load the page again: `js/components/week-nav.js` changes the address and fetches only the new week ([components](components.md)). The session, its CSRF token, and the frame stay in memory, so moving between weeks costs no extra session request and nothing in the frame flickers. The session is checked again on every full page load (a new tab, a bookmark, Reload, or a page restored from the back/forward cache).
+
+**Explain in the presentation** (course topic: AJAX): the week is a background request whose answer replaces part of the page, and `history.pushState` keeps the address (and Back) in step with what is shown.
+
 ## Not yet
 
-- A session that expires while a page is open shows the page's usual "Problem: Unauthorized" on the next request; sending the person to sign in at that moment comes later.
+- A session that expires while a page is open shows the page's usual "Problem: Unauthorized" on the next request, including the next week chosen with Previous or Next (the week before is cleared, so no old shifts stay on screen); sending the person to sign in at that moment comes later.
 - The password re-entry pop-up (`reauth-required`) comes with the account screens (#21).
 
 ## Tests
 
-`tests/unit/session.test.js`: one request per page, the token handed to the client, a 401 going to sign-in, other failures thrown on and retried later, nothing written to browser storage, `can()`, and signing out (including an already-ended session and a failed sign-out). `tests/unit/app-shell.test.js`: menu entries by permission, the name and button, a name containing HTML shown as text, a signed-out visitor never loading or seeing the page, the page staying hidden until the session has loaded, a page restored from the back/forward cache being reloaded, an unreachable server still loading it, one sign-out request per click, and a failed sign-out. `tests/integration/smoke.spec.js`: both schedule pages send a signed-out visitor to the sign-in page in real browsers, and stay hidden while the session answer is held back.
+`tests/unit/session.test.js`: one request per page, the token handed to the client, a 401 going to sign-in, other failures thrown on and retried later, nothing written to browser storage, `can()`, and signing out (including an already-ended session and a failed sign-out). `tests/unit/app-shell.test.js`: menu entries by permission, the name and button, a name containing HTML shown as text, a signed-out visitor never loading or seeing the page, the page staying hidden until the session has loaded, a page restored from the back/forward cache being reloaded, the "Loading..." line giving way to the page, an unreachable server still loading it, one sign-out request per click, and a failed sign-out. `tests/unit/week-nav.test.js`: a week loading in place with the address changed, a click that opens a new tab left to the browser, Back and Forward, the busy mark, one week at a time with the latest click winning, and a failed load not blocking the next one. `tests/integration/smoke.spec.js`: both schedule pages send a signed-out visitor to the sign-in page in real browsers, and stay hidden while the session answer is held back.

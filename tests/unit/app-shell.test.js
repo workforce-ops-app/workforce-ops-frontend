@@ -30,7 +30,10 @@ function sessionWith(permissions, name = "Ana Diaz") {
   };
 }
 
-/** The frame as the pages have it: two tabs, the account spot, and the page, all hidden. */
+/**
+ * The frame as the pages have it: two tabs, the account spot, and the page, all hidden,
+ * and the "Loading..." line shown in the meantime.
+ */
 function frame() {
   /**
    * @param {string} id
@@ -49,10 +52,13 @@ function frame() {
   const main = document.createElement("main");
   main.id = "page";
   main.hidden = true;
+  const loading = document.createElement("p");
+  loading.id = "page-loading";
   document.body.replaceChildren(
     tab("my-week", "schedule.view_self"),
     tab("department", "schedule.view"),
     account,
+    loading,
     main,
   );
 }
@@ -87,12 +93,14 @@ describe("startSignedInPage", () => {
     fetchSession.mockReturnValue(new Promise((resolve) => (answer = resolve)));
 
     const started = startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
-    // The server has not answered yet: the page is still hidden.
+    // The server has not answered yet: the page is still hidden, "Loading..." shows.
     expect(byId("page").hidden).toBe(true);
+    expect(byId("page-loading").hidden).toBe(false);
 
     answer(sessionWith(["schedule.view_self"]));
     await started;
     expect(byId("page").hidden).toBe(false);
+    expect(byId("page-loading").hidden).toBe(true);
   });
 
   it("shows the person's name and a sign-out button", async () => {
