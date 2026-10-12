@@ -2,7 +2,7 @@
 
 **In short:** nginx is the one address the browser uses. It serves the frontend files,
 passes `/api` requests to the backend, and attaches the browser security headers required
-by the application.
+by the application, plus the caching rule for its files.
 
 ## Request flow
 
@@ -24,7 +24,8 @@ The important files are:
   each by name) and nginx configuration, then runs nginx as its built-in non-root user.
   A new top-level folder the pages load files from must be added here too; the smoke
   test requests one file from each folder, so a missing one fails CI.
-- `nginx/nginx.conf`: serves static files, defines the proxy, and adds headers.
+- `nginx/nginx.conf`: serves static files, defines the proxy, and adds the security and
+  caching headers.
 - `docker-compose.yml`: publishes nginx on `127.0.0.1:8080` and joins the shared network.
 - `tests/integration/`: starts an isolated API stand-in and checks the complete browser
   path without depending on a checkout of the backend repository.
@@ -58,6 +59,20 @@ files. Each directive has one job:
   browsers ignore it there. The nginx configuration emits a one-year policy with
   `includeSubDomains` when its connection scheme is HTTPS. If production terminates TLS
   before nginx instead, that HTTPS component must add the same header.
+
+## Caching
+
+- `Cache-Control: no-cache` on every page, script, style, and icon. The browser may keep
+  a copy, but must ask nginx before each use whether the file changed; an unchanged file
+  costs only a short `304 Not Modified` answer. Without the header, browsers guess how long
+  a file stays fresh and can run old scripts after a rebuild, or mix old and new ones.
+- `/api` answers get no caching header from nginx. The backend marks them `no-store`
+  (never kept), because they carry personal data
+  ([backend#89](https://github.com/workforce-ops-app/workforce-ops-backend/issues/89)).
+- The header is set in the `server` block through a `map` on the path, like HSTS above.
+  An `add_header` inside a `location` block would replace all the `server` block's
+  `add_header` lines for that location and silently drop the security headers. The smoke
+  test checks that both are present.
 
 ## Localhost session-cookie compatibility
 
