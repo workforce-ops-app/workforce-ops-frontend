@@ -34,8 +34,13 @@ export async function showMyWeek(search) {
   const currentMonday = requestedMonday(new URLSearchParams(), todayKey);
   setText(range, formatWeekRange(monday));
   previous.setAttribute("href", weekLink(monday, -1, params));
-  current.setAttribute("href", weekLink(currentMonday, 0, params));
-  current.hidden = monday === currentMonday;
+  if (monday === currentMonday) {
+    current.removeAttribute("href");
+    current.setAttribute("aria-disabled", "true");
+  } else {
+    current.setAttribute("href", weekLink(currentMonday, 0, params));
+    current.removeAttribute("aria-disabled");
+  }
   next.setAttribute("href", weekLink(monday, 1, params));
 
   try {

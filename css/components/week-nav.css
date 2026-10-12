@@ -12,8 +12,13 @@
   margin-inline: auto;
 }
 
-.week-nav__current[hidden] {
-  display: none;
+.week-nav__current[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.week-nav__current[aria-disabled="true"]:hover {
+  background: var(--color-background);
 }
 
 .week-content {

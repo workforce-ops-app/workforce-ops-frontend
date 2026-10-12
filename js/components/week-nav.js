@@ -72,6 +72,10 @@ export function followWeekLinks(showWeek) {
     document.getElementById(id)?.addEventListener("click", (event) => {
       const link = event.currentTarget;
       if (!(link instanceof HTMLAnchorElement) || leaveToBrowser(event)) return;
+      if (link.getAttribute("aria-disabled") === "true") {
+        event.preventDefault();
+        return;
+      }
       // Only another week of this same page is handled here; anything else is left to an
       // ordinary page load. (The links are built by core/week.js, so this always holds.)
       const target = new URL(link.href);

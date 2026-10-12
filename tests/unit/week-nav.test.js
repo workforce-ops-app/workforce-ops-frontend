@@ -66,6 +66,19 @@ describe("followWeekLinks", () => {
     await vi.waitFor(() => expect(showWeek).toHaveBeenCalledWith("?week=2026-10-05&department=d1"));
   });
 
+  it("does not follow the disabled current-week link", () => {
+    const showWeek = vi.fn().mockResolvedValue(undefined);
+    followWeekLinks(showWeek);
+    byId("current-week").removeAttribute("href");
+    byId("current-week").setAttribute("aria-disabled", "true");
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    byId("current-week").dispatchEvent(click);
+
+    expect(click.defaultPrevented).toBe(true);
+    expect(showWeek).not.toHaveBeenCalled();
+  });
+
   it("leaves a click that opens a new tab to the browser", () => {
     const showWeek = vi.fn().mockResolvedValue(undefined);
     followWeekLinks(showWeek);

@@ -116,7 +116,7 @@ describe("My week", () => {
     expect(document.getElementById("next-week")?.getAttribute("href")).toBe("?week=2026-10-12");
   });
 
-  it("links back to the current week and hides that link while showing it", async () => {
+  it("links back to the current week and disables that link while showing it", async () => {
     mocked.mockResolvedValue([]);
     const currentMonday = mondayOf(today());
 
@@ -125,10 +125,13 @@ describe("My week", () => {
     expect(document.getElementById("current-week")?.getAttribute("href")).toBe(
       `?week=${currentMonday}`,
     );
-    expect(document.getElementById("current-week")?.hidden).toBe(currentMonday === "2026-10-05");
+    expect(document.getElementById("current-week")?.getAttribute("aria-disabled")).toBe(
+      currentMonday === "2026-10-05" ? "true" : null,
+    );
 
     await showMyWeek(`?week=${currentMonday}`);
-    expect(document.getElementById("current-week")?.hidden).toBe(true);
+    expect(document.getElementById("current-week")?.hasAttribute("href")).toBe(false);
+    expect(document.getElementById("current-week")?.getAttribute("aria-disabled")).toBe("true");
   });
 
   it("keeps a malicious note as text, shown only when the shift is opened", async () => {
@@ -326,6 +329,7 @@ describe("Department week", () => {
     expect(document.getElementById("current-week")?.getAttribute("href")).toBe(
       `?week=${mondayOf(today())}&department=d1`,
     );
+    expect(document.getElementById("current-week")?.hasAttribute("aria-disabled")).toBe(false);
   });
 
   it("shows the person's own department when the address names none", async () => {
