@@ -78,10 +78,11 @@ export async function showWeek(search) {
   const title = document.getElementById("title");
   const range = document.getElementById("week-range");
   const previous = document.getElementById("previous-week");
+  const current = document.getElementById("current-week");
   const next = document.getElementById("next-week");
   const status = document.getElementById("status");
   const week = document.getElementById("days");
-  if (!title || !range || !previous || !next || !status || !week) return;
+  if (!title || !range || !previous || !current || !next || !status || !week) return;
   // The tiles, the grid, and the sections are optional, so a page (or a test) without
   // them still works.
   const stats = document.getElementById("stats");
@@ -96,8 +97,11 @@ export async function showWeek(search) {
     const params = new URLSearchParams(search);
     const todayKey = today();
     const monday = requestedMonday(params, todayKey);
+    const currentMonday = requestedMonday(new URLSearchParams(), todayKey);
     setText(range, formatWeekRange(monday));
     previous.setAttribute("href", weekLink(monday, -1, params));
+    current.setAttribute("href", weekLink(currentMonday, 0, params));
+    current.hidden = monday === currentMonday;
     next.setAttribute("href", weekLink(monday, 1, params));
 
     // Which department: the one in the address, else the person's own, else the first one.

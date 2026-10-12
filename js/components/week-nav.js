@@ -27,8 +27,8 @@ function leaveToBrowser(event) {
 }
 
 /**
- * Make the #previous-week and #next-week links, and the browser's Back and Forward
- * buttons, change the week in place.
+ * Make the #previous-week, #current-week, and #next-week links, and the browser's Back
+ * and Forward buttons, change the week in place.
  *
  * Weeks load one at a time. Clicking Next three times quickly does not start three
  * requests that could answer in any order (and leave an older week on screen): the clicks
@@ -68,7 +68,7 @@ export function followWeekLinks(showWeek) {
     return running;
   }
 
-  for (const id of ["previous-week", "next-week"]) {
+  for (const id of ["previous-week", "current-week", "next-week"]) {
     document.getElementById(id)?.addEventListener("click", (event) => {
       const link = event.currentTarget;
       if (!(link instanceof HTMLAnchorElement) || leaveToBrowser(event)) return;

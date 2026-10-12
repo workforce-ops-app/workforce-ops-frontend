@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { followWeekLinks } from "../../js/components/week-nav.js";
 
-/** The parts of a week page the links need: <main> with the two week links. */
+/** The parts of a week page the links need: <main> with the three week links. */
 function weekPage() {
   /**
    * @param {string} id
@@ -15,7 +15,11 @@ function weekPage() {
     return a;
   };
   const main = document.createElement("main");
-  main.append(link("previous-week", "?week=2026-09-28"), link("next-week", "?week=2026-10-12"));
+  main.append(
+    link("previous-week", "?week=2026-09-28"),
+    link("current-week", "?week=2026-10-05&department=d1"),
+    link("next-week", "?week=2026-10-12"),
+  );
   document.body.replaceChildren(main);
 }
 
@@ -48,6 +52,20 @@ describe("followWeekLinks", () => {
     expect(click.defaultPrevented).toBe(true);
     expect(window.location.search).toBe("?week=2026-10-12");
     await vi.waitFor(() => expect(showWeek).toHaveBeenCalledWith("?week=2026-10-12"));
+  });
+
+  it("loads the current week in place and keeps other address settings", async () => {
+    const showWeek = vi.fn().mockResolvedValue(undefined);
+    followWeekLinks(showWeek);
+
+    byId("current-week").dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }),
+    );
+
+    expect(window.location.search).toBe("?week=2026-10-05&department=d1");
+    await vi.waitFor(() =>
+      expect(showWeek).toHaveBeenCalledWith("?week=2026-10-05&department=d1"),
+    );
   });
 
   it("leaves a click that opens a new tab to the browser", () => {
