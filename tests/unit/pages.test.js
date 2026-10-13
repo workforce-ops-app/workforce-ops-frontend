@@ -6,14 +6,17 @@ import { ApiError, NetworkError } from "../../js/api/client.js";
 vi.mock("../../js/api/shifts.js", () => ({
   listShifts: vi.fn(),
   listDepartments: vi.fn(),
-  myDepartmentId: vi.fn(),
   listDepartmentPeople: vi.fn(),
 }));
+// The loaded session: the department week takes the person's own department and their
+// permissions from it, so each test decides who is signed in.
+vi.mock("../../js/core/session.js", () => ({ currentSession: vi.fn(), can: vi.fn() }));
 // The pages start through the frame (session first); here each test calls the page's own
 // loading directly, so the frame is replaced by a stub that does nothing.
 vi.mock("../../js/components/app-shell.js", () => ({ startSignedInPage: vi.fn() }));
-const { listShifts, listDepartments, myDepartmentId, listDepartmentPeople } =
+const { listShifts, listDepartments, listDepartmentPeople } =
   await import("../../js/api/shifts.js");
+const { currentSession, can } = await import("../../js/core/session.js");
 const { showMyWeek } = await import("../../js/pages/my-shifts.js");
 const { showWeek, weekStats } = await import("../../js/pages/schedule.js");
 const { mondayOf } = await import("../../js/core/time.js");
@@ -22,8 +25,21 @@ const { today } = await import("../../js/core/week.js");
 const asMock = (fn) => /** @type {import("vitest").Mock} */ (fn);
 const mocked = asMock(listShifts);
 const departmentsMock = asMock(listDepartments);
-const myDepartmentMock = asMock(myDepartmentId);
+const sessionMock = asMock(currentSession);
+const canMock = asMock(can);
 const peopleMock = asMock(listDepartmentPeople);
+
+/**
+ * Who is signed in: their own department, and their permissions.
+ * @param {string | null} departmentId null: no session loaded
+ * @param {string[]} permissions
+ */
+function signedIn(departmentId, permissions) {
+  sessionMock.mockReturnValue(
+    departmentId === null ? null : { user: { department_id: departmentId }, permissions },
+  );
+  canMock.mockImplementation((/** @type {string} */ code) => permissions.includes(code));
+}
 
 /**
  * A shift in Chicago on the given day, 9:00 to 17:00 local time.
@@ -68,12 +84,14 @@ const text = (/** @type {string} */ id) => document.getElementById(id)?.textCont
 // and mockReset() returns the mock itself, which would then be called once more.
 beforeEach(() => {
   mocked.mockReset();
-  // The company's departments, and the signed-in person's own one (Kitchen).
+  // The company's departments, and a manager of Kitchen who may list its people.
   departmentsMock.mockReset().mockResolvedValue([
     { id: "d1", name: "Kitchen" },
     { id: "d2", name: "Front of House" },
   ]);
-  myDepartmentMock.mockReset().mockResolvedValue("d1");
+  sessionMock.mockReset();
+  canMock.mockReset();
+  signedIn("d1", ["schedule.view", "user.view"]);
   // The department's people: Ana (who has the test shifts) and Ben (who has none).
   peopleMock.mockReset().mockResolvedValue([
     { id: "u1", display_name: "Ana Diaz" },
@@ -252,7 +270,61 @@ describe("Department week", () => {
     expect(names).toEqual(["Ben Okafor"]);
   });
 
-  it("leaves out the unscheduled list for someone who may not list people", async () => {
+  it("does not even ask for the people without user.view", async () => {
+    page([
+      "title",
+      "week-range",
+      "previous-week",
+      "current-week",
+      "next-week",
+      "status",
+      "days",
+      "sections",
+    ]);
+    signedIn("d1", ["schedule.view"]);
+    mocked.mockResolvedValue([shiftOn("2026-10-05")]);
+
+    await showWeek("?week=2026-10-05&department=d1");
+
+    // The week itself still shows; only that one section is missing.
+    expect(peopleMock).not.toHaveBeenCalled();
+    expect(text("status")).toBe("");
+    expect(document.querySelectorAll("#days .day-card")).toHaveLength(7);
+    expect(document.querySelector("#sections .people-tags")).toBeNull();
+    expect(document.querySelector("#sections .week-section--open")).not.toBeNull();
+  });
+
+  // 403: the server refuses after all (user.view elsewhere only). 404: the people endpoint
+  // does not exist yet (backend #54). Either way the week shows without that section.
+  it.each([
+    [403, "Forbidden"],
+    [404, "Not Found"],
+  ])(
+    "leaves out the unscheduled list when the people request answers %i",
+    async (status, title) => {
+      page([
+        "title",
+        "week-range",
+        "previous-week",
+        "current-week",
+        "next-week",
+        "status",
+        "days",
+        "sections",
+      ]);
+      mocked.mockResolvedValue([shiftOn("2026-10-05")]);
+      peopleMock.mockRejectedValue(new ApiError(status, { title }));
+
+      await showWeek("?week=2026-10-05&department=d1");
+
+      expect(text("status")).toBe("");
+      expect(document.querySelectorAll("#days .day-card")).toHaveLength(7);
+      expect(document.querySelector("#sections .people-tags")).toBeNull();
+      expect(document.querySelector("#sections .week-section--open")).not.toBeNull();
+    },
+  );
+
+  it("still reports any other failure of the people request", async () => {
     page([
       "title",
       "week-range",
@@ -264,15 +336,11 @@ describe("Department week", () => {
       "sections",
     ]);
     mocked.mockResolvedValue([shiftOn("2026-10-05")]);
-    peopleMock.mockRejectedValue(new ApiError(403, { title: "Forbidden" }));
+    peopleMock.mockRejectedValue(new ApiError(500, { title: "Internal Server Error" }));
 
     await showWeek("?week=2026-10-05&department=d1");
 
-    // The week itself still shows; only that one section is missing.
-    expect(text("status")).toBe("");
-    expect(document.querySelectorAll("#days .day-card")).toHaveLength(7);
-    expect(document.querySelector("#sections .people-tags")).toBeNull();
-    expect(document.querySelector("#sections .week-section--open")).not.toBeNull();
+    expect(text("status")).toBe("Problem: Internal Server Error");
   });
 
   it("hides the week's numbers and sections when the week cannot load", async () => {
@@ -332,7 +400,8 @@ describe("Department week", () => {
     expect(document.getElementById("current-week")?.hasAttribute("aria-disabled")).toBe(false);
   });
 
-  it("shows the person's own department when the address names none", async () => {
+  it("shows the person's own department (from the session) when the address names none", async () => {
+    signedIn("d2", ["schedule.view"]);
     mocked.mockResolvedValue([]);
 
     await showWeek("?week=2026-10-05");
@@ -341,9 +410,9 @@ describe("Department week", () => {
     expect(mocked.mock.calls[0][0]).toEqual({
       from: "2026-10-05",
       to: "2026-10-11",
-      departmentId: "d1",
+      departmentId: "d2",
     });
-    expect(text("title")).toBe("Kitchen");
+    expect(text("title")).toBe("Front of House");
   });
 
   it("names a chosen department even when its week has no shifts", async () => {
@@ -363,8 +432,8 @@ describe("Department week", () => {
     expect(text("title")).toBe("Department week");
   });
 
-  it("uses the first department for someone without a home department", async () => {
-    myDepartmentMock.mockResolvedValue(null);
+  it("uses the first department when the session names none", async () => {
+    signedIn(null, []);
     mocked.mockResolvedValue([]);
 
     await showWeek("?week=2026-10-05");

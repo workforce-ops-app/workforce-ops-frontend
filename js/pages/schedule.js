@@ -5,21 +5,16 @@
 // under it. Phones see a card per day instead, open shifts included
 // (js/components/day-list.js); css/pages/schedule.css shows one or the other. Last comes
 // the list of the department's people without a shift that week
-// (js/components/week-sections.js).
+// (js/components/week-sections.js), for people allowed to list them.
 //
 // The address says which week and department to show, so a week can be bookmarked or
 // shared: schedule.html?week=2026-10-05&department=<id>. Without a week it shows the
-// current one. Without a department it shows the person's own (home) department, so
-// shifts of different departments are never mixed on one page; someone without a home
-// department sees the first department of the company.
+// current one. Without a department it shows the person's own (home) department, from the
+// loaded session, so shifts of different departments are never mixed on one page; if the
+// session names none, it shows the first department of the company.
 
 import { ApiError, NetworkError } from "../api/client.js";
-import {
-  listDepartmentPeople,
-  listDepartments,
-  listShifts,
-  myDepartmentId,
-} from "../api/shifts.js";
+import { listDepartmentPeople, listDepartments, listShifts } from "../api/shifts.js";
 import { startSignedInPage } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
 import { statTile } from "../components/stat-tile.js";
@@ -27,6 +22,7 @@ import { weekGrid } from "../components/week-grid.js";
 import { followWeekLinks } from "../components/week-nav.js";
 import { openShiftsSection, unscheduledSection } from "../components/week-sections.js";
 import { el, setText } from "../core/dom.js";
+import { can, currentSession } from "../core/session.js";
 import { addDays, formatWeekRange, hoursBetween, roundHours } from "../core/time.js";
 import { requestedMonday, today, weekLink } from "../core/week.js";
 
@@ -52,18 +48,21 @@ export function weekStats(shifts) {
 }
 
 /**
- * The department's people, or null when the signed-in person may not list them (403):
- * the page then simply leaves out the "Unscheduled employees" section, since seeing the
- * week's shifts does not need that right. Any other failure is a real problem and is
- * thrown on, like a failed shifts request.
+ * The department's people, or null when the page should leave out the "Unscheduled
+ * employees" section: seeing the week's shifts does not need the right to list people.
+ * - Without user.view in the session, nothing is asked at all (no request bound to fail).
+ * - 403: the server says no after all (for example, user.view in another department only).
+ * - 404: the people endpoint does not exist yet (backend #54, after the midterm).
+ * Any other failure is a real problem and is thrown on, like a failed shifts request.
  * @param {string} departmentId
  * @returns {Promise<import("../api/shifts.js").EmployeeRef[] | null>}
  */
 async function peopleOrNull(departmentId) {
+  if (!can("user.view")) return null;
   try {
     return await listDepartmentPeople(departmentId);
   } catch (error) {
-    if (error instanceof ApiError && error.status === 403) return null;
+    if (error instanceof ApiError && (error.status === 403 || error.status === 404)) return null;
     throw error;
   }
 }
@@ -109,12 +108,16 @@ export async function showWeek(search) {
     }
     next.setAttribute("href", weekLink(monday, 1, params));
 
-    // Which department: the one in the address, else the person's own, else the first one.
+    // Which department: the one in the address, else the person's own (from the session
+    // the page already loaded, so no second "who am I?" request), else the first one.
     // The address is only a choice of what to look at: the API still checks that the
     // person may see that department (an ID from another company answers 404).
     const departments = await listDepartments();
     const departmentId =
-      params.get("department") ?? (await myDepartmentId()) ?? departments[0]?.id ?? null;
+      params.get("department") ??
+      currentSession()?.user.department_id ??
+      departments[0]?.id ??
+      null;
 
     // Name the department in the heading from the departments list, not from the shifts,
     // so a week with no shifts is still named.
