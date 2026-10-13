@@ -2,6 +2,25 @@
    it is, dimmed, until the new one replaces it: nothing disappears, so nothing below it
    moves. The dimming waits 0.2s, so a quick answer swaps the week without any flicker;
    coming back is immediate. The week buttons and the heading are not dimmed. */
+.week-nav {
+  flex-wrap: wrap;
+}
+
+.week-nav__current {
+  flex-basis: 100%;
+  justify-content: center;
+  margin-inline: auto;
+}
+
+.week-nav__current[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.week-nav__current[aria-disabled="true"]:hover {
+  background: var(--color-background);
+}
+
 .week-content {
   transition: opacity 0.15s ease-in-out;
 }
