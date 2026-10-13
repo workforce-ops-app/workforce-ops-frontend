@@ -271,7 +271,16 @@ describe("Department week", () => {
   });
 
   it("does not even ask for the people without user.view", async () => {
-    page(["title", "week-range", "previous-week", "next-week", "status", "days", "sections"]);
+    page([
+      "title",
+      "week-range",
+      "previous-week",
+      "current-week",
+      "next-week",
+      "status",
+      "days",
+      "sections",
+    ]);
     signedIn("d1", ["schedule.view"]);
     mocked.mockResolvedValue([shiftOn("2026-10-05")]);
 
@@ -293,7 +302,16 @@ describe("Department week", () => {
   ])(
     "leaves out the unscheduled list when the people request answers %i",
     async (status, title) => {
-      page(["title", "week-range", "previous-week", "next-week", "status", "days", "sections"]);
+      page([
+        "title",
+        "week-range",
+        "previous-week",
+        "current-week",
+        "next-week",
+        "status",
+        "days",
+        "sections",
+      ]);
       mocked.mockResolvedValue([shiftOn("2026-10-05")]);
       peopleMock.mockRejectedValue(new ApiError(status, { title }));
 
@@ -307,7 +325,16 @@ describe("Department week", () => {
   );
 
   it("still reports any other failure of the people request", async () => {
-    page(["title", "week-range", "previous-week", "next-week", "status", "days", "sections"]);
+    page([
+      "title",
+      "week-range",
+      "previous-week",
+      "current-week",
+      "next-week",
+      "status",
+      "days",
+      "sections",
+    ]);
     mocked.mockResolvedValue([shiftOn("2026-10-05")]);
     peopleMock.mockRejectedValue(new ApiError(500, { title: "Internal Server Error" }));
 
