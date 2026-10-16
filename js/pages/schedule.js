@@ -68,19 +68,26 @@ function showUnavailable(status, params, monday) {
 let editor = null;
 
 /**
- * The week's numbers for the tiles: shifts, open shifts, hours worked, and people working.
+ * The week's numbers for the tiles: shifts, open shifts, open hours, and people working.
+ *
+ * Open hours are the hours nobody is assigned to yet: what a manager still has to cover
+ * (#51). A total of all scheduled hours was shown here before, but without a labor budget
+ * to compare it with it did not help decide anything, and it left the open shifts out.
+ * Each person's own hours stay at the end of their row in the grid.
  * @param {import("../api/shifts.js").Shift[]} shifts the week's shifts (no cancelled ones)
  * @returns {HTMLElement[]}
  */
 export function weekStats(shifts) {
-  const open = shifts.filter((s) => !s.employee).length;
+  const open = shifts.filter((s) => !s.employee);
   const assigned = shifts.filter((s) => s.employee);
-  const hours = assigned.reduce((sum, s) => sum + hoursBetween(s.starts_at, s.ends_at), 0);
+  // hoursBetween measures the real time between the UTC moments, so an overnight shift
+  // counts its full length, and so does a night when the clocks change.
+  const openHours = open.reduce((sum, s) => sum + hoursBetween(s.starts_at, s.ends_at), 0);
   const people = new Set(assigned.map((s) => s.employee?.id)).size;
   return [
     statTile("Shifts", shifts.length),
-    statTile("Open shifts", open, { attention: open > 0 }),
-    statTile("Hours scheduled", roundHours(hours)),
+    statTile("Open shifts", open.length, { attention: open.length > 0 }),
+    statTile("Open hours", roundHours(openHours), { attention: openHours > 0 }),
     statTile("People working", people),
   ];
 }
