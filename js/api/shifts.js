@@ -73,6 +73,85 @@ export async function listDepartmentPeople(departmentId) {
   return fetchAll(new URLSearchParams({ department_id: departmentId }), "/api/users");
 }
 
+// --- Changing shifts (edit mode, workforce-ops-app/workforce-ops-frontend#16) -----------
+//
+// Course topics: REST and CSRF. Each change is a POST or PATCH to the shift it is about,
+// and api.post/api.patch add the X-CSRF-Token header (js/api/client.js), so another site
+// cannot make a signed-in manager's browser send one of these. The server checks
+// schedule.edit and its scope on every request; the page only hides the buttons.
+//
+// Times are sent as UTC moments. The page turns the workplace's wall-clock times into
+// moments first (zonedTimeToUtc in js/core/time.js), as the backend expects.
+
+/**
+ * @typedef {{
+ *   starts_at?: string, ends_at?: string, details?: string | null, notes?: string | null,
+ *   event_name?: string | null, event_description?: string | null
+ * }} ShiftChanges the fields of a shift that PATCH may change; only the ones sent change
+ * @typedef {ShiftChanges & { department_id: string, employee_id: string | null,
+ *   starts_at: string, ends_at: string }} NewShift
+ * @typedef {{ starts_at: string, ends_at: string }} ShiftTimes
+ * @typedef {(
+ *   | { action: "create", department_id: string, employee_id: string | null,
+ *       times: ShiftTimes[], details?: string | null, notes?: string | null,
+ *       event_name?: string | null, event_description?: string | null,
+ *       confirm_count?: number }
+ *   | { action: "cancel", shift_ids: string[], confirm_count?: number }
+ *   | { action: "assign", shift_ids: string[], employee_id: string | null,
+ *       confirm_count?: number }
+ * )} ShiftBatch one body per action, as the backend's POST /api/shifts/batch accepts
+ */
+
+/**
+ * Add one shift (POST /api/shifts). employee_id null makes it an open shift.
+ * @param {NewShift} shift
+ * @returns {Promise<Shift>} the shift as saved
+ */
+export function createShift(shift) {
+  return api.post("/api/shifts", shift);
+}
+
+/**
+ * Change a shift's times or text (PATCH /api/shifts/{id}); fields left out stay as they are.
+ * @param {string} id
+ * @param {ShiftChanges} changes
+ * @returns {Promise<Shift>}
+ */
+export function updateShift(id, changes) {
+  return api.patch(`/api/shifts/${encodeURIComponent(id)}`, changes);
+}
+
+/**
+ * Give a shift to a person, or make it open again with null (POST /api/shifts/{id}/assign).
+ * @param {string} id
+ * @param {string | null} employeeId
+ * @returns {Promise<Shift>}
+ */
+export function assignShift(id, employeeId) {
+  return api.post(`/api/shifts/${encodeURIComponent(id)}/assign`, { employee_id: employeeId });
+}
+
+/**
+ * Cancel a shift (POST /api/shifts/{id}/cancel). It stays in the audit log, but leaves the
+ * week and can no longer be changed.
+ * @param {string} id
+ * @returns {Promise<Shift>}
+ */
+export function cancelShift(id) {
+  return api.post(`/api/shifts/${encodeURIComponent(id)}/cancel`);
+}
+
+/**
+ * Change several shifts at once, all or nothing (POST /api/shifts/batch). From 10 shifts
+ * on, the body must repeat the count in confirm_count (decision 0025, threat D3), or the
+ * server saves nothing and answers 409.
+ * @param {ShiftBatch} batch
+ * @returns {Promise<{ action: string, count: number, items: Shift[] }>}
+ */
+export function batchShifts(batch) {
+  return api.post("/api/shifts/batch", batch);
+}
+
 /**
  * Every item of a paged list (decision 0026). The API sends long lists a page at a time;
  * each page names the cursor of the next one, until next_cursor is null.
