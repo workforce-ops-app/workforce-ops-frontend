@@ -18,7 +18,7 @@ const { listShifts, listDepartments, listDepartmentPeople } =
   await import("../../js/api/shifts.js");
 const { currentSession, can } = await import("../../js/core/session.js");
 const { showMyWeek } = await import("../../js/pages/my-shifts.js");
-const { showWeek, weekStats } = await import("../../js/pages/schedule.js");
+const { showWeek, weekStats, UNAVAILABLE } = await import("../../js/pages/schedule.js");
 const { mondayOf } = await import("../../js/core/time.js");
 const { today } = await import("../../js/core/week.js");
 /** @param {unknown} fn */
@@ -424,12 +424,68 @@ describe("Department week", () => {
     expect(text("title")).toBe("Front of House");
   });
 
-  it("keeps the plain heading for a department it does not know", async () => {
+  it("says a department it does not know is unavailable, without asking for its shifts", async () => {
     mocked.mockResolvedValue([]);
+
+    // Another company's department, a deleted one, or a typo: not in this company's list.
+    await showWeek("?week=2026-10-05&department=other-company-dept");
+
+    expect(text("title")).toBe("Department week");
+    expect(text("status")).toContain(UNAVAILABLE);
+    // Not mistaken for a real department with nobody scheduled (#47).
+    expect(text("days")).toBe("");
+    expect(text("status")).not.toContain("Nobody is scheduled");
+    // No shifts request at all: there is nothing the person could see.
+    expect(mocked).not.toHaveBeenCalled();
+  });
+
+  it("offers the way back to the person's own department, keeping the week", async () => {
+    await showWeek("?week=2026-10-05&department=unknown");
+
+    const link = document.querySelector("#status a");
+    expect(link?.textContent).toBe("Show my department");
+    expect(link?.getAttribute("href")).toBe("?week=2026-10-05");
+  });
+
+  it("gives the same answer for every unknown ID, so none is confirmed to exist", async () => {
+    await showWeek("?week=2026-10-05&department=00000000-0000-0000-0000-000000000000");
+    const first = text("status");
+    await showWeek("?week=2026-10-05&department=not-an-id");
+
+    expect(text("status")).toBe(first);
+  });
+
+  it("removes the week before when moving to an unavailable department", async () => {
+    page([
+      "title",
+      "week-range",
+      "previous-week",
+      "current-week",
+      "next-week",
+      "status",
+      "days",
+      "stats",
+      "grid",
+      "sections",
+    ]);
+    mocked.mockResolvedValue([shiftOn("2026-10-05")]);
+    await showWeek("?week=2026-10-05&department=d1");
 
     await showWeek("?week=2026-10-05&department=unknown");
 
-    expect(text("title")).toBe("Department week");
+    expect(document.getElementById("stats")?.hidden).toBe(true);
+    expect(text("grid")).toBe("");
+    expect(text("sections")).toBe("");
+    expect(text("days")).toBe("");
+  });
+
+  it("offers no link back when the person's own department is the missing one", async () => {
+    signedIn("gone", ["schedule.view"]);
+
+    await showWeek("?week=2026-10-05");
+
+    expect(text("status")).toBe(UNAVAILABLE);
+    expect(document.querySelector("#status a")).toBeNull();
   });
 
   it("uses the first department when the session names none", async () => {

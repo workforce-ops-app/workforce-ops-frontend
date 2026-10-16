@@ -29,6 +29,36 @@ import { requestedMonday, today, weekLink } from "../core/week.js";
 /** The heading when the department's name is not known (e.g. an ID from an old link). */
 const DEFAULT_TITLE = "Department week";
 
+/** What the page says about a department it cannot show (#47). The same words for every
+ * reason, so they never reveal whether the department exists in another company. */
+export const UNAVAILABLE =
+  "This department is unavailable. It may not exist, or you may not have access to it.";
+
+/**
+ * Say that the department cannot be shown and, when the address chose it, offer a way
+ * back to the person's own department (the same week, without the department).
+ * @param {HTMLElement} status
+ * @param {URLSearchParams} params the address's parameters
+ * @param {string} monday the week shown, "YYYY-MM-DD"
+ */
+function showUnavailable(status, params, monday) {
+  const message = el("span", { className: "error", text: UNAVAILABLE });
+  if (!params.has("department")) {
+    // The person's own department is the missing one: there is nowhere better to send them.
+    status.replaceChildren(message);
+    return;
+  }
+  // weekLink builds the address with URLSearchParams, so the link can only ever carry a
+  // week and the remaining settings, never a script or another site.
+  const others = new URLSearchParams(params);
+  others.delete("department");
+  status.replaceChildren(
+    message,
+    " ",
+    el("a", { text: "Show my department", attrs: { href: weekLink(monday, 0, others) } }),
+  );
+}
+
 /**
  * The week's numbers for the tiles: shifts, open shifts, hours worked, and people working.
  * @param {import("../api/shifts.js").Shift[]} shifts the week's shifts (no cancelled ones)
@@ -110,8 +140,8 @@ export async function showWeek(search) {
 
     // Which department: the one in the address, else the person's own (from the session
     // the page already loaded, so no second "who am I?" request), else the first one.
-    // The address is only a choice of what to look at: the API still checks that the
-    // person may see that department (an ID from another company answers 404).
+    // The address is only a choice of what to look at: the API still filters every shift
+    // to what the person may see (another company's department simply has none).
     const departments = await listDepartments();
     const departmentId =
       params.get("department") ??
@@ -127,6 +157,26 @@ export async function showWeek(search) {
     // No department at all (a company without departments yet): nothing to show.
     if (!departmentId) {
       setText(status, "No departments yet.");
+      week.replaceChildren();
+      grid?.replaceChildren();
+      sections?.replaceChildren();
+      if (stats) stats.hidden = true;
+      return;
+    }
+
+    // A department that is not in the company's list (#47): an ID of another company, a
+    // department that no longer exists, or a mistyped address. Without this check the page
+    // would ask for its shifts, get an empty list (the server filters out everything the
+    // person may not see), and say "Nobody is scheduled this week", which looks like a
+    // real, empty department. Instead the page says it cannot show it.
+    //
+    // All three cases get the same words on purpose. Saying "this belongs to another
+    // company" would confirm that the ID exists somewhere, which is exactly what company
+    // isolation must not reveal (threat model: cross-company access). The departments
+    // list only ever holds the person's own company, so nothing here can leak another
+    // company's names either.
+    if (!department) {
+      showUnavailable(status, params, monday);
       week.replaceChildren();
       grid?.replaceChildren();
       sections?.replaceChildren();
