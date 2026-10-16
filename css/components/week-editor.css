@@ -234,3 +234,26 @@ textarea.field__input {
   min-height: 4.5rem;
   resize: vertical;
 }
+
+/* Under the start and end: when the shift ends, worked out as it will be saved ("Ends
+   the next day, Tuesday, October 6 at 6:00 AM. 8 hours."). */
+.shift-form__summary {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius);
+  background: var(--color-accent-soft);
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.shift-form__summary:empty {
+  display: none;
+}
+
+/* Too long, or no time between start and end: amber, with the reason in words. */
+.shift-form__summary--warning {
+  border-left-color: var(--color-warning-border);
+  background: var(--color-warning-background);
+  color: var(--color-warning);
+}

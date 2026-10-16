@@ -17,7 +17,14 @@
 //   everything for real.
 
 import { el } from "../core/dom.js";
-import { formatDayHeading } from "../core/time.js";
+import {
+  addDays,
+  formatDayHeading,
+  formatHours,
+  formatTime,
+  hoursBetween,
+  shiftMoments,
+} from "../core/time.js";
 import { createModal, explainFailure } from "./modal.js";
 
 /** @typedef {import("../api/shifts.js").EmployeeRef} EmployeeRef */
@@ -30,6 +37,42 @@ import { createModal, explainFailure } from "./modal.js";
  *   details: string, notes: string, eventName: string, eventDescription: string
  * }} ShiftFormValues
  */
+
+/** The longest shift the server accepts, in hours (the backend's MAX_LENGTH). Only used to
+ * warn early; the server refuses longer shifts itself. */
+const MAX_HOURS = 12;
+
+/**
+ * The line under the times that says when the shift ends, worked out the same way as
+ * when it is saved: "Ends the next day, Tuesday, October 6 at 6:00 AM. 8 hours." It makes
+ * the overnight rule visible instead of something to remember.
+ * @param {string[]} days the chosen days (the first one is described)
+ * @param {string} start "HH:MM", or "" when not filled in yet
+ * @param {string} end "HH:MM", or ""
+ * @param {string} timeZone
+ * @returns {{ text: string, warning: boolean }}
+ */
+export function endSummary(days, start, end, timeZone) {
+  if (!start || !end || days.length === 0) return { text: "", warning: false };
+  if (start === end) return { text: "A shift must end after it starts.", warning: true };
+
+  const moments = shiftMoments(days[0], start, end, timeZone);
+  const hours = hoursBetween(moments.starts_at, moments.ends_at);
+  const at = formatTime(moments.ends_at, timeZone);
+  const overnight = end <= start;
+  const several = days.length > 1;
+
+  let text;
+  if (overnight && several) text = `Each shift ends the next day at ${at}.`;
+  else if (overnight)
+    text = `Ends the next day, ${formatDayHeading(addDays(days[0], 1))} at ${at}.`;
+  else text = several ? `Each shift ends the same day at ${at}.` : `Ends the same day at ${at}.`;
+  text += ` ${formatHours(hours)}${several ? " each" : ""}.`;
+
+  const tooLong = hours > MAX_HOURS;
+  if (tooLong) text += ` That is longer than the ${MAX_HOURS}-hour limit, so it cannot be saved.`;
+  return { text, warning: tooLong };
+}
 
 /** The value of the "Open shift" choice in the person list. Not a possible user ID. */
 const OPEN = "";
@@ -163,6 +206,30 @@ export function openShiftForm(options) {
     const startInput = timeInput("shift-form-start", start.start);
     const endInput = timeInput("shift-form-end", start.end);
 
+    // When the shift ends, updated while the day and times change. aria-live="polite":
+    // screen readers read the new line once the person stops typing.
+    const summary = el("p", {
+      className: "shift-form__summary",
+      attrs: { id: "shift-form-summary", "aria-live": "polite" },
+    });
+    const chosenDays = () =>
+      daySelect ? [daySelect.value] : dayBoxes.filter((b) => b.checked).map((b) => b.value);
+    const showSummary = () => {
+      const { text, warning } = endSummary(
+        chosenDays(),
+        startInput.value,
+        endInput.value,
+        options.timezone,
+      );
+      summary.textContent = text;
+      summary.classList.toggle("shift-form__summary--warning", warning);
+    };
+    for (const input of [startInput, endInput, daySelect, ...dayBoxes]) {
+      input?.addEventListener("input", showSummary);
+      input?.addEventListener("change", showSummary);
+    }
+    showSummary();
+
     // Who works it: "Open shift" first, then the people by name.
     const person = /** @type {HTMLSelectElement} */ (
       el(
@@ -219,6 +286,7 @@ export function openShiftForm(options) {
           field("Starts", startInput, `Workplace time (${options.timezone})`),
           field("Ends", endInput, "Earlier than the start: ends the next day"),
         ]),
+        summary,
         field("Who works it", person),
         field("Role", details, "Optional, e.g. Prep line"),
         field("Event", eventName, "Optional, e.g. Inventory night"),
@@ -234,7 +302,7 @@ export function openShiftForm(options) {
       if (submit.hasAttribute("disabled")) return;
 
       const values = {
-        days: daySelect ? [daySelect.value] : dayBoxes.filter((b) => b.checked).map((b) => b.value),
+        days: chosenDays(),
         start: startInput.value,
         end: endInput.value,
         employeeId: person.value === OPEN ? null : person.value,

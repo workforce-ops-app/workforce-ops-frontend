@@ -617,3 +617,62 @@ describe("explainFailure", () => {
     expect(explainFailure(new TypeError("a bug"))).toBeNull();
   });
 });
+
+describe("the end-time line in the form", () => {
+  it("says an overnight shift ends the next day, and how long it is", async () => {
+    const { endSummary } = await import("../../js/components/shift-form.js");
+
+    expect(endSummary(["2099-10-05"], "22:00", "06:00", CHICAGO)).toEqual({
+      text: "Ends the next day, Tuesday, October 6 at 6:00 AM. 8 hours.",
+      warning: false,
+    });
+    expect(endSummary(["2099-10-05"], "09:00", "17:00", CHICAGO).text).toBe(
+      "Ends the same day at 5:00 PM. 8 hours.",
+    );
+    expect(endSummary(["2099-10-05", "2099-10-06"], "22:00", "06:00", CHICAGO).text).toBe(
+      "Each shift ends the next day at 6:00 AM. 8 hours each.",
+    );
+  });
+
+  it("warns early about a shift over 12 hours, or with no length", async () => {
+    const { endSummary } = await import("../../js/components/shift-form.js");
+
+    const tooLong = endSummary(["2099-10-05"], "09:00", "08:00", CHICAGO);
+    expect(tooLong.warning).toBe(true);
+    expect(tooLong.text).toBe(
+      "Ends the next day, Tuesday, October 6 at 8:00 AM. 23 hours. That is longer than the 12-hour limit, so it cannot be saved.",
+    );
+    expect(endSummary(["2099-10-05"], "09:00", "09:00", CHICAGO)).toEqual({
+      text: "A shift must end after it starts.",
+      warning: true,
+    });
+    expect(endSummary(["2099-10-05"], "", "06:00", CHICAGO).text).toBe("");
+  });
+
+  it("updates while the times change", async () => {
+    setUp([]);
+    toggle().click();
+    button("Add shift").click();
+    await settle();
+
+    expect(get("#shift-form-summary").textContent).toBe("Ends the same day at 5:00 PM. 8 hours.");
+    const start = /** @type {HTMLInputElement} */ (get("#shift-form-start"));
+    const end = /** @type {HTMLInputElement} */ (get("#shift-form-end"));
+    start.value = "22:00";
+    start.dispatchEvent(new Event("input"));
+    end.value = "06:00";
+    end.dispatchEvent(new Event("input"));
+
+    expect(get("#shift-form-summary").textContent).toBe(
+      "Ends the next day, Thursday, October 8 at 6:00 AM. 8 hours.",
+    );
+  });
+
+  it("names the next day in a select box's label for an overnight shift", () => {
+    expect(
+      describeShift(
+        shift("n", MONDAY, { starts_at: "2099-10-06T03:00:00Z", ends_at: "2099-10-06T11:00:00Z" }),
+      ),
+    ).toBe("Monday, October 5, 10:00 PM - 6:00 AM (ends the next day), Ana Diaz");
+  });
+});

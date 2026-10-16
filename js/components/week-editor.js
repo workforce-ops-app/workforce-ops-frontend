@@ -41,10 +41,11 @@ import { can, currentSession } from "../core/session.js";
 import {
   addDays,
   dayKey,
+  daysLater,
   formatDayHeading,
   formatTimeRange,
+  shiftMoments,
   wallTime,
-  zonedTimeToUtc,
 } from "../core/time.js";
 import { confirmChange } from "./confirm-dialog.js";
 import { explainFailure } from "./modal.js";
@@ -83,32 +84,21 @@ export function isChangeable(shift, now = new Date()) {
 
 /**
  * A shift in words, for select boxes and questions: "Monday, October 5, 9:00 AM - 5:00
- * PM, Ana Diaz" (or "open shift").
+ * PM, Ana Diaz" (or "open shift"); an overnight shift adds "(ends the next day)".
  * @param {Shift} shift
  */
 export function describeShift(shift) {
   const day = formatDayHeading(dayKey(shift.starts_at, shift.timezone));
   const time = formatTimeRange(shift.starts_at, shift.ends_at, shift.timezone);
-  return `${day}, ${time}, ${shift.employee ? shift.employee.display_name : "open shift"}`;
+  // Said in words for an overnight shift, as the "+1 day" marker shows it on screen.
+  const overnight = daysLater(shift.starts_at, shift.ends_at, shift.timezone) > 0;
+  const who = shift.employee ? shift.employee.display_name : "open shift";
+  return `${day}, ${time}${overnight ? " (ends the next day)" : ""}, ${who}`;
 }
 
-/**
- * The start and end of a shift as UTC moments, from the form's day and wall-clock times in
- * the workplace's zone. An end at or before the start is on the next day (overnight).
- * @param {string} day "YYYY-MM-DD"
- * @param {string} start "HH:MM"
- * @param {string} end "HH:MM"
- * @param {string} timeZone
- * @returns {{ starts_at: string, ends_at: string }}
- */
-export function shiftMoments(day, start, end, timeZone) {
-  // "HH:MM" strings compare correctly as text: "08:00" < "17:30".
-  const endDay = end <= start ? addDays(day, 1) : day;
-  return {
-    starts_at: zonedTimeToUtc(day, start, timeZone),
-    ends_at: zonedTimeToUtc(endDay, end, timeZone),
-  };
-}
+// Also exported from here for the tests; it lives in js/core/time.js so the shift form
+// can show the end it works out.
+export { shiftMoments };
 
 /**
  * Everyone who appears in the lists, once each: the department's people when the server

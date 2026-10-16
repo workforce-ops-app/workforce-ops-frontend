@@ -15,7 +15,8 @@
 // characters and never runs (stored cross-site scripting, threat T5).
 
 import { el } from "../core/dom.js";
-import { dayKey, formatDayHeading, formatTimeRange } from "../core/time.js";
+import { dayKey, daysLater, formatDayHeading, formatTime } from "../core/time.js";
+import { shiftTime } from "./shift-time.js";
 
 /** @typedef {import("../api/shifts.js").Shift} Shift */
 
@@ -100,15 +101,20 @@ export function openShiftDialog(shift, trigger) {
       text: formatDayHeading(dayKey(shift.starts_at, shift.timezone)),
       attrs: { id: "shift-dialog-title" },
     }),
-    el("p", {
-      className: "shift-dialog__time",
-      text: formatTimeRange(shift.starts_at, shift.ends_at, shift.timezone),
-    }),
+    // The time, with "+1 day" for an overnight shift.
+    el("p", { className: "shift-dialog__time" }, [shiftTime(shift, "shift-dialog__range")]),
     // An open shift says so in words, not only in colour.
     ...(isOpen
       ? [el("p", { className: "shift-dialog__open", text: "Open shift: nobody assigned yet" })]
       : []),
     el("dl", { className: "shift-dialog__facts" }, [
+      // An overnight shift says in full when it ends, e.g. "Tuesday, October 6, 6:00 AM".
+      ...fact(
+        "Ends",
+        daysLater(shift.starts_at, shift.ends_at, shift.timezone) > 0
+          ? `${formatDayHeading(dayKey(shift.ends_at, shift.timezone))}, ${formatTime(shift.ends_at, shift.timezone)}`
+          : null,
+      ),
       ...fact("Who", shift.employee?.display_name ?? null),
       ...fact("Role", shift.details),
       ...fact("Department", shift.department.name),
