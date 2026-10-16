@@ -7,6 +7,7 @@ import {
   formatHours,
   formatTimeRange,
   mondayOf,
+  wallTime,
   zonedTimeToUtc,
 } from "../../js/core/time.js";
 
@@ -95,5 +96,15 @@ describe("formatHours", () => {
     expect(formatHours(7.5)).toBe("7.5 hours");
     expect(formatHours(24)).toBe("24 hours");
     expect(formatHours(0)).toBe("0 hours");
+  });
+});
+
+describe("wallTime", () => {
+  it("gives a moment's wall-clock time in the zone, as a time input expects", () => {
+    expect(wallTime("2026-10-05T14:00:00Z", "America/Chicago")).toBe("09:00");
+    expect(wallTime("2026-10-06T05:00:00Z", "America/Chicago")).toBe("00:00");
+    expect(
+      wallTime(zonedTimeToUtc("2026-12-07", "17:30", "America/Chicago"), "America/Chicago"),
+    ).toBe("17:30");
   });
 });

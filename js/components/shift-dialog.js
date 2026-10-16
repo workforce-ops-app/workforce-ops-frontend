@@ -28,6 +28,23 @@ let dialog = null;
 let opener = null;
 
 /**
+ * Extra buttons for the popup, from edit mode (js/components/week-editor.js): given the
+ * shift, the elements to show above Close (e.g. "Change shift"), or none. Null when the
+ * page has no edit mode, so the popup stays read-only.
+ * @type {((shift: Shift) => HTMLElement[]) | null}
+ */
+let actions = null;
+
+/**
+ * Let edit mode add its buttons to the popup (or remove them again with null). The popup
+ * itself does not know about editing; it only shows what it is given.
+ * @param {((shift: Shift) => HTMLElement[]) | null} provider
+ */
+export function setShiftActions(provider) {
+  actions = provider;
+}
+
+/**
  * The popup element, created once and reused for every shift.
  * @returns {HTMLDialogElement}
  */
@@ -103,6 +120,8 @@ export function openShiftDialog(shift, trigger) {
       ),
       ...fact("Notes", shift.notes),
     ]),
+    // Edit mode's buttons, when it is on (nothing otherwise).
+    ...(actions ? actions(shift) : []),
     close,
   );
 
@@ -138,6 +157,9 @@ export function closeShiftDialog() {
 export function opensShift(button, shift) {
   // Tells screen readers that this button opens a popup.
   button.setAttribute("aria-haspopup", "dialog");
+  // Which shift this is, so edit mode can put a select box next to it. Only the ID, which
+  // the server made; never any text a user wrote.
+  button.dataset.shiftId = shift.id;
   button.addEventListener("click", () => openShiftDialog(shift, button));
   return button;
 }

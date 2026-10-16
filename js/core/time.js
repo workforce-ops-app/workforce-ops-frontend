@@ -37,6 +37,24 @@ export function formatTime(moment, timeZone) {
 }
 
 /**
+ * The wall-clock time of a moment in a time zone as "HH:MM" on a 24-hour clock, e.g.
+ * "14:00": the format of a time input, so a shift's times can fill the edit form. The
+ * opposite of zonedTimeToUtc below.
+ * @param {string} moment an ISO 8601 moment
+ * @param {string} timeZone
+ * @returns {string}
+ */
+export function wallTime(moment, timeZone) {
+  // hourCycle h23 counts 0 to 23, so midnight is "00:00", never "24:00".
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hourCycle: "h23",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(moment));
+}
+
+/**
  * A shift's start and end, e.g. "9:00 AM - 5:00 PM", in its workplace zone.
  * @param {string} startsAt
  * @param {string} endsAt
