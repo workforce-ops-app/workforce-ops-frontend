@@ -125,3 +125,38 @@ describe("groupByDay and dayCard", () => {
     expect(card.getAttribute("aria-label")).toBe("Monday, October 5 (today)");
   });
 });
+
+describe("overnight shifts", () => {
+  // 10:00 PM Monday to 6:00 AM Tuesday in Chicago (03:00 to 11:00 UTC on Tuesday).
+  const overnight = () =>
+    makeShift({ starts_at: "2026-10-06T03:00:00Z", ends_at: "2026-10-06T11:00:00Z" });
+
+  it("marks a shift that ends the next day, in words for screen readers", () => {
+    const row = shiftRow(overnight());
+
+    const marker = row.querySelector(".next-day");
+    expect(marker?.querySelector("[aria-hidden=true]")?.textContent).toBe("+1 day");
+    expect(marker?.querySelector(".visually-hidden")?.textContent).toBe(" (ends the next day)");
+    expect(row.querySelector(".shift__time")?.textContent).toContain("10:00 PM - 6:00 AM");
+  });
+
+  it("stays on the day it starts", () => {
+    expect([...groupByDay([overnight()]).keys()]).toEqual(["2026-10-05"]);
+  });
+
+  it("leaves a same-day shift unmarked", () => {
+    expect(shiftRow(makeShift()).querySelector(".next-day")).toBeNull();
+  });
+
+  it("says in the details popup when it ends", async () => {
+    const { closeShiftDialog } = await import("../../js/components/shift-dialog.js");
+    shiftRow(overnight()).click();
+
+    const popup = document.querySelector("dialog.shift-dialog");
+    const labels = [...(popup?.querySelectorAll("dt") ?? [])];
+    const ends = labels.find((dt) => dt.textContent === "Ends");
+    expect(ends?.nextElementSibling?.textContent).toBe("Tuesday, October 6, 6:00 AM");
+    expect(popup?.querySelector(".next-day")).not.toBeNull();
+    closeShiftDialog();
+  });
+});

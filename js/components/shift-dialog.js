@@ -15,7 +15,8 @@
 // characters and never runs (stored cross-site scripting, threat T5).
 
 import { el } from "../core/dom.js";
-import { dayKey, formatDayHeading, formatTimeRange } from "../core/time.js";
+import { dayKey, daysLater, formatDayHeading, formatTime } from "../core/time.js";
+import { shiftTime } from "./shift-time.js";
 
 /** @typedef {import("../api/shifts.js").Shift} Shift */
 
@@ -26,6 +27,23 @@ let dialog = null;
 /** The shift button that opened the popup, to give focus back to on close. */
 /** @type {HTMLElement | null} */
 let opener = null;
+
+/**
+ * Extra buttons for the popup, from edit mode (js/components/week-editor.js): given the
+ * shift, the elements to show above Close (e.g. "Change shift"), or none. Null when the
+ * page has no edit mode, so the popup stays read-only.
+ * @type {((shift: Shift) => HTMLElement[]) | null}
+ */
+let actions = null;
+
+/**
+ * Let edit mode add its buttons to the popup (or remove them again with null). The popup
+ * itself does not know about editing; it only shows what it is given.
+ * @param {((shift: Shift) => HTMLElement[]) | null} provider
+ */
+export function setShiftActions(provider) {
+  actions = provider;
+}
 
 /**
  * The popup element, created once and reused for every shift.
@@ -83,15 +101,20 @@ export function openShiftDialog(shift, trigger) {
       text: formatDayHeading(dayKey(shift.starts_at, shift.timezone)),
       attrs: { id: "shift-dialog-title" },
     }),
-    el("p", {
-      className: "shift-dialog__time",
-      text: formatTimeRange(shift.starts_at, shift.ends_at, shift.timezone),
-    }),
+    // The time, with "+1 day" for an overnight shift.
+    el("p", { className: "shift-dialog__time" }, [shiftTime(shift, "shift-dialog__range")]),
     // An open shift says so in words, not only in colour.
     ...(isOpen
       ? [el("p", { className: "shift-dialog__open", text: "Open shift: nobody assigned yet" })]
       : []),
     el("dl", { className: "shift-dialog__facts" }, [
+      // An overnight shift says in full when it ends, e.g. "Tuesday, October 6, 6:00 AM".
+      ...fact(
+        "Ends",
+        daysLater(shift.starts_at, shift.ends_at, shift.timezone) > 0
+          ? `${formatDayHeading(dayKey(shift.ends_at, shift.timezone))}, ${formatTime(shift.ends_at, shift.timezone)}`
+          : null,
+      ),
       ...fact("Who", shift.employee?.display_name ?? null),
       ...fact("Role", shift.details),
       ...fact("Department", shift.department.name),
@@ -103,6 +126,8 @@ export function openShiftDialog(shift, trigger) {
       ),
       ...fact("Notes", shift.notes),
     ]),
+    // Edit mode's buttons, when it is on (nothing otherwise).
+    ...(actions ? actions(shift) : []),
     close,
   );
 
@@ -138,6 +163,9 @@ export function closeShiftDialog() {
 export function opensShift(button, shift) {
   // Tells screen readers that this button opens a popup.
   button.setAttribute("aria-haspopup", "dialog");
+  // Which shift this is, so edit mode can put a select box next to it. Only the ID, which
+  // the server made; never any text a user wrote.
+  button.dataset.shiftId = shift.id;
   button.addEventListener("click", () => openShiftDialog(shift, button));
   return button;
 }
