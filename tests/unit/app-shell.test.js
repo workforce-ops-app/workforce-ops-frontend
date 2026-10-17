@@ -137,6 +137,15 @@ describe("startSignedInPage", () => {
     expect(byId("brand").textContent).toBe("Northwind");
   });
 
+  it("shows the company's name in the browser tab's title", async () => {
+    document.title = "My week · Workforce Operations";
+    fetchSession.mockResolvedValue(sessionWith(["schedule.view_self"]));
+
+    await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+
+    expect(document.title).toBe("My week · Northwind");
+  });
+
   it("shows a company name as text, never as HTML", async () => {
     const company = '<img src=x onerror="alert(1)">';
     fetchSession.mockResolvedValue(sessionWith([], "Ana Diaz", company));
@@ -162,6 +171,7 @@ describe("startSignedInPage", () => {
   });
 
   it("still loads the page when the server is unreachable, so it can say so", async () => {
+    document.title = "My week · Workforce Operations";
     fetchSession.mockRejectedValue(new NetworkError(new TypeError("offline")));
     const showPage = vi.fn().mockResolvedValue(undefined);
 
@@ -175,6 +185,7 @@ describe("startSignedInPage", () => {
     expect(byId("account").hidden).toBe(true);
     // The brand keeps the application's name, so the home link still has one.
     expect(byId("brand").textContent).toBe("Workforce Operations");
+    expect(document.title).toBe("My week · Workforce Operations");
   });
 
   it("throws a bug in our own code on", async () => {
