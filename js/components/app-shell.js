@@ -1,5 +1,6 @@
-// The frame of every signed-in page: who is signed in, the sign-out button, and the main
-// menu with only the entries the person may use (docs/architecture/components.md).
+// The frame of every signed-in page: the company's name, who is signed in, the sign-out
+// button, and the main menu with only the entries the person may use
+// (docs/architecture/components.md).
 //
 // Each page script starts with startSignedInPage(showPage): it loads the session first, so
 // a signed-out visitor goes straight to the sign-in page, then fills in the frame, then
@@ -66,6 +67,21 @@ export function accountItems(session, navigate) {
 }
 
 /**
+ * Put the company's name in the brand, in place of the application's name. The HTML keeps
+ * "Workforce Operations" as the brand's text, so the home link always has a name: before
+ * the session loads, and when it cannot be loaded at all.
+ * @param {import("../core/session.js").SessionInfo} session
+ * @param {ParentNode} [root]
+ */
+export function showCompanyName(session, root = document) {
+  // The name comes from the server and is shown as text, never parsed as HTML (an
+  // administrator chooses it, so it could contain markup).
+  for (const name of root.querySelectorAll(".brand__name")) {
+    setText(name, session.company.name);
+  }
+}
+
+/**
  * What to do when the browser shows this page again from its back/forward cache: the
  * page comes back exactly as it was, schedule included, without running any script. After
  * signing out on a shared computer, Back would show the last person's schedule. Reloading
@@ -110,6 +126,7 @@ export async function startSignedInPage(showPage, navigate) {
       account.replaceChildren(...accountItems(session, navigate));
       account.hidden = false;
     }
+    showCompanyName(session);
     applyPermissions();
   }
 
