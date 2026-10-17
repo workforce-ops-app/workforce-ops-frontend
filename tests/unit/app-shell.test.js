@@ -212,3 +212,58 @@ describe("the sign-out button", () => {
     expect(byId("account").textContent).toContain("sign-out failed");
   });
 });
+
+describe("the company's logo", () => {
+  /** Add the logo spot as the pages have it: the application's logo inside. */
+  function logoSpot() {
+    const spot = document.createElement("span");
+    spot.id = "logo";
+    spot.className = "brand__logo";
+    const img = document.createElement("img");
+    img.src = "/images/logos/app-square.png";
+    img.alt = "";
+    spot.append(img);
+    document.body.append(spot);
+  }
+
+  /**
+   * Ana's session at a company with the given name.
+   * @param {string} name
+   */
+  function sessionAt(name) {
+    const session = sessionWith(["schedule.view_self"]);
+    return { ...session, company: { ...session.company, name } };
+  }
+
+  const logo = () => /** @type {HTMLImageElement} */ (byId("logo").querySelector("img"));
+
+  it("replaces the application's logo with the company's", async () => {
+    logoSpot();
+    fetchSession.mockResolvedValue(sessionAt("Summit Outfitters"));
+
+    await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+
+    expect(logo().getAttribute("src")).toBe("/images/logos/summit-outfitters.png");
+    // The company's name next to it already says what the image shows.
+    expect(logo().alt).toBe("");
+    expect(byId("logo").querySelectorAll("img")).toHaveLength(1);
+  });
+
+  it("keeps the application's logo for a company without one", async () => {
+    logoSpot();
+    fetchSession.mockResolvedValue(sessionAt("Northwind"));
+
+    await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+
+    expect(logo().getAttribute("src")).toBe("/images/logos/app-square.png");
+  });
+
+  it("keeps the application's logo when the session cannot be loaded", async () => {
+    logoSpot();
+    fetchSession.mockRejectedValue(new NetworkError(new TypeError("offline")));
+
+    await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+
+    expect(logo().getAttribute("src")).toBe("/images/logos/app-square.png");
+  });
+});

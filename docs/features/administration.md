@@ -31,4 +31,5 @@ Through `js/api/users.js`, `js/api/org.js`, `js/api/roles.js`, and `js/api/appro
 - **Sensitive actions** (admin-level roles, role permissions, reporting lines, owner changes) open the password re-entry pop-up first ([sign in](sign-in.md)).
 - When giving a role answers **202**, the dialog says "Sent for approval to …" instead of "Done".
 - Buttons are hidden without the permission, and people the user is not above show no action buttons; the API checks everything regardless.
+- **Company logo** (planned, workforce-ops-app/workforce-ops-backend#101): an administrator uploads the logo shown in the header. Until then the demo companies' logos ship with the frontend (#56).
 - The Administration menu entry appears only for people with at least one of `user.manage`, `org.manage`, `role.manage`, `role.assign`, or `reporting_line.manage`.

@@ -54,11 +54,12 @@ Warm off-white pages, white cards with rounded corners and soft shadows, deep gr
 
 - **My week** (employees, phone first): one card per day, the total hours at the bottom.
 - **Department week** (managers, laptop first): the week's numbers as tiles, then a grid with one row per person, the open shifts, and the people without a shift. Phones get the tiles, a card per day, and the people without a shift.
-- **Sign in**: one centered card with only the form; no tabs, since nobody is signed in yet.
+- **Sign in**: the application's logo, large, with its name under it, then one centered card with only the form; no tabs, since nobody is signed in yet.
 
-**The logo spot is empty** until a logo is chosen. It keeps its size, so adding an `<img>` inside `.brand__logo` later moves nothing. The application's name next to it is the link's text, so the link always has a name.
+**The logo spot** (`.brand__logo`, 40 by 40) holds the application's logo (`images/logos/app-square.png`) in the HTML. Once the session has loaded, `showCompanyLogo` in `js/components/app-shell.js` swaps in the company's logo if it has one; the spot keeps its size, so nothing moves. The logo has empty alt text, because the name next to it already says what it shows. The application's name next to it is the link's text, so the link always has a name.
 
 - **Colors, type, spacing, shapes, and shadows are tokens** in `css/base/base.css` (`--color-accent`, `--font-heading`, `--radius-card`, ...). Stylesheets use the tokens, never their own color values, so a change of palette is one edit.
+- **Logos** are PNG files in `images/logos/` (copied into the Docker image like `icons/`): the application's logo, wide for the sign-in page (`app.png`) and square for the logo spot and the browser tab (`app-square.png`), and one square logo per demo company. **Company logos are a temporary demo shortcut** (#56): `js/core/company-logos.js` matches the two demo companies by name. A company cannot upload its own logo yet; the secure upload (workforce-ops-app/workforce-ops-backend#101) will replace the table.
 - **Icons** are small SVG files in `icons/` (the Docker image copies the folder, like `pages/`, `css/`, and `js/`; the container smoke test checks that each folder is served), used as a CSS mask (`.icon .icon--clock`) and painted in the current text color, so an icon turns green with its link. This needs no inline styles or scripts, which the Content Security Policy forbids. Icons are decorative (`aria-hidden`); the text beside them carries the meaning.
 - **Accessibility (WCAG 2.2 AA, decision 0031):** every text and background pair is at least 4.5:1 (checked; the lowest is muted text on the page at 5.4:1); keyboard focus shows a 3px green ring (`:focus-visible`); controls have visible text labels; each day card is labelled with its full date for screen readers; the main navigation comes before the content. New colors must keep the 4.5:1 minimum.
 

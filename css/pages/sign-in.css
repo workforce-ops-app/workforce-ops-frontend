@@ -13,8 +13,21 @@ main.sign-in {
   padding: calc(var(--space) * 2) var(--space);
 }
 
+/* The application's logo, large, with its name centred under it. */
 .sign-in__brand {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 0.5);
+  align-items: center;
   margin: 0;
+  color: var(--color-heading);
+}
+
+/* 10rem wide on every screen; the height follows the image's own shape. */
+.sign-in__logo {
+  display: block;
+  width: 10rem;
+  height: auto;
 }
 
 .sign-in__card {

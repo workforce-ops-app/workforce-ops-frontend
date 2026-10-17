@@ -23,7 +23,7 @@ Every signed-in page loads the session first, shows only the menu entries the pe
 
 | Screen | Page | Who sees it | Phone / desktop |
 |---|---|---|---|
-| **Sign in**: email, password, one error message for every failure | `pages/sign-in.html` | everyone, before signing in | both; phone first |
+| **Sign in**: the application's logo and name, then email, password, one error message for every failure | `pages/sign-in.html` | everyone, before signing in | both; phone first |
 | **Set your password**: from a setup or reset link; shows the password rules (at least 15 characters, passphrases welcome) | `pages/set-password.html` | anyone with a valid link | both; phone first |
 | **Password re-entry pop-up**: shown before a sensitive action, then the action is retried | a component on any page (`js/components/reauth-dialog.js`) | signed-in users doing a sensitive action | both |
 | **My account**: change password, sign out everywhere, ask to change your display name, see pending requests | `pages/account.html` | every signed-in user | both |
