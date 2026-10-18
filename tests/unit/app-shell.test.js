@@ -19,11 +19,12 @@ const deleteSession = asMock(endSession);
  * The answer of GET /api/sessions/current.
  * @param {string[]} permissions
  * @param {string} [name]
+ * @param {string} [companyName]
  */
-function sessionWith(permissions, name = "Ana Diaz") {
+function sessionWith(permissions, name = "Ana Diaz", companyName = "Northwind") {
   return {
     user: { id: "u1", display_name: name, email: "ana@example.com", department_id: "d1" },
-    company: { id: "c1", name: "Northwind", timezone: "America/Chicago" },
+    company: { id: "c1", name: companyName, timezone: "America/Chicago" },
     permissions,
     expires_at: "2026-11-10T12:00:00Z",
     csrf_token: "token-123",
@@ -31,8 +32,8 @@ function sessionWith(permissions, name = "Ana Diaz") {
 }
 
 /**
- * The frame as the pages have it: two tabs, the account spot, and the page, all hidden,
- * and the "Loading..." line shown in the meantime.
+ * The frame as the pages have it: the brand with the application's name, two tabs, the
+ * account spot, and the page, all hidden, and the "Loading..." line shown in the meantime.
  */
 function frame() {
   /**
@@ -54,7 +55,12 @@ function frame() {
   main.hidden = true;
   const loading = document.createElement("p");
   loading.id = "page-loading";
+  const brand = document.createElement("span");
+  brand.id = "brand";
+  brand.className = "brand__name";
+  brand.textContent = "Workforce Operations";
   document.body.replaceChildren(
+    brand,
     tab("my-week", "schedule.view_self"),
     tab("department", "schedule.view"),
     account,
@@ -123,6 +129,33 @@ describe("startSignedInPage", () => {
     expect(byId("account").textContent).toContain(name);
   });
 
+  it("shows the company's name in the brand", async () => {
+    fetchSession.mockResolvedValue(sessionWith(["schedule.view_self"]));
+
+    await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+
+    expect(byId("brand").textContent).toBe("Northwind");
+  });
+
+  it("shows the company's name in the browser tab's title", async () => {
+    document.title = "My week · Workforce Operations";
+    fetchSession.mockResolvedValue(sessionWith(["schedule.view_self"]));
+
+    await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+
+    expect(document.title).toBe("My week · Northwind");
+  });
+
+  it("shows a company name as text, never as HTML", async () => {
+    const company = '<img src=x onerror="alert(1)">';
+    fetchSession.mockResolvedValue(sessionWith([], "Ana Diaz", company));
+
+    await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+
+    expect(byId("brand").querySelector("img")).toBeNull();
+    expect(byId("brand").textContent).toBe(company);
+  });
+
   it("sends a signed-out visitor to sign in and never loads the page", async () => {
     fetchSession.mockRejectedValue(new ApiError(401, { title: "Unauthorized" }));
     const navigate = vi.fn();
@@ -138,6 +171,7 @@ describe("startSignedInPage", () => {
   });
 
   it("still loads the page when the server is unreachable, so it can say so", async () => {
+    document.title = "My week · Workforce Operations";
     fetchSession.mockRejectedValue(new NetworkError(new TypeError("offline")));
     const showPage = vi.fn().mockResolvedValue(undefined);
 
@@ -149,6 +183,9 @@ describe("startSignedInPage", () => {
     // Nothing is shown that depends on knowing who is signed in.
     expect(byId("department").hidden).toBe(true);
     expect(byId("account").hidden).toBe(true);
+    // The brand keeps the application's name, so the home link still has one.
+    expect(byId("brand").textContent).toBe("Workforce Operations");
+    expect(document.title).toBe("My week · Workforce Operations");
   });
 
   it("throws a bug in our own code on", async () => {
@@ -244,6 +281,7 @@ describe("the company's logo", () => {
     await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
 
     expect(logo().getAttribute("src")).toBe("/images/logos/summit-outfitters.png");
+    expect(byId("brand").textContent).toBe("Summit Outfitters");
     // The company's name next to it already says what the image shows.
     expect(logo().alt).toBe("");
     expect(byId("logo").querySelectorAll("img")).toHaveLength(1);

@@ -41,11 +41,14 @@
   background: var(--color-surface-soft);
 }
 
+/* The company's name once signed in (the application's name before that). A long name
+   wraps instead of pushing the header wider than the screen. */
 .brand__name {
   font-family: var(--font-heading);
   font-size: 1.125rem;
   font-weight: 700;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 /* Room at the bottom of the page, so the fixed tab bar never covers the last card. */
