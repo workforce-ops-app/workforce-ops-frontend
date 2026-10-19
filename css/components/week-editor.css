@@ -1,0 +1,259 @@
+/* Edit mode of the department week (js/components/week-editor.js): the "Edit week" and
+   "Add shift" buttons, a select box next to each shift, the bar for the selected shifts,
+   and the popups for adding, changing, and confirming (js/components/shift-form.js and
+   js/components/confirm-dialog.js). Colors come from the tokens in css/base/base.css. */
+
+/* --- The buttons under the page heading ------------------------------------------------ */
+
+.edit-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: var(--space);
+}
+
+.edit-tools[hidden] {
+  display: none;
+}
+
+/* Pressed: edit mode is on. Filled green, and the button's words change too ("Done
+   editing"), so the state is never shown by colour alone. */
+.edit-toggle[aria-pressed="true"] {
+  background: var(--color-accent-soft);
+}
+
+/* "Shift added.": quiet confirmation next to the buttons. */
+.edit-message {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+/* A green line down the left of the week while editing, a reminder that clicks change
+   things now. */
+.schedule--editing .week-content {
+  padding-left: 0.75rem;
+  border-left: 4px solid var(--color-accent);
+}
+
+/* --- A select box next to each shift --------------------------------------------------- */
+
+.shift-pick {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.shift-pick > :last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.shift-pick + .shift-pick {
+  margin-top: 0.5rem;
+}
+
+/* Large enough to hit with a finger (WCAG 2.2: target size, at least 24 by 24 pixels). */
+.shift-pick__box {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+/* --- The bar for the selected shifts ---------------------------------------------------- */
+
+/* It sticks to the bottom of the screen, so its buttons stay in reach while scrolling
+   through a long week. */
+.batch-bar {
+  position: sticky;
+  bottom: var(--space);
+  z-index: 1;
+  display: grid;
+  gap: 0.75rem;
+  margin-top: var(--space);
+  padding: var(--space);
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-raised);
+}
+
+.batch-bar[hidden] {
+  display: none;
+}
+
+.batch-bar__count {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.batch-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.batch-bar__person {
+  width: auto;
+  min-width: 12rem;
+}
+
+/* --- Buttons edit mode adds -------------------------------------------------------------- */
+
+/* Cancelling: red, with words that say what happens ("Cancel 3 shifts"). */
+.button--danger {
+  border-color: var(--color-error);
+  background: var(--color-error);
+  color: var(--color-on-accent);
+}
+
+.button--danger:hover {
+  border-color: var(--color-error);
+  background: var(--color-error);
+}
+
+.button--danger-outline {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.button--quiet {
+  border-color: transparent;
+}
+
+/* A button that is waiting for the server, or has nothing to do yet. */
+.button[disabled] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* --- The popups: add or change a shift, and "Are you sure?" ----------------------------- */
+
+.edit-dialog {
+  width: min(34rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  padding: calc(var(--space) * 1.5);
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-raised);
+  color: var(--color-text);
+}
+
+.edit-dialog--confirm {
+  width: min(26rem, calc(100% - 2rem));
+}
+
+.edit-dialog::backdrop {
+  background: var(--color-backdrop);
+}
+
+.edit-dialog__title {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  line-height: 1.2;
+  color: var(--color-heading);
+}
+
+.edit-dialog__lead {
+  margin: 0 0 var(--space);
+  font-size: 1.0625rem;
+}
+
+.edit-dialog__note {
+  margin: 0 0 var(--space);
+  color: var(--color-muted);
+}
+
+.edit-dialog__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* In the details popup, the edit buttons sit above Close. */
+.shift-dialog__actions {
+  justify-content: stretch;
+  margin-bottom: 0.75rem;
+}
+
+.shift-dialog__actions .button {
+  flex: 1;
+}
+
+/* A short explanation under a field's label, e.g. "Workplace time (America/Chicago)". */
+.field__hint {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+
+/* Start and end side by side, stacked on a narrow phone. */
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space);
+}
+
+/* The days to add a shift on: one check box per day, two columns when there is room. */
+.day-choices {
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.day-choices legend,
+.day-choices .field__hint {
+  grid-column: 1 / -1;
+}
+
+.day-choice {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 2.5rem;
+  cursor: pointer;
+}
+
+.day-choice input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+textarea.field__input {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+/* Under the start and end: when the shift ends, worked out as it will be saved ("Ends
+   the next day, Tuesday, October 6 at 6:00 AM. 8 hours."). */
+.shift-form__summary {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius);
+  background: var(--color-accent-soft);
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.shift-form__summary:empty {
+  display: none;
+}
+
+/* Too long, or no time between start and end: amber, with the reason in words. */
+.shift-form__summary--warning {
+  border-left-color: var(--color-warning-border);
+  background: var(--color-warning-background);
+  color: var(--color-warning);
+}

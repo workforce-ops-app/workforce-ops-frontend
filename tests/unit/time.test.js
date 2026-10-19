@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   dayKey,
+  daysLater,
   formatDayHeading,
   formatHours,
   formatTimeRange,
   mondayOf,
+  shiftMoments,
+  wallTime,
   zonedTimeToUtc,
 } from "../../js/core/time.js";
 
@@ -95,5 +98,38 @@ describe("formatHours", () => {
     expect(formatHours(7.5)).toBe("7.5 hours");
     expect(formatHours(24)).toBe("24 hours");
     expect(formatHours(0)).toBe("0 hours");
+  });
+});
+
+describe("wallTime", () => {
+  it("gives a moment's wall-clock time in the zone, as a time input expects", () => {
+    expect(wallTime("2026-10-05T14:00:00Z", "America/Chicago")).toBe("09:00");
+    expect(wallTime("2026-10-06T05:00:00Z", "America/Chicago")).toBe("00:00");
+    expect(
+      wallTime(zonedTimeToUtc("2026-12-07", "17:30", "America/Chicago"), "America/Chicago"),
+    ).toBe("17:30");
+  });
+});
+
+describe("overnight shifts", () => {
+  it("puts an end at or before the start on the next day", () => {
+    expect(shiftMoments("2026-10-05", "22:00", "06:00", "America/Chicago")).toEqual({
+      starts_at: "2026-10-06T03:00:00.000Z",
+      ends_at: "2026-10-06T11:00:00.000Z",
+    });
+    expect(shiftMoments("2026-10-05", "08:00", "20:00", "America/Chicago").ends_at).toBe(
+      "2026-10-06T01:00:00.000Z",
+    );
+  });
+
+  it("counts the calendar days between start and end in the workplace zone", () => {
+    // 8:00 PM to 11:30 PM Chicago is still the same day, though it is the next day in UTC.
+    expect(daysLater("2026-10-06T01:00:00Z", "2026-10-06T04:30:00Z", "America/Chicago")).toBe(0);
+    expect(daysLater("2026-10-06T03:00:00Z", "2026-10-06T11:00:00Z", "America/Chicago")).toBe(1);
+  });
+
+  it("gets the night the clocks fall back right (9 hours, not 8)", () => {
+    const { starts_at, ends_at } = shiftMoments("2026-10-31", "22:00", "06:00", "America/Chicago");
+    expect((new Date(ends_at).getTime() - new Date(starts_at).getTime()) / 3600000).toBe(9);
   });
 });
