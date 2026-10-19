@@ -8,7 +8,8 @@
 //
 // The server decides what each person may see: it filters every list to the signed-in
 // person's company, and to what their schedule.view scope covers. These functions only
-// pass on what the page asks for; asking for another company's department answers 404.
+// pass on what the page asks for; another company's department simply has no shifts the
+// person may see, so the list comes back empty (the department week checks the ID first, #47).
 //
 // The API answer (backend schedules feature, decision 0026: JSON, snake_case, UTC moments,
 // paged lists with a cursor):
