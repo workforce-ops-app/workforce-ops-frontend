@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="/css/components/week-grid.css" />
     <link rel="stylesheet" href="/css/components/week-sections.css" />
     <link rel="stylesheet" href="/css/components/week-nav.css" />
+    <link rel="stylesheet" href="/css/components/week-editor.css" />
     <link rel="stylesheet" href="/css/pages/schedule.css" />
     <script type="module" src="/js/pages/schedule.js"></script>
   </head>
@@ -90,6 +91,9 @@
           </a>
         </nav>
       </div>
+      <!-- Edit mode's buttons ("Edit week", "Add shift"), only for people with
+           schedule.edit; js/components/week-editor.js fills it in and shows it. -->
+      <div id="edit-tools" class="edit-tools" hidden></div>
       <p id="status" class="status" aria-live="polite">Loading the week…</p>
       <!-- The week itself, dimmed while another week loads (css/components/week-nav.css). -->
       <div class="week-content">
@@ -104,6 +108,8 @@
              and the people without a shift this week. -->
         <div id="sections"></div>
       </div>
+      <!-- In edit mode, what to do with the selected shifts (assign, make open, cancel). -->
+      <section id="batch-bar" class="batch-bar" aria-label="Selected shifts" hidden></section>
     </main>
   </body>
 </html>

@@ -1,6 +1,16 @@
 // Shifts, departments, and people from the API: the requests sent and the pages followed.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { listDepartmentPeople, listDepartments, listShifts } from "../../js/api/shifts.js";
+import { setCsrfToken } from "../../js/api/client.js";
+import {
+  assignShift,
+  batchShifts,
+  cancelShift,
+  createShift,
+  listDepartmentPeople,
+  listDepartments,
+  listShifts,
+  updateShift,
+} from "../../js/api/shifts.js";
 
 /** @type {import("vitest").Mock} */
 let fetchMock;
@@ -111,5 +121,84 @@ describe("listDepartmentPeople", () => {
     expect(people).toEqual([{ id: "u1", display_name: "Ana Diaz" }]);
     expect(requested(0).pathname).toBe("/api/users");
     expect(requested(0).searchParams.get("department_id")).toBe("d1");
+  });
+});
+
+describe("changing shifts", () => {
+  /** A saved shift as the server answers. */
+  const ok = () =>
+    new Response(JSON.stringify({ id: "s1" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+
+  /** The method, path, body, and CSRF header of the nth request. */
+  const sent = (/** @type {number} */ n) => {
+    const [path, init] = fetchMock.mock.calls[n];
+    return {
+      method: init.method,
+      path,
+      body: init.body === undefined ? undefined : JSON.parse(init.body),
+      csrf: new Headers(init.headers).get("X-CSRF-Token"),
+    };
+  };
+
+  beforeEach(() => {
+    fetchMock.mockImplementation(async () => ok());
+    setCsrfToken("token-123");
+  });
+  afterEach(() => setCsrfToken(null));
+
+  it("sends each change to its own address, with the CSRF token", async () => {
+    await createShift({
+      department_id: "d1",
+      employee_id: null,
+      starts_at: "2026-10-05T14:00:00.000Z",
+      ends_at: "2026-10-05T22:00:00.000Z",
+    });
+    await updateShift("s1", { notes: "Bring gloves" });
+    await assignShift("s1", "u2");
+    await cancelShift("s1");
+    await batchShifts({ action: "cancel", shift_ids: ["s1", "s2"] });
+
+    expect([0, 1, 2, 3, 4].map(sent)).toEqual([
+      {
+        method: "POST",
+        path: "/api/shifts",
+        body: {
+          department_id: "d1",
+          employee_id: null,
+          starts_at: "2026-10-05T14:00:00.000Z",
+          ends_at: "2026-10-05T22:00:00.000Z",
+        },
+        csrf: "token-123",
+      },
+      {
+        method: "PATCH",
+        path: "/api/shifts/s1",
+        body: { notes: "Bring gloves" },
+        csrf: "token-123",
+      },
+      {
+        method: "POST",
+        path: "/api/shifts/s1/assign",
+        body: { employee_id: "u2" },
+        csrf: "token-123",
+      },
+      { method: "POST", path: "/api/shifts/s1/cancel", body: undefined, csrf: "token-123" },
+      {
+        method: "POST",
+        path: "/api/shifts/batch",
+        body: { action: "cancel", shift_ids: ["s1", "s2"] },
+        csrf: "token-123",
+      },
+    ]);
+  });
+
+  it("keeps a shift ID inside its own part of the address", async () => {
+    // An ID is never trusted to be a plain UUID: "../" or "?" in it stays part of the ID.
+    await cancelShift("../users/u1?x=1");
+
+    expect(sent(0).path).toBe("/api/shifts/..%2Fusers%2Fu1%3Fx%3D1/cancel");
   });
 });

@@ -22,13 +22,13 @@ import { el } from "../core/dom.js";
 import {
   formatDayHeading,
   formatDayNumber,
-  formatTimeRange,
   formatWeekdayShort,
   hoursBetween,
   roundHours,
 } from "../core/time.js";
 import { groupByDay } from "./day-list.js";
 import { shiftExtras } from "./shift-card.js";
+import { shiftTime } from "./shift-time.js";
 import { opensShift } from "./shift-dialog.js";
 
 /** @typedef {import("../api/shifts.js").Shift} Shift */
@@ -74,10 +74,7 @@ export function gridRows(shifts) {
  */
 function gridShift(shift) {
   const button = el("button", { className: "grid-shift", attrs: { type: "button" } }, [
-    el("span", {
-      className: "grid-shift__time",
-      text: formatTimeRange(shift.starts_at, shift.ends_at, shift.timezone),
-    }),
+    shiftTime(shift, "grid-shift__time"),
   ]);
   // Icons only: a cell is narrow. The words ("Event", "Notes") stay for screen readers.
   const extras = shiftExtras(shift, { compact: true });

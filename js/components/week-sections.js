@@ -9,8 +9,9 @@
 // which only ever sets text (stored cross-site scripting, threat T5).
 
 import { el } from "../core/dom.js";
-import { dayKey, formatDayHeading, formatTimeRange } from "../core/time.js";
+import { dayKey, formatDayHeading } from "../core/time.js";
 import { icon, shiftExtras } from "./shift-card.js";
+import { shiftTime } from "./shift-time.js";
 import { opensShift } from "./shift-dialog.js";
 
 /** @typedef {import("../api/shifts.js").Shift} Shift */
@@ -46,10 +47,7 @@ function openShiftItem(shift) {
         className: "open-shift__day",
         text: formatDayHeading(dayKey(shift.starts_at, shift.timezone)),
       }),
-      el("span", {
-        className: "open-shift__time",
-        text: formatTimeRange(shift.starts_at, shift.ends_at, shift.timezone),
-      }),
+      shiftTime(shift, "open-shift__time"),
       ...(shift.details
         ? [el("span", { className: "open-shift__role", text: shift.details })]
         : []),
