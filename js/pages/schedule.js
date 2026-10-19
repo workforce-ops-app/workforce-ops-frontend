@@ -19,6 +19,7 @@ import { startSignedInPage } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
 import { statTile } from "../components/stat-tile.js";
 import { weekGrid } from "../components/week-grid.js";
+import { weekEditor } from "../components/week-editor.js";
 import { followWeekLinks } from "../components/week-nav.js";
 import { openShiftsSection, unscheduledSection } from "../components/week-sections.js";
 import { el, setText } from "../core/dom.js";
@@ -58,6 +59,13 @@ function showUnavailable(status, params, monday) {
     el("a", { text: "Show my department", attrs: { href: weekLink(monday, 0, others) } }),
   );
 }
+
+/**
+ * Edit mode (js/components/week-editor.js), set up once the session has loaded; null
+ * before that, and in the tests that call showWeek directly.
+ * @type {{ update: (context: import("../components/week-editor.js").WeekContext | null) => void } | null}
+ */
+let editor = null;
 
 /**
  * The week's numbers for the tiles: shifts, open shifts, open hours, and people working.
@@ -128,6 +136,10 @@ export async function showWeek(search) {
   // Everything that reads the address or the server is inside try, so a bad address or a
   // failed request shows a message instead of leaving the page on "Loading".
   try {
+    // While a week loads, edit mode has no week to change: its buttons wait (and stay off
+    // if this week cannot be shown).
+    editor?.update(null);
+
     // Which week, from the address (an impossible ?week= falls back to the current week),
     // and the links to other weeks (they keep the department).
     const params = new URLSearchParams(search);
@@ -227,6 +239,9 @@ export async function showWeek(search) {
       stats.replaceChildren(...weekStats(shifts));
       stats.hidden = false;
     }
+
+    // Edit mode works on exactly this week and department.
+    editor?.update({ departmentId, monday, days: keys, shifts, people, today: todayKey });
   } catch (error) {
     // The two failures a page expects get a plain-language message. Whatever week is still
     // on screen (the one before, when moving between weeks) is not this week's, so the
@@ -251,6 +266,9 @@ export async function showWeek(search) {
 // Once the session has loaded (signed-out visitors go to the sign-in page instead), show
 // the week the address asks for. Other weeks then load in place (components/week-nav.js).
 startSignedInPage(() => {
-  followWeekLinks(showWeek);
+  const load = followWeekLinks(showWeek);
+  // After a saved change, edit mode loads the week again through the same queue as the
+  // week links, so a reload and a week change never race each other.
+  editor = weekEditor({ reload: () => load(window.location.search) });
   return showWeek(window.location.search);
 });
