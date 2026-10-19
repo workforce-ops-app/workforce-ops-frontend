@@ -56,6 +56,7 @@ test("every static folder is served by the image", async ({ request }) => {
     "/css/base/base.css",
     "/js/core/dom.js",
     "/icons/clock.svg",
+    "/images/logos/app.png",
   ]) {
     const response = await request.get(path);
     expect(response.status(), path).toBe(200);
