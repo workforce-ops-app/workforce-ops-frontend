@@ -48,7 +48,7 @@ import {
   wallTime,
 } from "../core/time.js";
 import { confirmChange } from "./confirm-dialog.js";
-import { explainFailure } from "./modal.js";
+import { explainFailure, PartlySaved } from "./modal.js";
 import { closeShiftDialog, setShiftActions } from "./shift-dialog.js";
 import { openShiftForm } from "./shift-form.js";
 
@@ -168,6 +168,9 @@ export function weekEditor(options) {
   let barProblem = "";
   /** The person chosen in the bar's list. */
   let barPerson = "";
+  /** True while a change of the selection is being sent: the bar's buttons are off, so
+   * quick clicks cannot send the same (or a conflicting) change twice. */
+  let barBusy = false;
   /** @type {EmployeeRef[]} the people offered in the person lists */
   let people = [];
   /** The department those people belong to. */
@@ -395,16 +398,24 @@ export function weekEditor(options) {
 
     assign.addEventListener("click", () => {
       const name = person.selectedOptions[0]?.textContent ?? "";
-      void runBatch({ action: "assign", employee_id: person.value }, `Assign to ${name}`);
+      void oneAtATime(() =>
+        runBatch({ action: "assign", employee_id: person.value }, `Assign to ${name}`),
+      );
     });
     open.addEventListener(
       "click",
-      () => void runBatch({ action: "assign", employee_id: null }, "Make open"),
+      () => void oneAtATime(() => runBatch({ action: "assign", employee_id: null }, "Make open")),
     );
-    cancel.addEventListener("click", () => void cancelSelected());
+    cancel.addEventListener("click", () => void oneAtATime(cancelSelected));
     clear.addEventListener("click", () => {
       for (const id of [...selected]) select(id, false);
     });
+
+    // Everything in the bar is off while a change is on its way (barBusy).
+    for (const control of [person, assign, open, cancel, clear]) {
+      if (barBusy) control.setAttribute("disabled", "");
+    }
+    bar.toggleAttribute("aria-busy", barBusy);
 
     bar.replaceChildren(
       el("p", {
@@ -426,6 +437,25 @@ export function weekEditor(options) {
       problem,
     );
     bar.hidden = false;
+  }
+
+  /**
+   * Run one change of the selection, unless one is already running. The buttons are
+   * switched off too, but a second click can arrive before the bar is drawn again, so the
+   * flag is checked here as well. It stays on until the week has loaded again, so nothing
+   * is sent for shifts the screen no longer shows correctly.
+   * @param {() => Promise<void>} change
+   */
+  async function oneAtATime(change) {
+    if (barBusy) return;
+    barBusy = true;
+    renderBar();
+    try {
+      await change();
+    } finally {
+      barBusy = false;
+      renderBar();
+    }
   }
 
   /**
@@ -640,8 +670,28 @@ export function weekEditor(options) {
         for (const key of /** @type {(keyof typeof text)[]} */ (Object.keys(text))) {
           if (text[key] !== old[key]) changes[key] = text[key];
         }
-        if (Object.keys(changes).length > 0) await updateShift(shift.id, changes);
-        if (values.employeeId !== before.employeeId) await assignShift(shift.id, values.employeeId);
+        const patched = Object.keys(changes).length > 0;
+        if (patched) await updateShift(shift.id, changes);
+        if (values.employeeId === before.employeeId) return;
+
+        try {
+          await assignShift(shift.id, values.employeeId);
+        } catch (error) {
+          if (!patched) throw error;
+          // The times and text are saved, but who works it is not: two requests, and the
+          // server has no single one for both (the person changes only through assign).
+          // So the form says exactly that, and stays open to try the person again.
+          // From now on the saved values are the starting point, so trying again sends
+          // only the assignment, not the same PATCH twice.
+          Object.assign(before, { ...values, employeeId: before.employeeId });
+          // The week behind the form shows the saved part right away, so it is right even
+          // if the person goes back instead of trying again.
+          void options.reload();
+          throw new PartlySaved(
+            "The times and details were saved, but who works the shift was not changed.",
+            error,
+          );
+        }
       },
     });
     if (done) await saved("Shift saved.");

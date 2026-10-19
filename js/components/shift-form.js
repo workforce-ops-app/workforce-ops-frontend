@@ -141,10 +141,16 @@ function textField(tag, id, value, maxLength) {
 export function openShiftForm(options) {
   return new Promise((resolve, reject) => {
     let saved = false;
+    // True while the values are on their way to the server. Meanwhile the form cannot be
+    // left (Go back is off, Escape is held back), since the server may still save them; if
+    // the browser closes it anyway, the answer is still waited for (see the submit below).
+    let sending = false;
     const modal = createModal({
       className: "edit-dialog",
       labelledBy: "shift-form-title",
-      onClose: () => resolve(saved),
+      onClose: () => {
+        if (!sending) resolve(saved);
+      },
     });
     const start = options.values;
 
@@ -299,7 +305,8 @@ export function openShiftForm(options) {
     form.addEventListener("submit", async (event) => {
       // The page sends the request itself (AJAX), so the browser must not load a new page.
       event.preventDefault();
-      if (submit.hasAttribute("disabled")) return;
+      // One request at a time: pressing Enter twice must not add the shift twice.
+      if (sending) return;
 
       const values = {
         days: chosenDays(),
@@ -317,26 +324,40 @@ export function openShiftForm(options) {
       if (!values.start || !values.end) return showProblem("Enter a start and an end time.");
       if (values.start === values.end) return showProblem("A shift must end after it starts.");
 
-      submit.setAttribute("disabled", "");
+      sending = true;
+      modal.setBusy(true);
       problem.hidden = true;
+      /** @type {{ error: unknown } | null} what went wrong, if anything */
+      let failure = null;
       try {
         await options.save(values);
         saved = true;
-        modal.close();
       } catch (error) {
-        const message = explainFailure(error);
+        failure = { error };
+      }
+      sending = false;
+      modal.setBusy(false);
+
+      if (failure) {
+        const message = explainFailure(failure.error);
         if (message === null) {
+          // A bug in our own code: let it reach the console, and close.
+          reject(failure.error);
           modal.close();
-          reject(error);
           return;
         }
-        // Shown at the top of the form, next to the shift being changed (#16: a 409 is
-        // explained in plain words where it happened).
-        showProblem(message);
-        problem.scrollIntoView?.({ block: "nearest" });
-      } finally {
-        submit.removeAttribute("disabled");
+        // Still open: shown at the top of the form, next to the shift being changed (#16:
+        // a 409 is explained in plain words where it happened). Nothing typed is lost.
+        if (modal.box.isConnected) {
+          showProblem(message);
+          problem.scrollIntoView?.({ block: "nearest" });
+          return;
+        }
       }
+      // Saved (close the form), or the browser closed it while sending (report what
+      // happened now that the answer is known).
+      modal.close();
+      resolve(saved);
     });
 
     modal.box.append(form);

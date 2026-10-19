@@ -4,6 +4,11 @@
 // The question stays open while the change is sent. If the server refuses it, the reason
 // is shown right in the question (role="alert", so screen readers read it at once), and
 // the person can try again or go back; nothing is lost.
+//
+// While the change is being sent, the question cannot be left (Go back is off, Escape is
+// held back): leaving it would look like "nothing happened" while the server might still
+// save the change. If the browser closes it anyway, the answer is still waited for, so a
+// saved change is still reported and the week still loads again.
 
 import { el } from "../core/dom.js";
 import { createModal, explainFailure } from "./modal.js";
@@ -13,17 +18,22 @@ import { createModal, explainFailure } from "./modal.js";
  * @param {{
  *   title: string, message: string, confirmLabel: string, run: () => Promise<unknown>,
  * }} options run sends the change; it runs only after the confirm button is pressed
- * @returns {Promise<boolean>} true once the change was saved; false when the person went
- *   back (the Back button or Escape) without saving
+ * @returns {Promise<boolean>} true once the change was saved (even if the question was
+ *   closed while it was being sent); false when the person went back without saving
  */
 export function confirmChange(options) {
   return new Promise((resolve, reject) => {
     let saved = false;
+    // True while the change is on its way to the server.
+    let sending = false;
     const modal = createModal({
       className: "edit-dialog edit-dialog--confirm",
       labelledBy: "confirm-title",
-      // Closed without saving (Back or Escape): nothing changed.
-      onClose: () => resolve(saved),
+      // Closed without saving (Back or Escape): nothing changed. Closed while sending: the
+      // answer decides, below.
+      onClose: () => {
+        if (!sending) resolve(saved);
+      },
     });
 
     const problem = el("p", { className: "form__message", attrs: { role: "alert" } });
@@ -43,26 +53,40 @@ export function confirmChange(options) {
     });
     confirm.addEventListener("click", async () => {
       // One request at a time: a double click must not send the change twice.
-      if (confirm.hasAttribute("disabled")) return;
-      confirm.setAttribute("disabled", "");
+      if (sending) return;
+      sending = true;
+      modal.setBusy(true);
       problem.hidden = true;
+      /** @type {{ error: unknown } | null} what went wrong, if anything */
+      let failure = null;
       try {
         await options.run();
         saved = true;
-        modal.close();
       } catch (error) {
-        const message = explainFailure(error);
+        failure = { error };
+      }
+      sending = false;
+      modal.setBusy(false);
+
+      if (failure) {
+        const message = explainFailure(failure.error);
         if (message === null) {
-          // A bug in our own code: close and let it reach the console.
+          // A bug in our own code: let it reach the console, and close.
+          reject(failure.error);
           modal.close();
-          reject(error);
           return;
         }
-        problem.textContent = message;
-        problem.hidden = false;
-      } finally {
-        confirm.removeAttribute("disabled");
+        // Still open: show why, and let the person try again or go back.
+        if (modal.box.isConnected) {
+          problem.textContent = message;
+          problem.hidden = false;
+          return;
+        }
       }
+      // Saved (close the question), or the browser closed it while sending (report what
+      // happened now that the answer is known).
+      modal.close();
+      resolve(saved);
     });
 
     modal.box.append(

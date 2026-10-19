@@ -128,6 +128,37 @@ const dialog = () => document.querySelector("dialog.edit-dialog");
 /** Let the awaited requests and the re-render finish. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+/** A request that answers only when the test says so, to look at the page meanwhile. */
+function held() {
+  /** @type {(value: unknown) => void} */
+  let answer = () => {};
+  const promise = new Promise((resolve) => {
+    answer = resolve;
+  });
+  return { promise, answer: () => answer({}) };
+}
+
+/**
+ * Press Escape on a popup, as the browser does: a "cancel" event the page may hold back.
+ * @param {Element} box
+ * @returns {boolean} true when the popup was held open
+ */
+function escape(box) {
+  const event = new Event("cancel", { cancelable: true });
+  box.dispatchEvent(event);
+  return event.defaultPrevented;
+}
+
+/**
+ * Close a popup the way a browser may anyway (Escape pressed twice in a row, which a page
+ * cannot hold back again).
+ * @param {Element} box
+ */
+function forceClose(box) {
+  box.removeAttribute("open");
+  box.dispatchEvent(new Event("close"));
+}
+
 /**
  * Tick a select box, as a click would.
  * @param {HTMLInputElement} box
@@ -358,6 +389,92 @@ describe("the bar for selected shifts", () => {
     );
     expect(reload).not.toHaveBeenCalled();
   });
+
+  it("sends a change of the selection once, however often it is clicked", async () => {
+    setUp([shift("s1", MONDAY)]);
+    const request = held();
+    asMock(api.batchShifts).mockReturnValue(request.promise);
+    toggle().click();
+    tick(boxes()[0]);
+
+    button("Make open").click();
+    // While it is on its way, every button in the bar is off.
+    expect(button("Make open").hasAttribute("disabled")).toBe(true);
+    expect(button("Cancel shift").hasAttribute("disabled")).toBe(true);
+    expect(get("#batch-bar").hasAttribute("aria-busy")).toBe(true);
+    // A click that arrives anyway (before the bar was drawn again) sends nothing more.
+    button("Make open").removeAttribute("disabled");
+    button("Make open").click();
+
+    request.answer();
+    await settle();
+
+    expect(api.batchShifts).toHaveBeenCalledTimes(1);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("switches the bar back on after a refusal, to try again", async () => {
+    setUp([shift("s1", MONDAY)]);
+    asMock(api.batchShifts).mockRejectedValueOnce(
+      new ApiError(409, { title: "Conflict", detail: "This shift was cancelled." }),
+    );
+    toggle().click();
+    tick(boxes()[0]);
+
+    button("Make open").click();
+    await settle();
+
+    expect(button("Make open").hasAttribute("disabled")).toBe(false);
+    expect(get("#batch-bar").hasAttribute("aria-busy")).toBe(false);
+    button("Make open").click();
+    await settle();
+    expect(api.batchShifts).toHaveBeenCalledTimes(2);
+  });
+
+  it("cannot be left while a cancel is being sent", async () => {
+    setUp([shift("s1", MONDAY)]);
+    const request = held();
+    asMock(api.batchShifts).mockReturnValue(request.promise);
+    toggle().click();
+    tick(boxes()[0]);
+    button("Cancel shift").click();
+    await settle();
+    const box = /** @type {HTMLElement} */ (dialog());
+
+    button("Cancel shift", box).click();
+
+    // Go back is off and Escape is held back until the server answers.
+    expect(button("Go back", box).hasAttribute("disabled")).toBe(true);
+    expect(escape(box)).toBe(true);
+    expect(dialog()).not.toBeNull();
+
+    request.answer();
+    await settle();
+    expect(dialog()).toBeNull();
+    expect(get(".edit-message").textContent).toBe("1 shift cancelled.");
+  });
+
+  it("still reloads the week when the browser closes the question while it is sending", async () => {
+    setUp([shift("s1", MONDAY)]);
+    const request = held();
+    asMock(api.batchShifts).mockReturnValue(request.promise);
+    toggle().click();
+    tick(boxes()[0]);
+    button("Cancel shift").click();
+    await settle();
+    const box = /** @type {HTMLElement} */ (dialog());
+    button("Cancel shift", box).click();
+
+    forceClose(box);
+    await settle();
+    // Not reported as "nothing happened" while the answer is still on its way.
+    expect(reload).not.toHaveBeenCalled();
+
+    request.answer();
+    await settle();
+    expect(reload).toHaveBeenCalled();
+    expect(get(".edit-message").textContent).toBe("1 shift cancelled.");
+  });
 });
 
 describe("one shift, from its details popup", () => {
@@ -450,6 +567,68 @@ describe("one shift, from its details popup", () => {
     );
     expect(reload).not.toHaveBeenCalled();
   });
+
+  it("says what was saved when the details were saved but the person was not", async () => {
+    setUp([shift("s1", MONDAY)], { people: [{ id: "u2", display_name: "Ben Okafor" }] });
+    asMock(api.updateShift).mockResolvedValue({});
+    asMock(api.assignShift).mockRejectedValueOnce(
+      new ApiError(409, {
+        title: "Conflict",
+        detail: "This person already has a shift at that time.",
+      }),
+    );
+    toggle().click();
+    get("#days [data-shift-id]").click();
+    button("Change shift", get(".shift-dialog")).click();
+    await settle();
+
+    /** @type {HTMLTextAreaElement} */ (get("#shift-form-notes")).value = "Bring gloves";
+    /** @type {HTMLSelectElement} */ (get("#shift-form-person")).value = "u2";
+    button("Save changes").click();
+    await settle();
+
+    // Not "nothing was saved": the notes were.
+    expect(dialog()?.querySelector("[role=alert]")?.textContent).toBe(
+      "The times and details were saved, but who works the shift was not changed. " +
+        "This person already has a shift at that time.",
+    );
+    // The week behind the form already shows the saved notes.
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    // Trying again sends only the person; the notes are not sent a second time.
+    asMock(api.assignShift).mockResolvedValueOnce({});
+    button("Save changes").click();
+    await settle();
+    expect(api.updateShift).toHaveBeenCalledTimes(1);
+    expect(api.assignShift).toHaveBeenCalledTimes(2);
+    expect(dialog()).toBeNull();
+    expect(get(".edit-message").textContent).toBe("Shift saved.");
+  });
+
+  it("keeps a plain refusal when only the person was changed", async () => {
+    setUp([shift("s1", MONDAY)], { people: [{ id: "u2", display_name: "Ben Okafor" }] });
+    asMock(api.assignShift).mockRejectedValue(
+      new ApiError(409, {
+        title: "Conflict",
+        detail: "This person already has a shift at that time.",
+      }),
+    );
+    toggle().click();
+    get("#days [data-shift-id]").click();
+    button("Change shift", get(".shift-dialog")).click();
+    await settle();
+
+    /** @type {HTMLSelectElement} */ (get("#shift-form-person")).value = "u2";
+    button("Save changes").click();
+    await settle();
+
+    // Nothing was saved, so nothing is said to be.
+    expect(dialog()?.querySelector("[role=alert]")?.textContent).toBe(
+      "This person already has a shift at that time.",
+    );
+    expect(api.updateShift).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+  });
 });
 
 describe("adding shifts", () => {
@@ -516,7 +695,7 @@ describe("adding shifts", () => {
     expect(api.createShift).not.toHaveBeenCalled();
   });
 
-  it("says when the server cannot be reached, and saves nothing", async () => {
+  it("says when the server cannot be reached, without claiming nothing was saved", async () => {
     setUp([]);
     asMock(api.createShift).mockRejectedValue(new NetworkError(new TypeError("offline")));
     toggle().click();
@@ -526,9 +705,65 @@ describe("adding shifts", () => {
     button("Add shift", /** @type {HTMLElement} */ (dialog())).click();
     await settle();
 
-    expect(dialog()?.querySelector("[role=alert]")?.textContent).toContain(
-      "The server could not be reached",
-    );
+    const text = dialog()?.querySelector("[role=alert]")?.textContent ?? "";
+    expect(text).toContain("The server could not be reached");
+    // The request may have been saved before the connection failed.
+    expect(text).toContain("may or may not have been saved");
+    expect(text).toContain("Check the schedule before trying again.");
+    expect(text).not.toContain("Nothing was saved");
+  });
+
+  it("cannot be left while the shift is being added", async () => {
+    setUp([]);
+    const request = held();
+    asMock(api.createShift).mockReturnValue(request.promise);
+    toggle().click();
+    button("Add shift").click();
+    await settle();
+    const box = /** @type {HTMLElement} */ (dialog());
+
+    button("Add shift", box).click();
+
+    expect(button("Go back", box).hasAttribute("disabled")).toBe(true);
+    expect(button("Add shift", box).hasAttribute("disabled")).toBe(true);
+    expect(escape(box)).toBe(true);
+    // Enter pressed again sends nothing more.
+    box.querySelector("form")?.requestSubmit();
+    expect(api.createShift).toHaveBeenCalledTimes(1);
+
+    request.answer();
+    await settle();
+    expect(dialog()).toBeNull();
+    expect(get(".edit-message").textContent).toBe("Shift added.");
+  });
+
+  it("lets Escape close the form again once nothing is being sent", async () => {
+    setUp([]);
+    toggle().click();
+    button("Add shift").click();
+    await settle();
+
+    expect(escape(/** @type {HTMLElement} */ (dialog()))).toBe(false);
+  });
+
+  it("still reloads the week when the browser closes the form while it is sending", async () => {
+    setUp([]);
+    const request = held();
+    asMock(api.createShift).mockReturnValue(request.promise);
+    toggle().click();
+    button("Add shift").click();
+    await settle();
+    const box = /** @type {HTMLElement} */ (dialog());
+    button("Add shift", box).click();
+
+    forceClose(box);
+    await settle();
+    expect(reload).not.toHaveBeenCalled();
+
+    request.answer();
+    await settle();
+    expect(reload).toHaveBeenCalled();
+    expect(get(".edit-message").textContent).toBe("Shift added.");
   });
 
   it("lists everyone who worked in the department lately as people to choose", async () => {
@@ -598,7 +833,7 @@ describe("helpers", () => {
 
 describe("explainFailure", () => {
   it("turns each kind of failure into plain words, and leaves bugs alone", async () => {
-    const { explainFailure } = await import("../../js/components/modal.js");
+    const { explainFailure, PartlySaved } = await import("../../js/components/modal.js");
 
     expect(
       explainFailure(
@@ -615,6 +850,17 @@ describe("explainFailure", () => {
       "Internal Server Error",
     );
     expect(explainFailure(new TypeError("a bug"))).toBeNull();
+    expect(explainFailure(new NetworkError(new TypeError("offline")))).toBe(
+      "The server could not be reached, so the change may or may not have been saved. " +
+        "Check the schedule before trying again.",
+    );
+    // Part saved: what was, then why the rest was not; a bug underneath stays a bug.
+    expect(
+      explainFailure(
+        new PartlySaved("The notes were saved.", new ApiError(403, { title: "Forbidden" })),
+      ),
+    ).toBe("The notes were saved. Forbidden");
+    expect(explainFailure(new PartlySaved("The notes were saved.", new TypeError()))).toBeNull();
   });
 });
 
