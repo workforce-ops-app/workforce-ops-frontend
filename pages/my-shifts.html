@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>My week · Workforce Operations</title>
+    <link rel="icon" type="image/png" href="/images/logos/app-square.png" />
     <link rel="stylesheet" href="/css/base/base.css" />
     <link rel="stylesheet" href="/css/components/app-shell.css" />
     <link rel="stylesheet" href="/css/components/shift-card.css" />
@@ -14,14 +15,17 @@
     <script type="module" src="/js/pages/my-shifts.js"></script>
   </head>
   <body>
-    <!-- The app shell: the brand, the main tabs, then who is signed in. The logo spot is
-         empty until a logo is chosen; the name next to it is the link's text, so it is
-         never unnamed. Each tab names the permission it needs (data-permission) and starts
+    <!-- The app shell: the brand, the main tabs, then who is signed in. The logo spot
+         shows the application's logo until the session loads, then the company's logo if
+         it has one; the image has empty alt text because the name next to it is the
+         link's text, so the link is never unnamed. Each tab names the permission it needs (data-permission) and starts
          hidden; js/components/app-shell.js shows the ones the person may use. -->
     <div class="app-shell-top">
       <header class="app-header">
         <a class="brand" href="/pages/my-shifts.html">
-          <span class="brand__logo" aria-hidden="true"></span>
+          <span class="brand__logo" aria-hidden="true">
+            <img src="/images/logos/app-square.png" alt="" width="40" height="40" />
+          </span>
           <span class="brand__name">Workforce Operations</span>
         </a>
       </header>

@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sign in · Workforce Operations</title>
+    <link rel="icon" type="image/png" href="/images/logos/app-square.png" />
     <link rel="stylesheet" href="/css/base/base.css" />
     <link rel="stylesheet" href="/css/components/app-shell.css" />
     <link rel="stylesheet" href="/css/components/form.css" />
@@ -13,8 +14,11 @@
   <body>
     <!-- No tab bar here: nobody is signed in yet, so there is nowhere else to go. -->
     <main class="sign-in">
-      <p class="brand sign-in__brand">
-        <span class="brand__logo" aria-hidden="true"></span>
+      <!-- The application's logo, large, with its name under it. Empty alt text: the name
+           already says what the logo shows. Nobody is signed in here, so the company is
+           not known and no company logo can be shown. -->
+      <p class="sign-in__brand">
+        <img class="sign-in__logo" src="/images/logos/app.png" alt="" width="640" height="289" />
         <span class="brand__name">Workforce Operations</span>
       </p>
 

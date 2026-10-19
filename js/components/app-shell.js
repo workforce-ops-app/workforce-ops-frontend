@@ -8,6 +8,7 @@
 // visitor never sees it, not even for a moment.
 
 import { ApiError, NetworkError } from "../api/client.js";
+import { companyLogoPath } from "../core/company-logos.js";
 import { el, setText } from "../core/dom.js";
 import { can, loadSession, signOut } from "../core/session.js";
 
@@ -23,6 +24,22 @@ export function applyPermissions(root = document) {
     if (element instanceof HTMLElement) {
       element.hidden = !can(element.dataset.permission ?? "");
     }
+  }
+}
+
+/**
+ * Show the company's logo in every logo spot, in place of the application's logo. A
+ * company without a logo keeps the application's one from the HTML.
+ * @param {import("../core/session.js").SessionInfo} session
+ * @param {ParentNode} [root]
+ */
+export function showCompanyLogo(session, root = document) {
+  const path = companyLogoPath(session.company.name);
+  if (!path) return;
+  for (const spot of root.querySelectorAll(".brand__logo")) {
+    // Empty alt text: the company's name stands right next to the logo, so a screen
+    // reader would only hear it twice. el() checks the address like any other src.
+    spot.replaceChildren(el("img", { attrs: { src: path, alt: "", width: "40", height: "40" } }));
   }
 }
 
@@ -131,6 +148,7 @@ export async function startSignedInPage(showPage, navigate) {
   if (session === null) return;
 
   if (session) {
+    showCompanyLogo(session);
     const account = document.getElementById("account");
     if (account) {
       account.replaceChildren(...accountItems(session, navigate));

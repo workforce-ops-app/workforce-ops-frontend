@@ -21,7 +21,8 @@ project joins that existing network, where Docker DNS resolves the backend servi
 The important files are:
 
 - `Dockerfile`: copies only the static application (`pages/`, `css/`, `js/`, `icons/`,
-  each by name) and nginx configuration, then runs nginx as its built-in non-root user.
+  `images/`, each by name) and nginx configuration, then runs nginx as its built-in
+  non-root user.
   A new top-level folder the pages load files from must be added here too; the smoke
   test requests one file from each folder, so a missing one fails CI.
 - `nginx/nginx.conf`: serves static files, defines the proxy, and adds the security and
