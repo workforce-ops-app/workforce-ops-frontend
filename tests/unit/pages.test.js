@@ -455,6 +455,16 @@ describe("Department week", () => {
     expect(text("status")).toBe(first);
   });
 
+  it("treats an empty department in the address as unavailable, not as no departments", async () => {
+    // "?department=" chose a department (an empty one), unlike an address without it.
+    await showWeek("?week=2026-10-05&department=");
+
+    expect(text("status")).toContain(UNAVAILABLE);
+    expect(text("status")).not.toContain("No departments yet");
+    expect(document.querySelector("#status a")?.getAttribute("href")).toBe("?week=2026-10-05");
+    expect(mocked).not.toHaveBeenCalled();
+  });
+
   it("removes the week before when moving to an unavailable department", async () => {
     page([
       "title",

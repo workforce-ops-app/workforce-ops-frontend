@@ -162,7 +162,10 @@ export async function showWeek(search) {
     setText(title, department?.name ?? DEFAULT_TITLE);
 
     // No department at all (a company without departments yet): nothing to show.
-    if (!departmentId) {
+    // Only null means that. An address with an empty "?department=" gives "" here (`??`
+    // keeps it, since it is not null), and an empty ID is just another unknown department,
+    // so it gets the unavailable message below instead of "No departments yet".
+    if (departmentId === null) {
       setText(status, "No departments yet.");
       week.replaceChildren();
       grid?.replaceChildren();
