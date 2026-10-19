@@ -9,8 +9,8 @@
 // scripting, threat T5). The details in the popup are handled the same way.
 
 import { el } from "../core/dom.js";
-import { formatTimeRange } from "../core/time.js";
 import { opensShift } from "./shift-dialog.js";
+import { shiftTime } from "./shift-time.js";
 
 /** @typedef {import("../api/shifts.js").Shift} Shift */
 
@@ -77,11 +77,8 @@ export function shiftRow(shift, options = {}) {
   // Inside a button only inline elements are allowed, so the lines are <span>s that the
   // stylesheet stacks.
   const text = el("span", { className: "shift__text" }, [
-    // The time, in the shift's workplace zone.
-    el("span", {
-      className: "shift__time",
-      text: formatTimeRange(shift.starts_at, shift.ends_at, shift.timezone),
-    }),
+    // The time, in the shift's workplace zone, with "+1 day" when it ends the next day.
+    shiftTime(shift, "shift__time"),
   ]);
 
   // Who works it, in the department week; an open shift says so in words.
