@@ -1,5 +1,6 @@
-// The frame of every signed-in page: who is signed in, the sign-out button, and the main
-// menu with only the entries the person may use (docs/architecture/components.md).
+// The frame of every signed-in page: the company's name, who is signed in, the sign-out
+// button, and the main menu with only the entries the person may use
+// (docs/architecture/components.md).
 //
 // Each page script starts with startSignedInPage(showPage): it loads the session first, so
 // a signed-out visitor goes straight to the sign-in page, then fills in the frame, then
@@ -65,6 +66,31 @@ export function accountItems(session, navigate) {
   return [name, button];
 }
 
+/** The application's name, as the pages' HTML writes it in the brand and the tab title. */
+const APP_NAME = "Workforce Operations";
+
+/**
+ * Put the company's name in the brand and the browser tab's title, in place of the
+ * application's name. The HTML keeps "Workforce Operations" as the brand's text, so the
+ * home link always has a name: before the session loads, and when it cannot be loaded at
+ * all.
+ * @param {import("../core/session.js").SessionInfo} session
+ * @param {ParentNode} [root]
+ * @param {Document} [doc] whose title to change (the page's own by default)
+ */
+export function showCompanyName(session, root = document, doc = document) {
+  // The name comes from the server and is shown as text, never parsed as HTML (an
+  // administrator chooses it, so it could contain markup).
+  for (const name of root.querySelectorAll(".brand__name")) {
+    setText(name, session.company.name);
+  }
+  // "My week · Workforce Operations" becomes "My week · Northwind Cafe". The title is
+  // plain text too: the browser never reads markup in it.
+  if (doc.title.endsWith(APP_NAME)) {
+    doc.title = doc.title.slice(0, -APP_NAME.length) + session.company.name;
+  }
+}
+
 /**
  * What to do when the browser shows this page again from its back/forward cache: the
  * page comes back exactly as it was, schedule included, without running any script. After
@@ -110,6 +136,7 @@ export async function startSignedInPage(showPage, navigate) {
       account.replaceChildren(...accountItems(session, navigate));
       account.hidden = false;
     }
+    showCompanyName(session);
     applyPermissions();
   }
 

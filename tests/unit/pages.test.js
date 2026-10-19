@@ -525,21 +525,43 @@ describe("Department week", () => {
 });
 
 describe("weekStats", () => {
-  it("counts shifts, open shifts, hours, and people", () => {
+  it("counts shifts, open shifts, open hours, and people", () => {
     const tiles = weekStats([
       shiftOn("2026-10-05"),
       shiftOn("2026-10-06"),
       shiftOn("2026-10-07", { employee: { id: "u2", display_name: "Ben Okafor" } }),
       shiftOn("2026-10-08", { status: "open", employee: null }),
+      // An open overnight shift, 10:00 PM to 3:30 AM: 5.5 hours.
+      shiftOn("2026-10-09", {
+        status: "open",
+        employee: null,
+        starts_at: "2026-10-10T03:00:00Z",
+        ends_at: "2026-10-10T08:30:00Z",
+      }),
     ]);
 
+    expect(tiles.map((t) => t.querySelector(".stat__label")?.textContent)).toEqual([
+      "Shifts",
+      "Open shifts",
+      "Open hours",
+      "People working",
+    ]);
+    // Only the open shifts' hours: 8 + 5.5, not the 24 hours people are assigned.
     expect(tiles.map((t) => t.querySelector(".stat__value")?.textContent)).toEqual([
-      "4",
-      "1",
-      "24",
+      "5",
+      "2",
+      "13.5",
       "2",
     ]);
-    // Open shifts need action, so that tile stands out.
+    // Open shifts and open hours need action, so those tiles stand out.
     expect(tiles[1].classList.contains("stat--attention")).toBe(true);
+    expect(tiles[2].classList.contains("stat--attention")).toBe(true);
+  });
+
+  it("shows no open hours, calmly, when every shift has someone", () => {
+    const tiles = weekStats([shiftOn("2026-10-05")]);
+
+    expect(tiles[2].querySelector(".stat__value")?.textContent).toBe("0");
+    expect(tiles[2].classList.contains("stat--attention")).toBe(false);
   });
 });
