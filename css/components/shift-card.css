@@ -143,3 +143,19 @@ button.shift:not(.shift--open):hover .shift__icon {
     font-size: 1rem;
   }
 }
+
+/* "+1 day" after the time of an overnight shift (js/components/shift-time.js): a small
+   pill, so "10:00 PM - 6:00 AM" is never read as ending that same morning. It says so in
+   words, never by colour alone; screen readers hear "ends the next day". */
+.next-day {
+  display: inline-block;
+  padding: 0 0.375rem;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-accent);
+  white-space: nowrap;
+  vertical-align: middle;
+}

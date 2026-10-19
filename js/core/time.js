@@ -37,6 +37,24 @@ export function formatTime(moment, timeZone) {
 }
 
 /**
+ * The wall-clock time of a moment in a time zone as "HH:MM" on a 24-hour clock, e.g.
+ * "14:00": the format of a time input, so a shift's times can fill the edit form. The
+ * opposite of zonedTimeToUtc below.
+ * @param {string} moment an ISO 8601 moment
+ * @param {string} timeZone
+ * @returns {string}
+ */
+export function wallTime(moment, timeZone) {
+  // hourCycle h23 counts 0 to 23, so midnight is "00:00", never "24:00".
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hourCycle: "h23",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(moment));
+}
+
+/**
  * A shift's start and end, e.g. "9:00 AM - 5:00 PM", in its workplace zone.
  * @param {string} startsAt
  * @param {string} endsAt
@@ -231,4 +249,40 @@ export function zonedTimeToUtc(key, time, timeZone) {
   // which lands the same number of minutes after the jump (2:30 becomes 3:30).
   const moment = matches.length > 0 ? matches[0] : wall - before * 60000;
   return new Date(moment).toISOString();
+}
+
+/**
+ * How many calendar days after its start day a shift ends, in its workplace zone: 0 for a
+ * shift that ends the same day, 1 for an overnight shift (22:00 to 06:00). A shift belongs
+ * to the day it starts, so this is what the "+1 day" marker shows.
+ * @param {string} startsAt an ISO 8601 moment
+ * @param {string} endsAt
+ * @param {string} timeZone
+ * @returns {number}
+ */
+export function daysLater(startsAt, endsAt, timeZone) {
+  const first = new Date(`${dayKey(startsAt, timeZone)}T00:00:00Z`).getTime();
+  const last = new Date(`${dayKey(endsAt, timeZone)}T00:00:00Z`).getTime();
+  return Math.round((last - first) / (24 * 3600000));
+}
+
+/**
+ * The start and end of a shift as UTC moments, from a day and wall-clock times in the
+ * workplace's zone. The rule for overnight shifts: an end at or before the start is on the
+ * next day (22:00 to 06:00 ends the next morning). There is never a doubt which day is
+ * meant, because a shift is at most 12 hours long: an end later than the start on the next
+ * day would make it longer than 24 hours.
+ * @param {string} day "YYYY-MM-DD", the day the shift starts
+ * @param {string} start "HH:MM"
+ * @param {string} end "HH:MM"
+ * @param {string} timeZone
+ * @returns {{ starts_at: string, ends_at: string }}
+ */
+export function shiftMoments(day, start, end, timeZone) {
+  // "HH:MM" strings compare correctly as text: "08:00" < "17:30".
+  const endDay = end <= start ? addDays(day, 1) : day;
+  return {
+    starts_at: zonedTimeToUtc(day, start, timeZone),
+    ends_at: zonedTimeToUtc(endDay, end, timeZone),
+  };
 }
