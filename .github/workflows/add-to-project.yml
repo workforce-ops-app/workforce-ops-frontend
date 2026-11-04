@@ -1,0 +1,15 @@
+# Adds each new issue in this repository to the combined project board
+# (shared workflow in workforce-ops-app/.github, issue workforce-ops-app/.github#99).
+name: add-to-project
+
+on:
+  issues:
+    types: [opened, transferred]
+
+permissions: {}
+
+jobs:
+  add:
+    uses: workforce-ops-app/.github/.github/workflows/reusable-add-to-project.yml@main
+    secrets:
+      token: ${{ secrets.ADD_TO_PROJECT_TOKEN }}
