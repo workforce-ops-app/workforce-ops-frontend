@@ -66,6 +66,26 @@ export function formatTimeRange(startsAt, endsAt, timeZone) {
 }
 
 /**
+ * A moment with its date, year, and time in a time zone, e.g. "Mon, Oct 5, 2026, 9:00 AM":
+ * when an announcement was posted. The year is always included, since an announcement can
+ * stay up for longer than a year, unlike a week's shifts.
+ * @param {string} moment an ISO 8601 moment
+ * @param {string} timeZone
+ * @returns {string}
+ */
+export function formatMoment(moment, timeZone) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(moment));
+}
+
+/**
  * A day heading for a day key, e.g. "Monday, October 5".
  * @param {string} key "YYYY-MM-DD"
  * @returns {string}

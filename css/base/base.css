@@ -150,6 +150,10 @@ a {
   mask-image: url("/icons/event.svg");
 }
 
+.icon--announcement {
+  mask-image: url("/icons/announcement.svg");
+}
+
 .icon--chevron-left {
   mask-image: url("/icons/chevron-left.svg");
 }

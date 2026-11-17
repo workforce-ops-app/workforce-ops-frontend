@@ -6,6 +6,7 @@ import {
   daysLater,
   formatDayHeading,
   formatHours,
+  formatMoment,
   formatTimeRange,
   mondayOf,
   shiftMoments,
@@ -35,6 +36,14 @@ describe("formatTimeRange", () => {
 describe("formatDayHeading", () => {
   it("names the day", () => {
     expect(formatDayHeading("2026-10-05")).toBe("Monday, October 5");
+  });
+});
+
+describe("formatMoment", () => {
+  it("shows the date, year, and time in the workplace zone", () => {
+    // 03:00 UTC on October 6 is still 10:00 PM on Monday, October 5, in Chicago.
+    expect(formatMoment("2026-10-06T03:00:00Z", CHICAGO)).toBe("Mon, Oct 5, 2026, 10:00 PM");
+    expect(formatMoment("2026-10-06T03:00:00Z", "UTC")).toBe("Tue, Oct 6, 2026, 3:00 AM");
   });
 });
 

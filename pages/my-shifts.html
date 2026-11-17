@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="/css/components/form.css" />
     <link rel="stylesheet" href="/css/components/shift-dialog.css" />
     <link rel="stylesheet" href="/css/components/week-nav.css" />
+    <link rel="stylesheet" href="/css/components/announcement.css" />
     <script type="module" src="/js/pages/my-shifts.js"></script>
   </head>
   <body>
@@ -43,6 +44,11 @@
         <a class="tab-bar__link" href="/pages/schedule.html" data-permission="schedule.view" hidden>
           <span class="icon icon--people" aria-hidden="true"></span>
           Department
+        </a>
+        <!-- No permission: everyone signed in reads the announcements meant for them. -->
+        <a class="tab-bar__link" href="/pages/announcements.html">
+          <span class="icon icon--announcement" aria-hidden="true"></span>
+          Announcements
         </a>
       </nav>
       <!-- The signed-in person's name and the sign-out button, filled in by the script. -->
@@ -81,6 +87,20 @@
         <div id="days" class="days"></div>
         <div id="summary" class="summary-card" hidden></div>
       </div>
+      <!-- The newest announcements, under the week, and a link to all of them. The link is
+           here in the HTML, so it works even when the list cannot load. -->
+      <section class="home-announcements" aria-labelledby="home-announcements-title">
+        <h2 id="home-announcements-title" class="home-announcements__title">Announcements</h2>
+        <p id="announcements-status" class="status" aria-live="polite">Loading announcements…</p>
+        <ul id="home-announcements" class="announcement-list"></ul>
+        <a class="home-announcements__all" href="/pages/announcements.html">
+          See all announcements
+          <span
+            class="icon icon--chevron-right home-announcements__chevron"
+            aria-hidden="true"
+          ></span>
+        </a>
+      </section>
     </main>
   </body>
 </html>
