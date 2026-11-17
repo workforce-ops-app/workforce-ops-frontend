@@ -66,6 +66,28 @@ export function formatTimeRange(startsAt, endsAt, timeZone) {
 }
 
 /**
+ * A moment's time written as short as possible, e.g. "9a" or "2:30p", in a time zone. The
+ * timeline's bars are narrow (an 8-hour shift is about 3rem wide on a laptop), so they use
+ * this instead of "9:00 AM"; the full time is always there for screen readers and in the
+ * details popup.
+ * @param {string} moment an ISO 8601 moment
+ * @param {string} timeZone
+ * @returns {string}
+ */
+export function compactTime(moment, timeZone) {
+  // Start from the 24-hour wall-clock time ("14:30"), which is already in the right zone.
+  const [hour, minute] = wallTime(moment, timeZone).split(":").map(Number);
+  // 0 to 11 is morning ("a"), 12 to 23 afternoon and evening ("p").
+  const suffix = hour < 12 ? "a" : "p";
+  // A 12-hour clock: 0 and 12 both read as 12 (midnight is "12a", noon "12p").
+  const twelve = hour % 12 === 0 ? 12 : hour % 12;
+  // Whole hours leave out ":00", so "9a" instead of "9:00a".
+  return minute === 0
+    ? `${twelve}${suffix}`
+    : `${twelve}:${String(minute).padStart(2, "0")}${suffix}`;
+}
+
+/**
  * A day heading for a day key, e.g. "Monday, October 5".
  * @param {string} key "YYYY-MM-DD"
  * @returns {string}

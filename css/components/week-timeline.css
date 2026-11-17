@@ -1,0 +1,308 @@
+/* The week timeline (js/components/week-timeline.js): one white card holding a table with
+   one row per person. Under the seven day headers, each row has one wide track, and each
+   shift is a soft bar placed in it from its start to its end, so overnight shifts visibly
+   cross into the next day. One day is highlighted: the one under the mouse or keyboard
+   focus, else today's.
+
+   The script never writes style attributes (the Content Security Policy refuses them). It
+   sets three numbers on each bar through the DOM, and the rules below turn them into a
+   position:
+   --bar-start    where the bar starts, as a percentage of the week (0 is Monday 00:00)
+   --bar-length   how long it is, as a percentage of the week
+   --bar-lane     which line of the row it is on (0 unless two bars overlap)
+   and one on each track: --bar-lanes, how many lines the row needs (normally 1).
+   Each lane is --lane-height tall; edit mode makes lanes taller to fit the select boxes. */
+
+.week-timeline-card {
+  /* If the window is too narrow for the whole week, the table scrolls sideways inside its
+     card instead of pushing the whole page wider. */
+  overflow-x: auto;
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-card);
+}
+
+.week-timeline {
+  /* Wide enough that an 8-hour shift is about 3rem long, room for "10p-6a". Below that the
+     card scrolls (above). */
+  width: 100%;
+  min-width: 72rem;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.week-timeline th,
+.week-timeline td {
+  padding: 0.75rem 0.625rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.week-timeline tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+/* Column widths: names, seven equal days (the track spans all seven), hours. */
+.week-timeline__corner,
+.week-timeline__person {
+  width: 11rem;
+  padding-left: calc(var(--space) * 1.25);
+}
+
+.week-timeline__hours {
+  width: 5rem;
+  padding-right: calc(var(--space) * 1.25);
+  text-align: right;
+}
+
+/* The header row: column names in small muted text, days as "MON" over a large "5". */
+.week-timeline thead th {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  vertical-align: bottom;
+}
+
+.week-timeline__day {
+  line-height: 1.1;
+}
+
+.week-timeline__weekday {
+  display: block;
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
+}
+
+.week-timeline__number {
+  display: block;
+  font-size: 1.375rem;
+  font-weight: 400;
+  color: var(--color-heading);
+}
+
+/* Today's date sits in a green circle, whichever day is highlighted. */
+.week-timeline__day--today .week-timeline__number {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin-top: 0.125rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: 1.0625rem;
+}
+
+/* A person's name, and their hours at the end of the row. */
+.week-timeline__person {
+  font-weight: 600;
+  color: var(--color-heading);
+  overflow-wrap: anywhere;
+}
+
+.week-timeline tbody .week-timeline__hours {
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+/* --- The track and its day bands ------------------------------------------------------ */
+
+/* The track: the bars are placed inside it, so it is the positioning box. It has no
+   padding of its own, so 0% is exactly Monday 00:00 under the Monday header and 100% is
+   Sunday midnight. Its height fits the row's lanes. */
+.week-timeline td.week-timeline__track {
+  --lane-height: 3.25rem;
+  position: relative;
+  height: calc(var(--bar-lanes, 1) * var(--lane-height) + 0.75rem);
+  padding: 0;
+  /* A bar never pokes out of the week: a Sunday night bar ends at the track's edge, not
+     over the hours column. */
+  overflow: hidden;
+}
+
+/* Edit mode: each bar gets a select box under it (below), so every lane grows to fit.
+   :has() asks "does this track hold a select box?", so no script has to switch it. */
+.week-timeline td.week-timeline__track:has(.shift-pick) {
+  --lane-height: 5rem;
+}
+
+/* The seven day bands, side by side behind the bars, each as wide as its day header. */
+.week-timeline__bands {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+/* One day: a line on its left edge (the day before ends here), and faint lines at 6 AM,
+   noon, and 6 PM, a quarter of the way along each. The fade between highlighted days is
+   on every band, so the old one fades out while the new one fades in. */
+.week-timeline__band {
+  border-left: 1px solid var(--color-border);
+  background-image: linear-gradient(
+    to right,
+    transparent calc(25% - 1px),
+    var(--color-surface-soft) calc(25% - 1px) 25%,
+    transparent 25% calc(50% - 1px),
+    var(--color-border) calc(50% - 1px) 50%,
+    transparent 50% calc(75% - 1px),
+    var(--color-surface-soft) calc(75% - 1px) 75%,
+    transparent 75%
+  );
+  transition: background-color 0.15s ease-in-out;
+}
+
+/* The highlighted day: a soft green band from the header to the bottom. The script moves
+   the class from day to day, so this one rule serves both hover and today. */
+.week-timeline__col--active {
+  background-color: var(--color-accent-soft);
+}
+
+.week-timeline thead th {
+  transition: background-color 0.15s ease-in-out;
+}
+
+/* People who ask their system for less motion get the instant switch. */
+@media (prefers-reduced-motion: reduce) {
+  .week-timeline__band,
+  .week-timeline thead th {
+    transition: none;
+  }
+}
+
+/* --- The bars --------------------------------------------------------------------------- */
+
+/* A bar: placed from the three numbers the script set (see the top of this file). The
+   small gaps (2px each side) keep back-to-back shifts apart, so two bars never look like
+   one long shift. */
+.week-timeline__bar {
+  position: absolute;
+  top: calc(0.375rem + var(--bar-lane, 0) * var(--lane-height));
+  /* At least 1.5rem wide, so a short shift can still be clicked (and its select box fits
+     in edit mode). A bar that would then poke past the end of the week (a short stub of a
+     Sunday night shift) slides left just enough to stay inside instead. */
+  left: min(calc(var(--bar-start) * 1% + 2px), calc(100% - 1.5rem - 2px));
+  width: max(calc(var(--bar-length) * 1% - 4px), 1.5rem);
+  height: 3rem;
+  display: flex;
+}
+
+/* The button fills its bar with two pieces: the start ("10p"), then the end with the
+   "+1" of an overnight shift and the event and notes icons ("-6a +1"). They sit on one
+   line when the bar is wide enough, and the end wraps under the start when it is not (an
+   8-hour bar is about 2.5rem wide on a small laptop). What still does not fit is cut off
+   with "...", and the details popup shows it all. It brightens on hover to say it can be
+   opened. */
+.timeline-shift {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0;
+  align-content: center;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  padding: 0 0.3125rem;
+  overflow: hidden;
+  border: 0;
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius);
+  background: var(--color-surface-soft);
+  box-shadow: 0 0 0 1px var(--color-border);
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--color-heading);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* The start never breaks inside itself. */
+.timeline-shift__start {
+  flex: none;
+}
+
+/* The end and its markers. The end time matters most, so it never shrinks; when the
+   markers do not fit after it, they wrap onto a third line (a bar is tall enough for
+   three). On the narrowest bars, whatever still does not fit is cut off at the edge (the
+   popup and screen readers have it all). */
+.timeline-shift__end {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.1875rem;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.timeline-shift__end-time,
+.timeline-shift__next-day,
+.timeline-shift__end .shift-extras {
+  flex: none;
+}
+
+/* "+1": the shift ends the next day. The same pill as "+1 day" on the other screens,
+   made as small as it can be while staying readable. */
+.timeline-shift__next-day {
+  padding: 0 0.1875rem;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  font-size: 0.625rem;
+  line-height: 1.25;
+  color: var(--color-accent);
+}
+
+/* The icons only; their words are for screen readers (shift-card.css styles the rest). */
+.timeline-shift .shift-extras {
+  margin-top: 0;
+}
+
+.timeline-shift:hover {
+  background: var(--color-background);
+  box-shadow: var(--shadow-card);
+}
+
+/* A shift that runs on past Sunday midnight: the right edge is cut square and drawn as a
+   dashed line, so the bar plainly goes on past the edge (screen readers hear "continues
+   into next week"). The same on the left for one that started the week before. */
+.week-timeline__bar--continues .timeline-shift {
+  border-right: 2px dashed var(--color-accent);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.week-timeline__bar--started-before .timeline-shift {
+  border-left-style: dashed;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* Edit mode puts a select box with the button inside the bar
+   (css/components/week-editor.css styles the box). A bar is too narrow to share with a
+   box, so the box goes under it instead: the box comes first in the page (so Tab reaches
+   it first, as on the day cards), and column-reverse only draws it below. */
+.week-timeline__bar:has(.shift-pick) {
+  height: auto;
+}
+
+.week-timeline__bar .shift-pick {
+  flex: 1;
+  flex-direction: column-reverse;
+  gap: 0.25rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.week-timeline__bar .shift-pick > .timeline-shift {
+  flex: none;
+  height: 3rem;
+}
+
+/* A week without shifts: one centred line across the whole table. */
+.week-timeline td.week-timeline__empty {
+  padding: calc(var(--space) * 2);
+  color: var(--color-muted);
+  text-align: center;
+}

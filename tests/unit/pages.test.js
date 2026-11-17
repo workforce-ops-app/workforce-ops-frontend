@@ -221,7 +221,7 @@ describe("Department week", () => {
     expect(text("title")).toBe("Kitchen");
   });
 
-  it("fills the grid and the week's numbers when the page has them", async () => {
+  it("fills the timeline and the week's numbers when the page has them", async () => {
     page([
       "title",
       "week-range",
@@ -230,7 +230,7 @@ describe("Department week", () => {
       "next-week",
       "status",
       "days",
-      "grid",
+      "timeline",
       "stats",
     ]);
     mocked.mockResolvedValue([
@@ -240,8 +240,8 @@ describe("Department week", () => {
 
     await showWeek("?week=2026-10-05&department=d1");
 
-    // One row: Ana. The open shift is not a row of the grid.
-    expect(document.querySelectorAll("#grid table tbody tr")).toHaveLength(1);
+    // One row: Ana. The open shift is not a row of the timeline.
+    expect(document.querySelectorAll("#timeline table tbody tr")).toHaveLength(1);
     expect(document.getElementById("stats")?.hidden).toBe(false);
     expect(document.querySelectorAll("#stats .stat")).toHaveLength(4);
   });
@@ -352,7 +352,7 @@ describe("Department week", () => {
       "next-week",
       "status",
       "days",
-      "grid",
+      "timeline",
       "stats",
       "sections",
     ]);
@@ -373,7 +373,7 @@ describe("Department week", () => {
       "next-week",
       "status",
       "days",
-      "grid",
+      "timeline",
     ]);
     mocked.mockResolvedValueOnce([shiftOn("2026-10-05")]);
     await showWeek("?week=2026-10-05");
@@ -382,7 +382,7 @@ describe("Department week", () => {
     await showWeek("?week=2026-10-12");
 
     expect(document.getElementById("days")?.childElementCount).toBe(0);
-    expect(document.getElementById("grid")?.childElementCount).toBe(0);
+    expect(document.getElementById("timeline")?.childElementCount).toBe(0);
     expect(text("status")).toBe("Problem: Forbidden");
   });
 
@@ -475,7 +475,7 @@ describe("Department week", () => {
       "status",
       "days",
       "stats",
-      "grid",
+      "timeline",
       "sections",
     ]);
     mocked.mockResolvedValue([shiftOn("2026-10-05")]);
@@ -484,7 +484,7 @@ describe("Department week", () => {
     await showWeek("?week=2026-10-05&department=unknown");
 
     expect(document.getElementById("stats")?.hidden).toBe(true);
-    expect(text("grid")).toBe("");
+    expect(text("timeline")).toBe("");
     expect(text("sections")).toBe("");
     expect(text("days")).toBe("");
   });
