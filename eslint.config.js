@@ -18,8 +18,8 @@ export default [
     languageOptions: { globals: globals.browser },
   },
   {
-    // Tool configuration runs in Node.js.
-    files: ["*.config.js"],
+    // Tool configuration and the CI scripts run in Node.js.
+    files: ["*.config.js", "scripts/**/*.js"],
     languageOptions: { globals: globals.node },
   },
   {
