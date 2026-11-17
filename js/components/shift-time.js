@@ -1,7 +1,7 @@
 // A shift's time as every screen shows it: "10:00 PM - 6:00 AM", in its workplace zone,
 // plus a "+1 day" marker when it ends on the next day (an overnight shift). A shift is
 // listed on the day it starts, so without the marker "6:00 AM" could be read as that same
-// morning. Used by the day cards, the week grid, the open shifts, and the details popup.
+// morning. Used by the day cards, the week timeline, the open shifts, and the details popup.
 
 import { el } from "../core/dom.js";
 import { daysLater, formatTimeRange } from "../core/time.js";

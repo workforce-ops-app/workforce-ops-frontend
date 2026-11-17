@@ -1,8 +1,8 @@
 // Department week: everyone's shifts for one week, with open shifts highlighted
 // (frontend docs, features/schedules.md). It is laid out for planning: tiles with the
-// week's numbers at the top, then, on a laptop, a grid with one row per person and one
-// column per day (js/components/week-grid.js), with the open shifts in their own section
-// under it. Phones see a card per day instead, open shifts included
+// week's numbers at the top, then, on a laptop, a timeline with one row per person and
+// each shift drawn as a bar from its start to its end across the days
+// (js/components/week-timeline.js), with the open shifts in their own section under it. Phones see a card per day instead, open shifts included
 // (js/components/day-list.js); css/pages/schedule.css shows one or the other. Last comes
 // the list of the department's people without a shift that week
 // (js/components/week-sections.js), for people allowed to list them.
@@ -18,8 +18,8 @@ import { listDepartmentPeople, listDepartments, listShifts } from "../api/shifts
 import { startSignedInPage } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
 import { statTile } from "../components/stat-tile.js";
-import { weekGrid } from "../components/week-grid.js";
 import { weekEditor } from "../components/week-editor.js";
+import { weekTimeline } from "../components/week-timeline.js";
 import { followWeekLinks } from "../components/week-nav.js";
 import { openShiftsSection, unscheduledSection } from "../components/week-sections.js";
 import { el, setText } from "../core/dom.js";
@@ -73,7 +73,7 @@ let editor = null;
  * Open hours are the hours nobody is assigned to yet: what a manager still has to cover
  * (#51). A total of all scheduled hours was shown here before, but without a labor budget
  * to compare it with it did not help decide anything, and it left the open shifts out.
- * Each person's own hours stay at the end of their row in the grid.
+ * Each person's own hours stay at the end of their row in the timeline.
  * @param {import("../api/shifts.js").Shift[]} shifts the week's shifts (no cancelled ones)
  * @returns {HTMLElement[]}
  */
@@ -127,10 +127,10 @@ export async function showWeek(search) {
   const status = document.getElementById("status");
   const week = document.getElementById("days");
   if (!title || !range || !previous || !current || !next || !status || !week) return;
-  // The tiles, the grid, and the sections are optional, so a page (or a test) without
+  // The tiles, the timeline, and the sections are optional, so a page (or a test) without
   // them still works.
   const stats = document.getElementById("stats");
-  const grid = document.getElementById("grid");
+  const timeline = document.getElementById("timeline");
   const sections = document.getElementById("sections");
 
   // Everything that reads the address or the server is inside try, so a bad address or a
@@ -180,7 +180,7 @@ export async function showWeek(search) {
     if (departmentId === null) {
       setText(status, "No departments yet.");
       week.replaceChildren();
-      grid?.replaceChildren();
+      timeline?.replaceChildren();
       sections?.replaceChildren();
       if (stats) stats.hidden = true;
       return;
@@ -200,7 +200,7 @@ export async function showWeek(search) {
     if (!department) {
       showUnavailable(status, params, monday);
       week.replaceChildren();
-      grid?.replaceChildren();
+      timeline?.replaceChildren();
       sections?.replaceChildren();
       if (stats) stats.hidden = true;
       return;
@@ -224,8 +224,8 @@ export async function showWeek(search) {
       ),
     );
 
-    // The same shifts as a grid, for wide screens.
-    grid?.replaceChildren(weekGrid(keys, shifts, { today: todayKey }));
+    // The same shifts as a timeline, for wide screens.
+    timeline?.replaceChildren(weekTimeline(keys, shifts, { today: todayKey }));
 
     // Under it, the open shifts (wide screens; phones have them in the day cards) and the
     // people without a shift, when the person may see the department's people.
@@ -245,10 +245,10 @@ export async function showWeek(search) {
   } catch (error) {
     // The two failures a page expects get a plain-language message. Whatever week is still
     // on screen (the one before, when moving between weeks) is not this week's, so the
-    // tiles, the grid, the day cards, and the sections all go.
+    // tiles, the timeline, the day cards, and the sections all go.
     if (stats) stats.hidden = true;
     week.replaceChildren();
-    grid?.replaceChildren();
+    timeline?.replaceChildren();
     sections?.replaceChildren();
     if (error instanceof ApiError || error instanceof NetworkError) {
       const message = error instanceof ApiError ? error.title : "the server could not be reached";
