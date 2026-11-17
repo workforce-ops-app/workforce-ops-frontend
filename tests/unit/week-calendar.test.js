@@ -24,6 +24,9 @@ const {
   openAtFirstShift,
   weekCalendar,
   weekSpan,
+  followNow,
+  nowPosition,
+  placeNowLine,
 } = await import("../../js/components/week-calendar.js");
 const { addDays } = await import("../../js/core/time.js");
 
@@ -487,9 +490,44 @@ describe("weekCalendar", () => {
     for (const day of calendar.querySelectorAll(".week-calendar__day")) {
       Object.defineProperty(day, "offsetHeight", { value: 24 * 48 });
     }
+    // And the scrolling area its window's height.
+    Object.defineProperty(scroller, "clientHeight", { value: 600 });
     openAtFirstShift(calendar);
     // Seven hours down, less a quarter of an hour so the label shows under the headers.
     expect(scroller.scrollTop).toBe(7 * 48 - 12);
+  });
+
+  it("waits a frame for the calendar to be laid out before it scrolls", () => {
+    // Some browsers have not laid out a calendar yet right after it is put on the page:
+    // with no height, it tries again at the next frame instead of staying at midnight.
+    const frames = /** @type {FrameRequestCallback[]} */ ([]);
+    const later = vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    try {
+      const calendar = weekCalendar(KEYS, [
+        shiftOn("2026-10-06", { starts_at: "2026-10-06T12:00:00Z" }),
+      ]);
+      document.body.append(calendar);
+      const scroller = /** @type {HTMLElement} */ (
+        calendar.querySelector(".week-calendar__scroll")
+      );
+      openAtFirstShift(calendar);
+      expect(scroller.scrollTop).toBe(0);
+      expect(frames).toHaveLength(1);
+
+      // By the next frame it has a size, and it scrolls.
+      for (const day of calendar.querySelectorAll(".week-calendar__day")) {
+        Object.defineProperty(day, "offsetHeight", { value: 24 * 48 });
+      }
+      Object.defineProperty(scroller, "clientHeight", { value: 600 });
+      frames[0](0);
+      expect(scroller.scrollTop).toBe(7 * 48 - 12);
+      calendar.remove();
+    } finally {
+      later.mockRestore();
+    }
   });
 });
 
@@ -613,5 +651,78 @@ describe("statTile", () => {
     expect(plain.textContent).toBe("Shifts9");
     expect(plain.classList.contains("stat--attention")).toBe(false);
     expect(attention.classList.contains("stat--attention")).toBe(true);
+  });
+});
+
+describe("the now line", () => {
+  // Monday, October 5, 2026 in Chicago is UTC-5 (daylight saving time).
+  const CHICAGO = "America/Chicago";
+
+  it("says which day and how far down it is now, on the workplace clock", () => {
+    // 17:00 UTC is noon in Chicago: Monday, halfway down.
+    expect(nowPosition(KEYS, new Date("2026-10-05T17:00:00Z"), CHICAGO)).toEqual({
+      day: 0,
+      percent: 50,
+    });
+    // 03:00 UTC on Wednesday is still 10 PM on Tuesday in Chicago.
+    const late = nowPosition(KEYS, new Date("2026-10-07T03:00:00Z"), CHICAGO);
+    expect(late?.day).toBe(1);
+    expect(late?.percent).toBeCloseTo((22 / 24) * 100);
+    // Another week: nowhere.
+    expect(nowPosition(KEYS, new Date("2026-10-20T17:00:00Z"), CHICAGO)).toBeNull();
+  });
+
+  it("draws one hidden line in today's column, placed through the CSSOM", () => {
+    const calendar = weekCalendar(KEYS, [], { today: MONDAY });
+    placeNowLine(calendar, new Date("2026-10-05T17:00:00Z"), CHICAGO);
+
+    const lines = calendar.querySelectorAll(".week-calendar__now");
+    expect(lines).toHaveLength(1);
+    const line = /** @type {HTMLElement} */ (lines[0]);
+    expect(line.closest(".week-calendar__day")?.getAttribute("data-day")).toBe(MONDAY);
+    // A picture only, and placed by a plain number, never a style attribute's text.
+    expect(line.getAttribute("aria-hidden")).toBe("true");
+    expect(line.style.getPropertyValue("--now-at")).toBe("50");
+    expect(line.style.length).toBe(1);
+  });
+
+  it("moves to the next day at midnight, and goes away outside the week", () => {
+    const calendar = weekCalendar(KEYS, [], { today: MONDAY });
+    placeNowLine(calendar, new Date("2026-10-06T04:59:00Z"), CHICAGO); // Mon 11:59 PM
+    placeNowLine(calendar, new Date("2026-10-06T05:01:00Z"), CHICAGO); // Tue 12:01 AM
+
+    const lines = calendar.querySelectorAll(".week-calendar__now");
+    expect(lines).toHaveLength(1);
+    expect(lines[0].closest(".week-calendar__day")?.getAttribute("data-day")).toBe(KEYS[1]);
+
+    placeNowLine(calendar, new Date("2026-10-13T05:01:00Z"), CHICAGO); // next Tuesday
+    expect(calendar.querySelector(".week-calendar__now")).toBeNull();
+  });
+
+  it("follows the clock every minute, and stops once the calendar is replaced", () => {
+    vi.useFakeTimers();
+    try {
+      const calendar = weekCalendar(KEYS, [], { today: MONDAY });
+      document.body.append(calendar);
+      let now = new Date("2026-10-05T17:00:00Z");
+      const clock = vi.fn(() => now);
+
+      followNow(calendar, CHICAGO, clock);
+      const line = () => /** @type {HTMLElement} */ (calendar.querySelector(".week-calendar__now"));
+      expect(line().style.getPropertyValue("--now-at")).toBe("50");
+
+      // An hour later, after the timer's next ticks, the line has moved down.
+      now = new Date("2026-10-05T18:00:00Z");
+      vi.advanceTimersByTime(60 * 1000);
+      expect(Number(line().style.getPropertyValue("--now-at"))).toBeCloseTo((13 / 24) * 100);
+
+      // The page shows another week: the old calendar leaves, and its timer stops asking.
+      calendar.remove();
+      const asked = clock.mock.calls.length;
+      vi.advanceTimersByTime(5 * 60 * 1000);
+      expect(clock.mock.calls.length).toBe(asked);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

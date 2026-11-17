@@ -147,6 +147,35 @@
   background-color: var(--today-tint);
 }
 
+/* The "now" line: across today's column at the time it is now (--now-at, a percentage
+   of the day set by placeNowLine through the CSSOM), with a dot at its left end, as in
+   Google Calendar. It is drawn over the blocks (which have no z-index of their own), so it
+   shows even across a shift, but under the pinned day headers (z-index 2), and it lets
+   clicks through to the block under it. Red (the error colour) stands out against every
+   person colour. */
+.week-calendar__now {
+  position: absolute;
+  top: calc(var(--now-at, 0) * 1%);
+  right: 0;
+  left: 0;
+  z-index: 1;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--color-error);
+  pointer-events: none;
+}
+
+.week-calendar__now::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-error);
+}
+
 /* --- The blocks ----------------------------------------------------------------------- */
 
 /* A block: placed from the four numbers the script set (see the top of this file). Side by

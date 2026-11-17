@@ -26,6 +26,9 @@
 //   when clicked.
 // - Shifts that overlap in time on the same day sit side by side, each narrower, like in
 //   Google Calendar (assignColumns below).
+// - A red line across today's column marks the time it is now, with a dot where it starts,
+//   as in Google Calendar (placeNowLine below). The page moves it every minute
+//   (followNow), and it is only a picture: screen readers skip it.
 //
 // How a block is placed, and why it is safe with our Content Security Policy:
 // - The page's policy is style-src 'self', so style="..." attributes (and any HTML that
@@ -508,6 +511,81 @@ function dayColumn(key, isToday, blocks) {
 }
 
 /**
+ * Where the time now falls in the week shown: which day (0 is Monday) and how far down
+ * that day, as a percentage (0 is midnight at the top, 100 midnight at the bottom). Null
+ * when now is not in this week (an earlier or later week is shown).
+ *
+ * It uses wall-clock time in the workplace zone, the same clock the blocks are placed on,
+ * so the line crosses a 9:00 to 17:00 block at 12:00 exactly halfway down.
+ * @param {string[]} keys the week's seven day keys, Monday first
+ * @param {Date} now
+ * @param {string} timeZone the workplace zone
+ * @returns {{ day: number, percent: number } | null}
+ */
+export function nowPosition(keys, now, timeZone) {
+  // 1. Today's day key in the workplace zone: is it one of the week's days?
+  const moment = now.toISOString();
+  const day = keys.indexOf(dayKey(moment, timeZone));
+  if (day === -1) return null;
+  // 2. The wall-clock time there, as minutes after midnight, then a share of the day.
+  const [hour, minute] = wallTime(moment, timeZone).split(":").map(Number);
+  return { day, percent: ((hour * 60 + minute) / DAY_MINUTES) * 100 };
+}
+
+/**
+ * Draw the "now" line in the calendar, or move it to where now is. It goes into today's
+ * column (moving to the next column at midnight) and disappears when now is not in the week
+ * shown. Placed like the blocks: a custom property through the CSSOM (--now-at, a plain
+ * number), never a style attribute.
+ *
+ * The line is a list item of its column, so the column's list stays valid HTML, but it is
+ * hidden from screen readers (aria-hidden): it is a picture of the time, not a shift, and
+ * would otherwise be counted as one ("list, 4 items").
+ * @param {HTMLElement} calendar what weekCalendar returned
+ * @param {Date} now
+ * @param {string} timeZone the workplace zone
+ */
+export function placeNowLine(calendar, now, timeZone) {
+  const columns = [...calendar.querySelectorAll(".week-calendar__day")];
+  const keys = columns.map((column) => column.getAttribute("data-day") ?? "");
+  const where = nowPosition(keys, now, timeZone);
+  /** @type {HTMLElement | null} */
+  let line = calendar.querySelector(".week-calendar__now");
+  // Not this week: no line at all.
+  if (!where) {
+    line?.remove();
+    return;
+  }
+  // The first time, make the line; after that, reuse it.
+  if (!line) {
+    line = el("li", { className: "week-calendar__now", attrs: { "aria-hidden": "true" } });
+  }
+  // In today's column (appending moves it there if it was in yesterday's), at the time.
+  const column = columns[where.day];
+  if (line.parentElement !== column) column.append(line);
+  line.style.setProperty("--now-at", String(where.percent));
+}
+
+/**
+ * Keep the "now" line where now is: placed at once, then moved every minute, while the
+ * calendar is on the page. When the page shows another week or department it replaces the
+ * calendar, and the old calendar's timer notices it is gone and stops.
+ * @param {HTMLElement} calendar what weekCalendar returned, already on the page
+ * @param {string} timeZone the workplace zone
+ * @param {() => Date} [clock] where the time comes from (the tests pass their own)
+ */
+export function followNow(calendar, timeZone, clock = () => new Date()) {
+  placeNowLine(calendar, clock(), timeZone);
+  const timer = setInterval(() => {
+    if (!calendar.isConnected) {
+      clearInterval(timer);
+      return;
+    }
+    placeNowLine(calendar, clock(), timeZone);
+  }, 60 * 1000);
+}
+
+/**
  * The whole calendar for one week.
  * @param {string[]} keys the week's seven day keys, Monday first
  * @param {Shift[]} shifts the department's shifts that week (no cancelled ones); open ones
@@ -602,11 +680,22 @@ export function weekCalendar(keys, shifts, options = {}) {
  * calendar is on the page: before that it has no size to scroll. On a phone the calendar
  * is hidden (the day cards show instead), has no size, and this does nothing.
  * @param {HTMLElement} calendar what weekCalendar returned
+ * @param {number} [framesLeft] how many more frames to wait for the calendar to get a size
  */
-export function openAtFirstShift(calendar) {
+export function openAtFirstShift(calendar, framesLeft = 30) {
   const scroller = calendar.querySelector(".week-calendar__scroll");
   const day = calendar.querySelector(".week-calendar__day");
   if (!(scroller instanceof HTMLElement) || !(day instanceof HTMLElement)) return;
+  // Some browsers (WebKit) have not laid the new calendar out yet right after it is put on
+  // the page, so it has no height to scroll by, and scrolling would leave it at midnight.
+  // Then try again at the next frame, for up to about half a second (30 frames). A hidden
+  // calendar (on a phone) never gets a height, and simply stops trying.
+  if (!day.offsetHeight || !scroller.clientHeight) {
+    if (framesLeft > 0 && calendar.isConnected) {
+      requestAnimationFrame(() => openAtFirstShift(calendar, framesLeft - 1));
+    }
+    return;
+  }
   const hour = Number(scroller.dataset.firstHour ?? DEFAULT_FIRST_HOUR);
   // One hour is a 24th of a day column. A little less than the full distance, so the
   // hour's label is not tucked under the pinned day headers.

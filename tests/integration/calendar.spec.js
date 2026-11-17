@@ -177,12 +177,13 @@ test("the calendar draws each block where it belongs, under the real policy", as
   expect(tint).not.toBe("rgba(0, 0, 0, 0)");
   expect(tint).not.toBe("rgb(240, 240, 240)");
 
-  // It opened scrolled to the week's earliest shift (9 AM, Ana's), not at midnight.
-  const scrolled = await calendar
-    .locator(".week-calendar__scroll")
-    .evaluate((element) => element.scrollTop);
-  expect(scrolled).toBeGreaterThan((monday.height * 8) / 24);
-  expect(scrolled).toBeLessThan((monday.height * 9.5) / 24);
+  // It opened scrolled to the week's earliest shift (9 AM, Ana's), not at midnight. The
+  // scroll can wait a frame for the calendar to be laid out (openAtFirstShift), so ask
+  // until it has happened.
+  const scrolled = () =>
+    calendar.locator(".week-calendar__scroll").evaluate((element) => element.scrollTop);
+  await expect.poll(scrolled).toBeGreaterThan((monday.height * 8) / 24);
+  expect(await scrolled()).toBeLessThan((monday.height * 9.5) / 24);
 
   // And the browser refused nothing.
   expect(refused).toEqual([]);
@@ -214,5 +215,38 @@ test("the department picker shows another department for the same week", async (
   await page.goBack();
   await expect(page.locator("#title")).toHaveText("Kitchen");
   await expect(picker).toHaveValue("d1");
+  expect(refused).toEqual([]);
+});
+
+test("a red line marks the time it is now in today's column", async ({ page }) => {
+  // Freeze the browser's clock at Monday, October 5, 1:00 PM in Chicago (18:00 UTC), in
+  // the week shown. The line follows the workplace's clock (the shifts' zone, Chicago),
+  // whatever zone the browser itself is in.
+  await page.clock.install({ time: new Date("2026-10-05T18:00:00Z") });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const refused = watchPolicy(page);
+  await openWeek(page);
+
+  const calendar = page.locator("#calendar");
+  const monday = calendar.locator(".week-calendar__day[data-day='2026-10-05']");
+  const line = calendar.locator(".week-calendar__now");
+  await expect(line).toHaveCount(1);
+  // In Monday's column, hidden from screen readers.
+  await expect(monday.locator(".week-calendar__now")).toHaveCount(1);
+  await expect(line).toHaveAttribute("aria-hidden", "true");
+
+  // 13/24 of the way down the day (1:00 PM), across the column's width. The column's own
+  // box is the ruler, wherever the calendar has scrolled to.
+  const column = await box(monday);
+  let drawn = await box(line);
+  expect(Math.abs(drawn.y - (column.y + (column.height * 13) / 24))).toBeLessThan(3);
+  expect(Math.abs(drawn.width - column.width)).toBeLessThan(3);
+
+  // An hour later the line has moved down by an hour (the page moves it every minute).
+  await page.clock.runFor(60 * 60 * 1000);
+  drawn = await box(line);
+  expect(Math.abs(drawn.y - (column.y + (column.height * 14) / 24))).toBeLessThan(3);
+
+  // Placed through the CSSOM: the policy refused nothing.
   expect(refused).toEqual([]);
 });

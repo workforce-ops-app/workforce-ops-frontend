@@ -23,7 +23,7 @@ import { dayCard, groupByDay } from "../components/day-list.js";
 import { followDepartmentPicker, showDepartmentPicker } from "../components/department-picker.js";
 import { statTile } from "../components/stat-tile.js";
 import { weekEditor } from "../components/week-editor.js";
-import { openAtFirstShift, weekCalendar } from "../components/week-calendar.js";
+import { followNow, openAtFirstShift, weekCalendar } from "../components/week-calendar.js";
 import { followWeekLinks } from "../components/week-nav.js";
 import { openShiftsSection, unscheduledSection } from "../components/week-sections.js";
 import { el, setText } from "../core/dom.js";
@@ -233,11 +233,18 @@ export async function showWeek(search) {
     );
 
     // The same shifts as a calendar, for wide screens. It can only scroll to the week's
-    // first shift once it is on the page and has a size.
+    // first shift once it is on the page and has a size. The red "now" line follows the
+    // workplace's clock, like the blocks: the zone of the department's shifts (they all
+    // share it), else the company's, else the viewer's own.
     if (calendarCard) {
       const calendar = weekCalendar(keys, shifts, { today: todayKey });
       calendarCard.replaceChildren(calendar);
       openAtFirstShift(calendar);
+      const zone =
+        shifts.find((shift) => shift.timezone)?.timezone ??
+        currentSession()?.company.timezone ??
+        Intl.DateTimeFormat().resolvedOptions().timeZone;
+      followNow(calendar, zone);
     }
 
     // Under it, the open shifts (wide screens; phones have them in the day cards) and the
