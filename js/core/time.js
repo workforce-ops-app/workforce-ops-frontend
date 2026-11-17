@@ -88,6 +88,24 @@ export function compactTime(moment, timeZone) {
 }
 
 /**
+ * A moment's time as people say it, e.g. "9 AM" or "2:30 PM", in a time zone: like
+ * formatTime, but whole hours leave out ":00". The timeline's widest bar label uses it
+ * ("9 AM - 5 PM"), so the time is easy to scan without wasting room on ":00".
+ * @param {string} moment an ISO 8601 moment
+ * @param {string} timeZone
+ * @returns {string}
+ */
+export function clockTime(moment, timeZone) {
+  // The same steps as compactTime, with "AM"/"PM" spelled out and a space before them.
+  const [hour, minute] = wallTime(moment, timeZone).split(":").map(Number);
+  const suffix = hour < 12 ? "AM" : "PM";
+  const twelve = hour % 12 === 0 ? 12 : hour % 12;
+  return minute === 0
+    ? `${twelve} ${suffix}`
+    : `${twelve}:${String(minute).padStart(2, "0")} ${suffix}`;
+}
+
+/**
  * A day heading for a day key, e.g. "Monday, October 5".
  * @param {string} key "YYYY-MM-DD"
  * @returns {string}

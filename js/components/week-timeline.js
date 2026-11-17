@@ -38,6 +38,7 @@
 
 import { el } from "../core/dom.js";
 import {
+  clockTime,
   compactTime,
   dayKey,
   daysLater,
@@ -193,36 +194,48 @@ function barDescription(shift, person, span) {
 }
 
 /**
- * What sighted people see on a bar, in two pieces that the stylesheet may put on two
- * lines: the start ("10p"), then the end with its markers ("-6a", "+1", event and notes
- * icons). A wide bar shows "10p-6a +1" on one line; a narrow one (an 8-hour shift on a
- * small laptop is about 2.5rem) shows "10p" over "-6a +1", so the time is never cut off.
+ * What sighted people see on a bar: its time, all on one line, in three lengths. The
+ * stylesheet shows the one that fits the bar's own width (a container query on the bar,
+ * css/components/week-timeline.css), so a short shift never wraps its time over two lines
+ * or cuts it off halfway:
+ *   full    "9 AM - 5 PM"   wide bars (a long shift, or a wide screen)
+ *   short   "9a-5p"         most bars on a laptop
+ *   start   "9a"            the narrowest bars (a short shift on a small screen)
+ * After the time come the markers, shown when there is room: "+1" when the shift ends the
+ * next day, and the event and notes icons. Whatever the bar shows, the whole time is in
+ * its tooltip (timelineBar), its screen reader description, and the details popup.
  *
  * The times and "+1" are hidden from screen readers, which hear the full description
- * instead (otherwise they would hear the time twice). The icons keep their words
- * ("Event", "Notes") for screen readers.
+ * instead (otherwise they would hear the time two or three times). The icons keep their
+ * words ("Event", "Notes") for screen readers.
  * @param {Shift} shift
  * @returns {HTMLElement[]}
  */
 function barLabel(shift) {
-  const start = el("span", {
-    className: "timeline-shift__start",
-    text: compactTime(shift.starts_at, shift.timezone),
-    attrs: { "aria-hidden": "true" },
-  });
-  const end = el("span", { className: "timeline-shift__end" }, [
+  const zone = shift.timezone;
+  // The three lengths, each its own element; the stylesheet shows exactly one.
+  const lengths = [
+    ["full", `${clockTime(shift.starts_at, zone)} - ${clockTime(shift.ends_at, zone)}`],
+    ["short", `${compactTime(shift.starts_at, zone)}-${compactTime(shift.ends_at, zone)}`],
+    ["start", compactTime(shift.starts_at, zone)],
+  ].map(([length, text]) =>
     el("span", {
-      className: "timeline-shift__end-time",
-      text: `-${compactTime(shift.ends_at, shift.timezone)}`,
+      className: `timeline-shift__time timeline-shift__time--${length}`,
+      text,
       attrs: { "aria-hidden": "true" },
     }),
-  ]);
+  );
+  // The markers go in a group of their own after the time. The time matters most, so it
+  // never shrinks for them: when space runs out, the markers are the part cut off at the
+  // bar's edge (and on narrow bars the stylesheet hides them altogether).
+  const markers = el("span", { className: "timeline-shift__markers" });
+
   // An overnight shift also says so on screen, not only by crossing the day line: a small
-  // "+1" after the end, like the "+1 day" marker on the other screens (shortened, since a
+  // "+1" after the time, like the "+1 day" marker on the other screens (shortened, since a
   // bar is narrow).
-  const days = daysLater(shift.starts_at, shift.ends_at, shift.timezone);
+  const days = daysLater(shift.starts_at, shift.ends_at, zone);
   if (days >= 1) {
-    end.append(
+    markers.append(
       el("span", {
         className: "timeline-shift__next-day",
         text: `+${days}`,
@@ -232,8 +245,8 @@ function barLabel(shift) {
   }
   // Icons only: a bar is narrow. The words ("Event", "Notes") stay for screen readers.
   const extras = shiftExtras(shift, { compact: true });
-  if (extras) end.append(extras);
-  return [start, end];
+  if (extras) markers.append(extras);
+  return markers.childElementCount ? [...lengths, markers] : lengths;
 }
 
 /**
@@ -250,10 +263,16 @@ function barLabel(shift) {
  * @returns {HTMLElement}
  */
 function timelineBar(shift, person, span, lane) {
-  const button = el("button", { className: "timeline-shift", attrs: { type: "button" } }, [
-    ...barLabel(shift),
-    barDescription(shift, person, span),
-  ]);
+  // The tooltip: the whole time ("10 PM - 6 AM (ends the next day)") for anyone pointing
+  // at a bar too narrow to show it. Plain text in an attribute, never markup.
+  const tooltip = `${clockTime(shift.starts_at, shift.timezone)} - ${clockTime(shift.ends_at, shift.timezone)}${
+    daysLater(shift.starts_at, shift.ends_at, shift.timezone) >= 1 ? " (ends the next day)" : ""
+  }`;
+  const button = el(
+    "button",
+    { className: "timeline-shift", attrs: { type: "button", title: tooltip } },
+    [...barLabel(shift), barDescription(shift, person, span)],
+  );
   opensShift(button, shift);
 
   // The classes draw a cut-off edge where the shift continues outside this week, and a

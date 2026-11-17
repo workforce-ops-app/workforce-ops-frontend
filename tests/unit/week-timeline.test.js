@@ -209,13 +209,24 @@ describe("weekTimeline", () => {
     }
   });
 
-  it("shows an overnight shift short, with +1, and says it in words", () => {
+  it("shows an overnight shift's time in three lengths, with +1, and says it in words", () => {
     const table = weekTimeline(KEYS, [nightShift("2026-10-05")]);
 
     const button = table.querySelector("button.timeline-shift");
-    // On screen: the short start, then the end with "+1" (two pieces that may wrap).
-    expect(button?.querySelector(".timeline-shift__start")?.textContent).toBe("10p");
-    expect(button?.querySelector(".timeline-shift__end")?.textContent).toBe("-6a+1");
+    // On screen: the time in three lengths (the stylesheet shows the one that fits the
+    // bar), each start and end together on one line, then "+1".
+    const time = (/** @type {string} */ length) =>
+      button?.querySelector(`.timeline-shift__time--${length}`)?.textContent;
+    expect(time("full")).toBe("10 PM - 6 AM");
+    expect(time("short")).toBe("10p-6a");
+    expect(time("start")).toBe("10p");
+    expect(button?.querySelector(".timeline-shift__next-day")?.textContent).toBe("+1");
+    // None of them is read aloud: screen readers hear the description below instead.
+    for (const piece of button?.querySelectorAll(".timeline-shift__time") ?? []) {
+      expect(piece.getAttribute("aria-hidden")).toBe("true");
+    }
+    // Pointing at the bar shows the whole time, for bars too narrow to show it.
+    expect(button?.getAttribute("title")).toBe("10 PM - 6 AM (ends the next day)");
     // For screen readers: who, which day, the full time, and that it ends the next day.
     // (The "+1 day" inside is hidden from them; they hear "ends the next day".)
     expect(button?.querySelector(".visually-hidden")?.textContent).toBe(

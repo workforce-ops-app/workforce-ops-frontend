@@ -61,3 +61,16 @@ main.schedule {
     display: none;
   }
 }
+
+/* Wide desktop screens: the department week takes most of the window, with roomy margins,
+   instead of a 90rem column with empty space on both sides. The timeline has seven days,
+   the names, and the hours to fit, so every bit of width makes its bars longer and their
+   labels easier to read (an 8-hour shift on a 1920px screen gets about a third more room).
+   Only this page widens; smaller laptops keep the 90rem layout and the timeline's sideways
+   scroll. */
+@media (width >= 90rem) {
+  main.schedule {
+    max-width: none;
+    padding-inline: calc(var(--space) * 2.5);
+  }
+}

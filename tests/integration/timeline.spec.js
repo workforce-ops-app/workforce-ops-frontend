@@ -60,14 +60,15 @@ const SHIFTS = [
 /**
  * Answer the page's API requests here instead of by a real backend, and open the week.
  * @param {import("@playwright/test").Page} page
+ * @param {object[]} [shifts] the week's shifts (SHIFTS unless a test needs others)
  */
-async function openWeek(page) {
+async function openWeek(page, shifts = SHIFTS) {
   await page.route("**/api/sessions/current", (route) => route.fulfill({ json: SESSION }));
   await page.route("**/api/departments*", (route) =>
     route.fulfill({ json: { items: [{ id: "d1", name: "Kitchen" }], next_cursor: null } }),
   );
   await page.route("**/api/shifts?*", (route) =>
-    route.fulfill({ json: { items: SHIFTS, next_cursor: null } }),
+    route.fulfill({ json: { items: shifts, next_cursor: null } }),
   );
   await page.goto(`/pages/schedule.html?week=${WEEK}&department=d1`);
 }
@@ -159,4 +160,47 @@ test("the names stay pinned on the left while the week scrolls sideways", async 
     { x: after.x + after.width / 2, y: after.y + after.height / 2 },
   );
   expect(onTop).toBe("Ana Diaz");
+});
+
+test("each bar shows the length of its time that fits it, and the whole time on hover", async ({
+  page,
+}) => {
+  // A wide desktop screen, where the page uses most of the window. Ana works an 8-hour day
+  // shift (a bar about 70px wide here), Ben a 12-hour one (about 110px).
+  await page.setViewportSize({ width: 1920, height: 900 });
+  await openWeek(page, [
+    shift("s1", ANA, "2026-10-05T14:00:00Z", "2026-10-05T22:00:00Z"),
+    shift("s2", BEN, "2026-10-06T11:00:00Z", "2026-10-06T23:00:00Z"),
+  ]);
+  const rows = page.locator("#timeline tbody tr");
+  await expect(rows).toHaveCount(2);
+
+  // The one length on screen in a row's bar (the stylesheet's container queries hide the
+  // other two, so this also proves the browser applied them).
+  const shown = (/** @type {number} */ row) =>
+    rows.nth(row).locator(".timeline-shift__time:visible");
+
+  // Ana's 8-hour bar: the short form, start and end together.
+  await expect(shown(0)).toHaveCount(1);
+  await expect(shown(0)).toHaveText("9a-5p");
+  // Ben's 12-hour bar has room for the full form.
+  await expect(shown(1)).toHaveCount(1);
+  await expect(shown(1)).toHaveText("6 AM - 6 PM");
+
+  // Each stays on one line: the label is no taller than one line of its text.
+  const line = await shown(0).evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { height: element.getBoundingClientRect().height, line: parseFloat(style.lineHeight) };
+  });
+  expect(line.height).toBeLessThanOrEqual(line.line + 1);
+
+  // Pointing at a bar shows its whole time, whatever length the bar shows.
+  await expect(rows.nth(0).locator("button.timeline-shift")).toHaveAttribute(
+    "title",
+    "9 AM - 5 PM",
+  );
+
+  // The page really is wider than the 90rem used on smaller laptops (1440px).
+  const card = await box(page.locator("#timeline"));
+  expect(card.width).toBeGreaterThan(1440);
 });
