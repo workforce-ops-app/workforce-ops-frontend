@@ -280,7 +280,29 @@ function timelineBar(shift, person, span, lane) {
 }
 
 /**
- * The header cell of a day: "MON" over "5", with the full date for screen readers.
+ * The hour labels of one day header: "6a", "12p", and "6p", a quarter, a half, and three
+ * quarters of the way across the day, where the day bands draw their faint lines. Only a
+ * picture (each bar's description already says its times), so screen readers skip them.
+ * @returns {HTMLElement}
+ */
+function hourTicks() {
+  return el(
+    "span",
+    { className: "week-timeline__ticks", attrs: { "aria-hidden": "true" } },
+    // The modifier says which line each label sits over; the CSS turns it into a place.
+    [
+      ["6a", "morning"],
+      ["12p", "noon"],
+      ["6p", "evening"],
+    ].map(([text, when]) =>
+      el("span", { className: `week-timeline__tick week-timeline__tick--${when}`, text }),
+    ),
+  );
+}
+
+/**
+ * The header cell of a day: "MON" over "5" with hour labels under them, and the full date
+ * for screen readers.
  * @param {string} key "YYYY-MM-DD"
  * @param {boolean} isToday
  * @returns {HTMLElement}
@@ -305,6 +327,9 @@ function dayHeader(key, isToday) {
         text: formatDayNumber(key),
         attrs: { "aria-hidden": "true" },
       }),
+      // Small hour labels along the bottom of the header, each over the faint line it
+      // names in the day bands below (week-timeline.css places them).
+      hourTicks(),
       // What screen readers hear instead: "Monday, October 5 (today)".
       el("span", {
         className: "visually-hidden",

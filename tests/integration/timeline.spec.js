@@ -57,6 +57,31 @@ const SHIFTS = [
   shift("s2", BEN, "2026-10-08T03:00:00Z", "2026-10-08T11:00:00Z"),
 ];
 
+/**
+ * Answer the page's API requests here instead of by a real backend, and open the week.
+ * @param {import("@playwright/test").Page} page
+ */
+async function openWeek(page) {
+  await page.route("**/api/sessions/current", (route) => route.fulfill({ json: SESSION }));
+  await page.route("**/api/departments*", (route) =>
+    route.fulfill({ json: { items: [{ id: "d1", name: "Kitchen" }], next_cursor: null } }),
+  );
+  await page.route("**/api/shifts?*", (route) =>
+    route.fulfill({ json: { items: SHIFTS, next_cursor: null } }),
+  );
+  await page.goto(`/pages/schedule.html?week=${WEEK}&department=d1`);
+}
+
+/**
+ * Where something really is on screen, in pixels.
+ * @param {import("@playwright/test").Locator} locator
+ */
+async function box(locator) {
+  const found = await locator.boundingBox();
+  if (!found) throw new Error("not on screen");
+  return found;
+}
+
 test("the timeline draws each shift where it belongs, under the real policy", async ({ page }) => {
   // A laptop-sized window, where the timeline is shown instead of the day cards.
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -70,16 +95,7 @@ test("the timeline draws each shift where it belongs, under the real policy", as
     }
   });
 
-  // The page's API requests, answered here instead of by a real backend.
-  await page.route("**/api/sessions/current", (route) => route.fulfill({ json: SESSION }));
-  await page.route("**/api/departments*", (route) =>
-    route.fulfill({ json: { items: [{ id: "d1", name: "Kitchen" }], next_cursor: null } }),
-  );
-  await page.route("**/api/shifts?*", (route) =>
-    route.fulfill({ json: { items: SHIFTS, next_cursor: null } }),
-  );
-
-  await page.goto(`/pages/schedule.html?week=${WEEK}&department=d1`);
+  await openWeek(page);
 
   // A row per person, by name.
   const rows = page.locator("#timeline tbody tr");
@@ -87,11 +103,6 @@ test("the timeline draws each shift where it belongs, under the real policy", as
   await expect(rows.nth(0).locator("th")).toHaveText("Ana Diaz");
 
   // Where the bars really ended up on screen, next to the day headers above them.
-  const box = async (/** @type {import("@playwright/test").Locator} */ locator) => {
-    const found = await locator.boundingBox();
-    if (!found) throw new Error("not on screen");
-    return found;
-  };
   const monday = await box(page.locator("#timeline thead th[data-day='2026-10-05']"));
   const wednesday = await box(page.locator("#timeline thead th[data-day='2026-10-07']"));
   const thursday = await box(page.locator("#timeline thead th[data-day='2026-10-08']"));
@@ -111,6 +122,41 @@ test("the timeline draws each shift where it belongs, under the real policy", as
   // The overnight shift says so on screen, not only by where it is drawn.
   await expect(rows.nth(1).locator(".timeline-shift__next-day")).toHaveText("+1");
 
+  // The "12p" label under Monday sits over Monday's noon line: the middle of the column.
+  const noon = await box(
+    page.locator("#timeline thead th[data-day='2026-10-05'] .week-timeline__tick--noon"),
+  );
+  expect(Math.abs(noon.x + noon.width / 2 - (monday.x + monday.width / 2))).toBeLessThan(2);
+
   // And the browser refused nothing.
   expect(refused).toEqual([]);
+});
+
+test("the names stay pinned on the left while the week scrolls sideways", async ({ page }) => {
+  // A small laptop window: too narrow for the whole week, so the card scrolls.
+  await page.setViewportSize({ width: 1100, height: 800 });
+  await openWeek(page);
+
+  const card = page.locator("#timeline");
+  const name = page.locator("#timeline tbody th").first();
+  await expect(name).toHaveText("Ana Diaz");
+  const before = await box(name);
+
+  // Scroll the week as far right as it goes (Sunday in view).
+  await card.evaluate((element) => {
+    element.scrollLeft = element.scrollWidth;
+  });
+  // At 1100px the card is about 100px narrower than the week, so that is as far as it
+  // goes; 50px is plenty to prove it really scrolled.
+  await expect.poll(() => card.evaluate((element) => element.scrollLeft)).toBeGreaterThan(50);
+
+  // The name has not moved, and it is drawn over the track, not under it: the point at its
+  // middle belongs to the name cell.
+  const after = await box(name);
+  expect(Math.abs(after.x - before.x)).toBeLessThan(1);
+  const onTop = await page.evaluate(
+    ({ x, y }) => document.elementFromPoint(x, y)?.closest("th")?.textContent ?? null,
+    { x: after.x + after.width / 2, y: after.y + after.height / 2 },
+  );
+  expect(onTop).toBe("Ana Diaz");
 });

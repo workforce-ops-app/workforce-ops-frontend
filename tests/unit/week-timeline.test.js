@@ -253,6 +253,26 @@ describe("weekTimeline", () => {
     expect(highlighted(table)).toEqual(["2026-10-07", "2026-10-07"]);
   });
 
+  it("labels 6 AM, noon, and 6 PM under every day, hidden from screen readers", () => {
+    const table = weekTimeline(KEYS, [shiftOn("2026-10-05")]);
+    const days = [...table.querySelectorAll("thead th[data-day]")];
+
+    expect(days).toHaveLength(7);
+    for (const day of days) {
+      const ticks = day.querySelector(".week-timeline__ticks");
+      // Each label in order, each with the place (a CSS class) of the line it names.
+      expect(
+        [...(ticks?.children ?? [])].map((tick) => [tick.textContent, tick.className]),
+      ).toEqual([
+        ["6a", "week-timeline__tick week-timeline__tick--morning"],
+        ["12p", "week-timeline__tick week-timeline__tick--noon"],
+        ["6p", "week-timeline__tick week-timeline__tick--evening"],
+      ]);
+      // A screen reader hears the date only, not "6a 12p 6p" seven times over.
+      expect(ticks?.getAttribute("aria-hidden")).toBe("true");
+    }
+  });
+
   it("moves the highlight to the day under the mouse, and back to today after", () => {
     const table = weekTimeline(KEYS, [shiftOn("2026-10-05")], { today: "2026-10-07" });
     const monday = /** @type {HTMLElement} */ (table.querySelector("button.timeline-shift"));
