@@ -1,0 +1,9 @@
+[
+  {
+    "id": "GHSA-fc5q-39xc-vjpf",
+    "package": "picomatch",
+    "reason": "ReDoS in glob matching, with no fixed release (every version up to 4.0.7 is affected). It reaches us only through the test tools (vitest, vite, tinyglobby, fdir), which match our own file patterns, never untrusted input, and none of it ships in the nginx image. The team agreed on 2026-11-17 to accept it until a fix is released.",
+    "issue": "#81",
+    "expires": "2026-12-17"
+  }
+]
