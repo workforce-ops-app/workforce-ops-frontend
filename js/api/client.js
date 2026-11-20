@@ -208,6 +208,28 @@ async function readProblem(response) {
   return /** @type {Problem} */ (body);
 }
 
+/**
+ * Every item of a paged list (decision 0026). The API sends long lists a page at a time;
+ * each page names the cursor of the next one, until next_cursor is null.
+ * @param {string} path e.g. "/api/users"
+ * @param {URLSearchParams} [params] the list's filters
+ * @returns {Promise<any[]>}
+ */
+export async function getAll(path, params = new URLSearchParams()) {
+  /** @type {any[]} */
+  const items = [];
+  /** @type {string | null} */
+  let cursor = null;
+  do {
+    if (cursor) params.set("cursor", cursor);
+    const query = params.size > 0 ? `?${params}` : "";
+    const page = await apiRequest("GET", `${path}${query}`);
+    items.push(...page.items);
+    cursor = page.next_cursor;
+  } while (cursor);
+  return items;
+}
+
 /** Shortcuts, so pages read like `api.get("/api/shifts")`. */
 export const api = {
   /** @param {string} path */

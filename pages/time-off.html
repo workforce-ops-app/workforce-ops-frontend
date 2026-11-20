@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Time off · Workforce Operations</title>
+    <link rel="icon" type="image/png" href="/images/logos/app-square.png" />
+    <link rel="stylesheet" href="/css/base/base.css" />
+    <link rel="stylesheet" href="/css/components/app-shell.css" />
+    <link rel="stylesheet" href="/css/components/form.css" />
+    <link rel="stylesheet" href="/css/components/reauth-dialog.css" />
+    <!-- The "Are you sure?" popup's look. -->
+    <link rel="stylesheet" href="/css/components/week-editor.css" />
+    <link rel="stylesheet" href="/css/pages/time-off.css" />
+    <script type="module" src="/js/pages/time-off.js"></script>
+  </head>
+  <body>
+    <!-- The app shell, as on every signed-in page (see pages/my-shifts.html). No tab is
+         marked current: My account is reached from the name in the header. -->
+    <div class="app-shell-top">
+      <header class="app-header">
+        <a class="brand" href="/pages/my-shifts.html">
+          <span class="brand__logo" aria-hidden="true">
+            <img src="/images/logos/app-square.png" alt="" width="40" height="40" />
+          </span>
+          <span class="brand__name">Workforce Operations</span>
+        </a>
+      </header>
+      <nav class="tab-bar" aria-label="Main">
+        <a
+          class="tab-bar__link"
+          href="/pages/my-shifts.html"
+          data-permission="schedule.view_self"
+          hidden
+        >
+          <span class="icon icon--calendar" aria-hidden="true"></span>
+          My week
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off.html"
+          aria-current="page"
+          data-permission="time_off.request_self"
+          hidden
+        >
+          <span class="icon icon--lounge" aria-hidden="true"></span>
+          Time off
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off-review.html"
+          data-permission="time_off.review"
+          hidden
+        >
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Review time off
+          <!-- How many requests wait for this person; filled in on every page load. -->
+          <span class="tab-bar__count" data-waiting-count hidden></span>
+        </a>
+        <a class="tab-bar__link" href="/pages/schedule.html" data-permission="schedule.view" hidden>
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Department
+        </a>
+        <!-- No permission: everyone signed in reads the announcements meant for them. -->
+        <a class="tab-bar__link" href="/pages/announcements.html">
+          <span class="icon icon--announcement" aria-hidden="true"></span>
+          Announcements
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/admin-people.html"
+          data-permission-any="user.manage org.manage role.manage role.assign reporting_line.manage security.view"
+          hidden
+        >
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Administration
+        </a>
+      </nav>
+      <div id="account" class="account" hidden></div>
+    </div>
+    <p id="page-loading" class="page-loading" role="status">Loading…</p>
+    <main class="app-main time-off" hidden>
+      <h1>Time off</h1>
+      <!-- What just happened, or a problem (role="status": read out politely). -->
+      <p id="status" class="status" role="status"></p>
+
+      <section class="time-off__panel" aria-labelledby="ask-title">
+        <h2 id="ask-title">Ask for time off</h2>
+        <!-- novalidate: the page checks the days itself and says what is wrong in words. -->
+        <form id="time-off-form" class="form" method="post" novalidate>
+          <div class="time-off__days">
+            <div class="field">
+              <label class="field__label" for="first-day">First day</label>
+              <input id="first-day" class="field__input" type="date" name="first_day" required />
+            </div>
+            <div class="field">
+              <label class="field__label" for="last-day">Last day</label>
+              <input id="last-day" class="field__input" type="date" name="last_day" required />
+            </div>
+          </div>
+          <span class="field__hint"
+            >Whole days, both included, from tomorrow on. At most 30 days.</span
+          >
+          <!-- Which of your shifts fall on those days, shown before sending. -->
+          <div id="affected" class="time-off__affected" aria-live="polite"></div>
+          <div class="field">
+            <label class="field__label" for="reason">Reason (optional)</label>
+            <textarea
+              id="reason"
+              class="field__input"
+              name="reason"
+              rows="3"
+              maxlength="500"
+            ></textarea>
+            <span class="field__hint">Your reviewers see it.</span>
+          </div>
+          <p id="form-problem" class="form__message" role="alert" hidden></p>
+          <button class="button button--primary" type="submit">Send request</button>
+        </form>
+      </section>
+
+      <section aria-labelledby="mine-title">
+        <h2 id="mine-title">Your requests</h2>
+        <ul id="request-list" class="time-off__list"></ul>
+      </section>
+    </main>
+  </body>
+</html>
