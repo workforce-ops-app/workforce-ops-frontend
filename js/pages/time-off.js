@@ -8,14 +8,14 @@
 // The reason and any reviewer's comment are shown as text, never as HTML.
 
 import { listDepartments, listShifts } from "../api/shifts.js";
-import { askForTimeOff, cancelTimeOff, myRequests, viewTimeOff } from "../api/time-off.js";
+import { askForTimeOff, cancelTimeOff, myRequests, sendUp, viewTimeOff } from "../api/time-off.js";
 import { actionButton, reportProblem, say } from "../components/admin-page.js";
 import { startSignedInPage } from "../components/app-shell.js";
 import { confirmChange } from "../components/confirm-dialog.js";
 import { el, setText } from "../core/dom.js";
 import { currentSession } from "../core/session.js";
 import { addDays, dayKey, formatTimeRange } from "../core/time.js";
-import { dayRange, daysIn, statusText } from "../core/time-off-words.js";
+import { answerText, dayRange, daysIn, shiftWhen, statusText } from "../core/time-off-words.js";
 
 // Exported again for the tests, which check them with the page.
 export { dayRange, daysIn, statusText };
@@ -34,7 +34,7 @@ export const MAX_DAYS = 30;
  * @param {string} today "YYYY-MM-DD" in the workplace time zone
  */
 export function canCancel(request, today) {
-  if (request.status === "pending" || request.status === "escalated") return true;
+  if (["collecting", "pending", "escalated"].includes(request.status)) return true;
   return request.status === "approved" && request.first_day > today;
 }
 
@@ -83,6 +83,7 @@ function setUpForm() {
   const first = /** @type {HTMLInputElement | null} */ (document.getElementById("first-day"));
   const last = /** @type {HTMLInputElement | null} */ (document.getElementById("last-day"));
   const reason = /** @type {HTMLTextAreaElement | null} */ (document.getElementById("reason"));
+  const offers = /** @type {HTMLInputElement | null} */ (document.getElementById("offer-coverage"));
   const problem = document.getElementById("form-problem");
   if (!form || !first || !last || !reason || !problem) return;
 
@@ -114,10 +115,16 @@ function setUpForm() {
         first_day: first.value,
         last_day: last.value,
         reason: reason.value.trim() || null,
+        // Coworkers may offer first (coverage.md); the API says 409 if it is too late.
+        offer_coverage: offers?.checked ?? false,
       });
       form.reset();
       document.getElementById("affected")?.replaceChildren();
-      say(`Sent: ${dayRange(made.first_day, made.last_day)}. You can follow it below.`);
+      say(
+        made.status === "collecting"
+          ? `Asked your coworkers: ${dayRange(made.first_day, made.last_day)}. Send it to your manager below when you are ready.`
+          : `Sent: ${dayRange(made.first_day, made.last_day)}. You can follow it below.`,
+      );
       await drawRequests();
     } catch (error) {
       reportProblem(error);
@@ -202,6 +209,23 @@ function requestCard(request) {
   const details = el("div", { className: "time-off-card__details" });
   /** @type {HTMLElement[]} */
   const buttons = [];
+  // Still with the coworkers: the employee sends it up when ready (coverage.md).
+  if (request.status === "collecting") {
+    buttons.push(
+      actionButton("Send to my manager", () => sendToManager(request), {
+        className: "button button--primary",
+        ariaLabel: `Send to my manager: ${dayRange(request.first_day, request.last_day)}`,
+      }),
+    );
+  }
+  // Asked with offers: see who offered what, by name.
+  if (request.offers_close_at) {
+    buttons.push(
+      actionButton("Coworkers' offers", () => showOffers(request, details), {
+        ariaLabel: `Coworkers' offers: ${dayRange(request.first_day, request.last_day)}`,
+      }),
+    );
+  }
   if (canCancel(request, today())) {
     buttons.push(
       actionButton("Cancel request", () => cancel(request), {
@@ -249,6 +273,58 @@ async function showComments(request, area) {
         )
       : el("p", { className: "muted", text: "No comments." }),
   );
+}
+
+/**
+ * Load every coworker's offer into the card, under the shift it is about.
+ * @param {TimeOff} request
+ * @param {HTMLElement} area
+ */
+async function showOffers(request, area) {
+  const detail = await viewTimeOff(request.id);
+  area.replaceChildren(offersList(detail, zone));
+}
+
+/**
+ * The offers on the employee's own request, shift by shift (exported for the tests).
+ * @param {import("../api/time-off.js").TimeOffDetail} detail
+ * @param {string} workplaceZone
+ */
+export function offersList(detail, workplaceZone) {
+  const offers = detail.offers ?? [];
+  if (detail.affected_shifts.length === 0) {
+    return el("p", { className: "muted", text: "You have no shifts on these days." });
+  }
+  return el(
+    "ul",
+    { className: "offer-card__shifts" },
+    detail.affected_shifts.map((shift) => {
+      const mine = offers.filter((offer) => offer.shift_id === shift.id);
+      return el("li", {}, [
+        el("p", { className: "offer-card__when", text: shiftWhen(shift, workplaceZone) }),
+        mine.length
+          ? el(
+              "ul",
+              {},
+              mine.map((offer) => el("li", { text: answerText(offer, workplaceZone) })),
+            )
+          : el("p", { className: "muted", text: "No offers yet." }),
+      ]);
+    }),
+  );
+}
+
+/** @param {TimeOff} request */
+async function sendToManager(request) {
+  const done = await confirmChange({
+    title: "Send to your manager?",
+    message: `${dayRange(request.first_day, request.last_day)}. Coworkers can no longer change their offers after this.`,
+    confirmLabel: "Send to my manager",
+    run: () => sendUp(request.id),
+  });
+  if (!done) return;
+  say("Sent to your manager.");
+  await drawRequests();
 }
 
 /** @param {TimeOff} request */

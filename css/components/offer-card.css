@@ -1,0 +1,74 @@
+/* Swaps and coverage (docs/features/coverage.md): the coworker's card on the home screen,
+   the offers on the employee's own request, and the checkbox on the time-off form. */
+
+/* The list of cards on the home screen. */
+.offer-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One coworker's request. */
+.offer-card {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-background);
+}
+
+.offer-card__title {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+/* The shifts of a request, one under the other. */
+.offer-card__shifts {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.offer-card__shift {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.offer-card__when {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Cover, the swap select, Swap, Decline, Take back: in a row that wraps. */
+.offer-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.5rem 0 0;
+}
+
+.offer-card__actions .field__input {
+  width: auto;
+  max-width: 100%;
+}
+
+/* The "Offer Shift Swap / Coverage" checkbox on the time-off form. */
+.offer-check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0 0 var(--space);
+}
+
+.offer-check input {
+  margin-top: 0.2rem;
+}
+
+.offer-check__hint {
+  display: block;
+  font-size: 0.9em;
+}

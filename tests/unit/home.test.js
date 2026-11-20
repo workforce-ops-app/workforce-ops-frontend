@@ -8,7 +8,13 @@ import { loadPage } from "./page-html.js";
 
 // Replace the data sources, so each test decides what the "server" returns.
 vi.mock("../../js/api/shifts.js", () => ({ listShifts: vi.fn() }));
-vi.mock("../../js/api/time-off.js", () => ({ myRequests: vi.fn(), waitingForMe: vi.fn() }));
+vi.mock("../../js/api/time-off.js", () => ({
+  myRequests: vi.fn(),
+  waitingForMe: vi.fn(),
+  offerable: vi.fn(),
+  answerOffer: vi.fn(),
+  withdrawOffer: vi.fn(),
+}));
 vi.mock("../../js/api/announcements.js", () => ({ listAnnouncements: vi.fn() }));
 // The permissions and the home department come from the session.
 vi.mock("../../js/core/session.js", () => ({ currentSession: vi.fn(), can: vi.fn() }));

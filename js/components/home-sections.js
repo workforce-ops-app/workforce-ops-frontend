@@ -33,6 +33,7 @@ export function upcomingTimeOff(requests, todayKey) {
     requests
       .filter(
         (r) =>
+          r.status === "collecting" ||
           r.status === "pending" ||
           r.status === "escalated" ||
           // Day keys in the same format compare correctly as text.

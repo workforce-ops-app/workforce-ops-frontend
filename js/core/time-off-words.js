@@ -2,6 +2,7 @@
 // (docs/features/time-off.md): a request's status, and its days.
 
 import { currentSession } from "./session.js";
+import { dayKey, formatTimeRange } from "./time.js";
 
 /** @typedef {import("../api/time-off.js").TimeOff} TimeOff */
 
@@ -13,6 +14,9 @@ import { currentSession } from "./session.js";
  */
 export function statusText(request) {
   switch (request.status) {
+    case "collecting":
+      // Asked with "Offer Shift Swap / Coverage": still with the coworkers (coverage.md).
+      return "Collecting coworkers' offers";
     case "pending":
       // Nobody has decided yet: name who will (when the API says), else the plain words.
       if (!request.progress?.decided.length) {
@@ -109,4 +113,32 @@ export function daysIn(first, last) {
   return (
     Math.round((Date.parse(`${last}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86400000) + 1
   );
+}
+
+// --- Swaps and coverage (docs/features/coverage.md) ----------------------------------------
+
+/**
+ * When a shift is, in words: "Tuesday, November 24, 8:00 AM - 4:00 PM".
+ * @param {{ starts_at: string, ends_at: string }} shift
+ * @param {string} zone the workplace's time zone
+ */
+export function shiftWhen(shift, zone) {
+  const day = dayKey(new Date(shift.starts_at), zone);
+  return `${dayRange(day, day)}, ${formatTimeRange(shift.starts_at, shift.ends_at, zone)}`;
+}
+
+/**
+ * One coworker's answer in words, e.g. "Ben Okafor offers to cover" or "Ana Diaz offers a
+ * swap: Friday, November 27, 7:00 AM - 3:00 PM". The name is user text: callers put the
+ * result in the page as text only.
+ * @param {import("../api/time-off.js").Offer} offer
+ * @param {string} zone
+ * @param {boolean} [mine] the signed-in person's own answer ("You ...")
+ */
+export function answerText(offer, zone, mine = false) {
+  const who = mine ? "You" : offer.offered_by_name;
+  if (offer.answer === "decline") return `${who} declined`;
+  if (offer.answer === "cover") return `${who} ${mine ? "offer" : "offers"} to cover`;
+  const given = offer.swap_shift ? `: ${shiftWhen(offer.swap_shift, zone)}` : "";
+  return `${who} ${mine ? "offer" : "offers"} a swap${given}`;
 }

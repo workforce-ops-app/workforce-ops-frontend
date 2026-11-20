@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="/css/components/announcement.css" />
     <link rel="stylesheet" href="/css/components/stat-tile.css" />
     <link rel="stylesheet" href="/css/components/home.css" />
+    <link rel="stylesheet" href="/css/components/offer-card.css" />
     <script type="module" src="/js/pages/my-shifts.js"></script>
   </head>
   <body>
@@ -157,6 +158,19 @@
           </li>
         </ul>
       </section>
+      <!-- Coworkers' time off this person could cover or swap (docs/features/coverage.md). -->
+      <section
+        id="offers"
+        class="home-section"
+        aria-labelledby="offers-title"
+        data-permission="coverage.respond_self"
+        hidden
+      >
+        <h2 id="offers-title" class="home-section__title">Coworkers asking for cover</h2>
+        <p id="offers-status" class="status" aria-live="polite">Loading…</p>
+        <ul id="home-offers" class="offer-list"></ul>
+      </section>
+
       <!-- The person's upcoming time off, for people who can ask for it. -->
       <section
         class="home-section"

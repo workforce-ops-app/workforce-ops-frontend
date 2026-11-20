@@ -12,6 +12,7 @@
     <!-- The "Are you sure?" popup's look. -->
     <link rel="stylesheet" href="/css/components/week-editor.css" />
     <link rel="stylesheet" href="/css/pages/time-off.css" />
+    <link rel="stylesheet" href="/css/components/offer-card.css" />
     <script type="module" src="/js/pages/time-off.js"></script>
   </head>
   <body>
@@ -113,6 +114,18 @@
               maxlength="500"
             ></textarea>
             <span class="field__hint">Your reviewers see it.</span>
+          </div>
+          <!-- Swaps and coverage (docs/features/coverage.md): coworkers in your department
+               may offer to cover or swap your shifts before it goes to your managers. -->
+          <div class="offer-check">
+            <input id="offer-coverage" type="checkbox" name="offer_coverage" />
+            <label for="offer-coverage">
+              Offer Shift Swap / Coverage
+              <span class="muted offer-check__hint"
+                >Coworkers who could work your shifts can offer to cover or swap them. It goes to
+                your managers when you send it, or by itself when offers close.</span
+              >
+            </label>
           </div>
           <p id="form-problem" class="form__message" role="alert" hidden></p>
           <button class="button button--primary" type="submit">Send request</button>
