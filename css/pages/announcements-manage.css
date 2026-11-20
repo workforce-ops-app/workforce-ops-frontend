@@ -1,0 +1,131 @@
+/* Manage announcements (pages/announcements-manage.html): the heading with "Post an
+   announcement", "Show archived", the managed cards (css/components/announcement.css plus
+   the parts below), and the popups: the posting and correcting form with its preview, and
+   who has read it. */
+
+/* The heading and the post button on one line, wrapping on narrow phones. */
+.manage__top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space);
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* .button shows itself (display: inline-flex), which would beat the hidden attribute. */
+.manage__top .button[hidden],
+.announcements__more[hidden],
+.edit-dialog__buttons .button[hidden] {
+  display: none;
+}
+
+.manage__filter {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: var(--space) 0;
+}
+
+/* "Announcement posted." after a change; takes no room when empty. */
+.manage__done:empty,
+.manage .status:empty {
+  display: none;
+}
+
+.manage__done {
+  margin: var(--space) 0 0;
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.announcements__more {
+  margin-top: var(--space);
+}
+
+/* A managed card has its message open, then the read count and the buttons. */
+.managed .announcement__heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+/* Archived ones are history: greyed, with the word "Archived" (not only the colour). */
+.managed--archived {
+  opacity: 0.75;
+}
+
+.managed__archived {
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-border);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.managed__reads {
+  margin: 0.75rem 0 0;
+  font-weight: 600;
+}
+
+.managed__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+/* Smaller buttons for the actions on each card. */
+.managed__actions .button {
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* The message field: several lines, taller than a one-line field. */
+.field__input--area {
+  min-height: 8rem;
+  resize: vertical;
+  font: inherit;
+}
+
+/* The form's preview: the announcement as readers will see it, in a card-like box. */
+.form-dialog__preview {
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--color-muted);
+  border-radius: 10px;
+}
+
+.form-dialog__preview-content .announcement__title {
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+}
+
+/* Who has read it: one row per person, the name and when (or "Not yet"). */
+.readers {
+  max-height: 50vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.readers__item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.readers__item--not-yet .readers__when {
+  color: var(--color-muted);
+}
+
+.readers__count {
+  margin: 0;
+  font-weight: 600;
+}

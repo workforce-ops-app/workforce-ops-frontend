@@ -1,0 +1,85 @@
+/* The sections of the home screen under the week (js/components/home-sections.js):
+   Needs your attention and My time off. They share the announcements section's spacing
+   and heading (css/components/announcement.css), so the home screen reads as one column
+   of sections. */
+
+.home-section {
+  margin-top: calc(var(--space) * 2);
+}
+
+.home-section__title {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  color: var(--color-heading);
+}
+
+.home-section .status {
+  margin: 0 0 0.75rem;
+}
+
+/* The tiles sit straight under the heading here; the section's own margin spaces them. */
+.home-section .stats {
+  margin-bottom: 0.75rem;
+}
+
+/* The links under a section: one per line, each with a chevron like "See all
+   announcements". */
+.home-section__links {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-section__link {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  font-weight: 600;
+}
+
+/* A smaller chevron, to suit the link's text size. */
+.home-section__chevron {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* My time off: one white card per request, the days in bold over the status. */
+.home-time-off-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.home-time-off {
+  padding: 0.875rem var(--space);
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-card);
+}
+
+.home-time-off p {
+  margin: 0;
+}
+
+.home-time-off__days {
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.home-time-off__status {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+/* Still waiting for a decision: an amber edge, as on the attention tiles. The status
+   words say the same, so colour is never the only sign. */
+.home-time-off--waiting {
+  box-shadow:
+    inset 4px 0 0 var(--color-warning-border),
+    var(--shadow-card);
+}
