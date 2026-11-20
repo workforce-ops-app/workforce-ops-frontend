@@ -38,6 +38,7 @@ sequenceDiagram
 | `applyPermissions()` | `js/components/app-shell.js` | shows each element marked `data-permission="<code>"` only when `can(code)`; such elements start `hidden` in the HTML, so nothing flashes while the session loads |
 | `showCompanyLogo(session)` | `js/components/app-shell.js` | replaces the application logo in each `.brand__logo` with the demo company's logo when one is available; otherwise the application logo remains |
 | `showCompanyName(session)` | `js/components/app-shell.js` | puts `company.name` (as text) in every `.brand__name` and at the end of the tab title ("My week · Northwind Cafe"), in place of "Workforce Operations"; the HTML keeps the application's name, so the home link has a name before the session loads and when it cannot be loaded |
+| `applyPermissions(root)` | `js/components/app-shell.js` | shows elements marked `data-permission="code"` to holders of that code, and `data-permission-any="a b c"` to holders of any one of them (the Administration entry) |
 | `accountItems(session)` | `js/components/app-shell.js` | the name (as text, linking to My account at `pages/account.html`) and the Sign out button for the `#account` spot in the header; one request per click, and a plain message when signing out fails |
 
 **Menu entries and their permissions:** My week needs `schedule.view_self`; Department needs `schedule.view` (an administrator can remove it from the Employee role, and the tab then disappears).

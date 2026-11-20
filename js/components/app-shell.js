@@ -26,6 +26,14 @@ export function applyPermissions(root = document) {
       element.hidden = !can(element.dataset.permission ?? "");
     }
   }
+  // data-permission-any="a b c": shown with any one of them (the Administration entry,
+  // docs/features/administration.md).
+  for (const element of root.querySelectorAll("[data-permission-any]")) {
+    if (element instanceof HTMLElement) {
+      const codes = (element.dataset.permissionAny ?? "").split(/\s+/).filter(Boolean);
+      element.hidden = !codes.some((code) => can(code));
+    }
+  }
 }
 
 /**
