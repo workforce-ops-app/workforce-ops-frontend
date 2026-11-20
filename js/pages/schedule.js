@@ -21,7 +21,7 @@
 // across weeks and departments (by employee ID), and are not saved between visits.
 
 import { ApiError, NetworkError } from "../api/client.js";
-import { listDepartmentPeople, listDepartments, listShifts } from "../api/shifts.js";
+import { listDepartmentPeople, listShifts, myDepartments } from "../api/shifts.js";
 import { startSignedInPage } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
 import { followDepartmentPicker, showDepartmentPicker } from "../components/department-picker.js";
@@ -37,7 +37,7 @@ import {
 import { followWeekLinks } from "../components/week-nav.js";
 import { openShiftsSection, unscheduledSection } from "../components/week-sections.js";
 import { el, setText } from "../core/dom.js";
-import { can, currentSession } from "../core/session.js";
+import { currentSession } from "../core/session.js";
 import { addDays, formatWeekRange } from "../core/time.js";
 import { requestedMonday, today, weekLink } from "../core/week.js";
 
@@ -120,6 +120,15 @@ function showStats(stats, shifts) {
 let editor = null;
 
 /**
+ * For the tests: put a stand-in editor in place, to see what each week tells it (for
+ * example whether the person may edit in that department).
+ * @param {{ update: (context: import("../components/week-editor.js").WeekContext | null) => void } | null} next
+ */
+export function setEditor(next) {
+  editor = next;
+}
+
+/**
  * The department's people, or null when the page should leave out the "Unscheduled
  * employees" section: seeing the week's shifts does not need the right to list people.
  * - Without user.view in the session, nothing is asked at all (no request bound to fail).
@@ -127,10 +136,12 @@ let editor = null;
  * - 404: the people endpoint does not exist yet (backend #54, after the midterm).
  * Any other failure is a real problem and is thrown on, like a failed shifts request.
  * @param {string} departmentId
+ * @param {string[]} permissions what the person may do in this department
  * @returns {Promise<import("../api/shifts.js").EmployeeRef[] | null>}
  */
-async function peopleOrNull(departmentId) {
-  if (!can("user.view")) return null;
+async function peopleOrNull(departmentId, permissions) {
+  // Only where they may see people: user.view in this department, not just somewhere.
+  if (!permissions.includes("user.view")) return null;
   try {
     return await listDepartmentPeople(departmentId);
   } catch (error) {
@@ -186,14 +197,17 @@ export async function showWeek(search) {
     }
     next.setAttribute("href", weekLink(monday, 1, params));
 
-    // Which department: the one in the address, else the person's own (from the session
-    // the page already loaded, so no second "who am I?" request), else the first one.
-    // The address is only a choice of what to look at: the API still filters every shift
-    // to what the person may see (another company's department simply has none).
-    const departments = await listDepartments();
+    // Which department: the one in the address, else the person's own home (when it is
+    // one of theirs), else the first of theirs. Only the departments where the person
+    // holds a role are offered (found in review): a Kitchen manager no longer sees Front
+    // of House in the picker. The address is only a choice of what to look at: a
+    // department not in the list gets the "not available" message below, and the API
+    // still filters every shift to what the person may see.
+    const departments = await myDepartments();
+    const home = currentSession()?.user.department_id;
     const departmentId =
       params.get("department") ??
-      currentSession()?.user.department_id ??
+      departments.find((d) => d.id === home)?.id ??
       departments[0]?.id ??
       null;
 
@@ -245,7 +259,7 @@ export async function showWeek(search) {
     // so they run at the same time.
     const [shifts, people] = await Promise.all([
       listShifts({ from: monday, to: addDays(monday, 6), departmentId }),
-      sections ? peopleOrNull(departmentId) : null,
+      sections ? peopleOrNull(departmentId, department.permissions) : null,
     ]);
 
     // A card for all seven days, even empty ones, with who works each shift.
@@ -301,7 +315,17 @@ export async function showWeek(search) {
     }
 
     // Edit mode works on exactly this week and department.
-    editor?.update({ departmentId, monday, days: keys, shifts, people, today: todayKey });
+    // The tools follow what the person may do in THIS department: a manager of another
+    // department, or an employee here, gets no edit buttons (the API refuses anyway).
+    editor?.update({
+      departmentId,
+      monday,
+      days: keys,
+      shifts,
+      people,
+      today: todayKey,
+      canEdit: department.permissions.includes("schedule.edit"),
+    });
   } catch (error) {
     // The two failures a page expects get a plain-language message. Whatever week is still
     // on screen (the one before, when moving between weeks) is not this week's, so the

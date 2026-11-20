@@ -80,8 +80,17 @@ const FRONT = [shift("f1", BEN, "2026-10-06T14:00:00Z", "2026-10-06T22:00:00Z")]
  */
 async function openWeek(page) {
   await page.route("**/api/sessions/current", (route) => route.fulfill({ json: SESSION }));
-  await page.route("**/api/departments*", (route) =>
-    route.fulfill({ json: { items: DEPARTMENTS, next_cursor: null } }),
+  // The person's departments, each with what they may do there (GET /api/departments/mine).
+  await page.route("**/api/departments/mine", (route) =>
+    route.fulfill({
+      json: {
+        items: DEPARTMENTS.map((department) => ({
+          ...department,
+          timezone: null,
+          permissions: ["schedule.view"],
+        })),
+      },
+    }),
   );
   await page.route("**/api/shifts?*", (route) => {
     const department = new URL(route.request().url()).searchParams.get("department_id");
