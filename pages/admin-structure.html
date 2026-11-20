@@ -69,7 +69,7 @@
           class="tab-bar__link"
           href="/pages/admin-people.html"
           aria-current="page"
-          data-permission-any="user.manage org.manage role.manage role.assign reporting_line.manage"
+          data-permission-any="user.manage org.manage role.manage role.assign reporting_line.manage security.view"
           hidden
         >
           <span class="icon icon--people" aria-hidden="true"></span>
@@ -96,6 +96,13 @@
           >Roles and owners</a
         >
         <a class="admin-nav__link" href="/pages/admin-approvals.html">Approvals</a>
+        <a
+          class="admin-nav__link"
+          href="/pages/admin-security.html"
+          data-permission="security.view"
+          hidden
+          >Security</a
+        >
       </nav>
       <h1>Departments and teams</h1>
       <p id="status" class="status" role="status">Loading…</p>

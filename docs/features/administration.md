@@ -16,6 +16,7 @@ The screens administrators and owners use to run their company: people and their
 | **Give a role**: role and scope (company, department, team, or one person); shows when it will need approval from above | dialog on the People page | `role.assign` | desktop first |
 | **Reporting lines**: a person's managers and reports; add or end a line | section of the People page | `reporting_line.manage` | desktop first |
 | **Approvals**: requests waiting for me (same-level roles, owner changes, name changes) and requests I made | `pages/admin-approvals.html` | everyone with the Administration entry (most see only their own) | both |
+| **Security**: detected attack attempts in the company, counts per type and the events ([security page](security.md)) | `pages/admin-security.html` | `security.view` (Owner and Administrator) | both; laptop first |
 | **Owners**: current owners; propose adding or removing one | section of the Roles page | Owner only | desktop first |
 
 ## Server requests used
@@ -38,7 +39,7 @@ Through `js/api/users.js`, `js/api/org.js`, `js/api/roles.js`, and `js/api/appro
 
 ## Departments and teams, Roles and owners, Approvals (built)
 
-A sub-menu under the tab bar links the four administration screens, each shown by the permission it needs (People always; Departments and teams with `org.manage`; Roles and owners with `role.view`; Approvals always). Shared pieces: `js/components/admin-page.js` (the status line, buttons that report a failure there, "A, B and C"), `css/pages/admin.css` (the sub-menu and cards).
+A sub-menu under the tab bar links the administration screens, each shown by the permission it needs (People always; Departments and teams with `org.manage`; Roles and owners with `role.view`; Approvals always; Security with `security.view`, [security page](security.md)). Shared pieces: `js/components/admin-page.js` (the status line, buttons that report a failure there, "A, B and C"), `css/pages/admin.css` (the sub-menu and cards).
 
 - **Departments and teams** (`js/pages/admin-structure.js`): each active department with its time zone (the company's unless set; from the list, backend #170), its teams, and who is in each. With `org.manage`: add, change (name and time zone), and archive a department; add, rename, and archive a team; Members (tick to keep, choose one to add). Archiving a department with people or teams is refused by the API, and the reason is shown.
 - **Roles and owners** (`js/pages/admin-roles.js`): every role with what it grants. Change and Archive appear only with `role.manage` and where the API says `you_may_change` (backend #170: above every holder, or an owner; never the Owner role or an archived one); otherwise the card says why. The permission list offers only what the user holds (AZ3); a permission the role grants that they lack is shown ticked and locked. Owners: the list, and for owners (`company.transfer_ownership`) Add an owner and Remove; the answer is "Done" or "Sent for approval to ..." (every other owner must agree).
@@ -51,4 +52,4 @@ A sub-menu under the tab bar links the four administration screens, each shown b
 - When giving a role answers **202**, the dialog says "Sent for approval to …" instead of "Done".
 - Buttons are hidden without the permission, and people the user is not above show no action buttons; the API checks everything regardless.
 - **Company logo** (planned, workforce-ops-app/workforce-ops-backend#101): an administrator uploads the logo shown in the header. Until then the demo companies' logos ship with the frontend (#56).
-- The Administration menu entry appears only for people with at least one of `user.manage`, `org.manage`, `role.manage`, `role.assign`, or `reporting_line.manage`.
+- The Administration menu entry appears only for people with at least one of `user.manage`, `org.manage`, `role.manage`, `role.assign`, `reporting_line.manage`, or `security.view`.
