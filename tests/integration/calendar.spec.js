@@ -250,3 +250,50 @@ test("a red line marks the time it is now in today's column", async ({ page }) =
   // Placed through the CSSOM: the policy refused nothing.
   expect(refused).toEqual([]);
 });
+
+test("the people menu hides a person's blocks and gives the others their width back", async ({
+  page,
+}) => {
+  // The menu sits on the left of the calendar on a laptop (#83).
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const refused = watchPolicy(page);
+  await openWeek(page);
+
+  const menu = page.getByRole("region", { name: "People" });
+  await expect(menu).toBeVisible();
+  const calendar = page.locator("#calendar");
+  const monday = calendar.locator(".week-calendar__day[data-day='2026-10-05']");
+  const anaBlock = monday.locator(".week-calendar__block[data-person='u1']");
+  const benBlock = monday.locator(".week-calendar__block[data-person='u2']");
+  await expect(benBlock).toBeVisible();
+  // The menu is beside the calendar, not above it.
+  expect((await box(menu)).x + (await box(menu)).width).toBeLessThanOrEqual(
+    (await box(calendar)).x + 1,
+  );
+
+  // Switch Ben off: his block goes, and Ana's takes the whole Monday column again.
+  const ben = menu.getByRole("button", { name: /Ben Okafor/ });
+  await expect(ben).toHaveAttribute("aria-pressed", "true");
+  await ben.click();
+  await expect(ben).toHaveAttribute("aria-pressed", "false");
+  await expect(benBlock).toBeHidden();
+  const column = await box(monday);
+  await expect.poll(async () => (await box(anaBlock)).width).toBeGreaterThan(column.width - 10);
+  await expect(page.locator("#stats .stats__filter")).toContainText("2 of 3 people");
+
+  // Search: only Cara's night shift (both pieces) is left.
+  await menu.getByLabel("Search names").fill("cara");
+  await expect(anaBlock).toBeHidden();
+  await expect(calendar.locator(".week-calendar__block:visible")).toHaveCount(2);
+  await expect(menu.getByRole("status")).toHaveText("1 of 3 people shown");
+
+  // Clear filters: everyone is back.
+  await menu.getByRole("button", { name: "Clear filters" }).click();
+  await expect(calendar.locator(".week-calendar__block:visible")).toHaveCount(4);
+  await expect(page.locator("#stats .stats__filter")).toHaveCount(0);
+  expect(refused).toEqual([]);
+
+  // On a phone the calendar is hidden, and so is the menu (the day cards show instead).
+  await page.setViewportSize({ width: 390, height: 800 });
+  await expect(menu).toBeHidden();
+});

@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="/css/components/stat-tile.css" />
     <link rel="stylesheet" href="/css/components/person-colour.css" />
     <link rel="stylesheet" href="/css/components/week-calendar.css" />
+    <link rel="stylesheet" href="/css/components/people-menu.css" />
     <link rel="stylesheet" href="/css/components/week-sections.css" />
     <link rel="stylesheet" href="/css/components/week-nav.css" />
     <link rel="stylesheet" href="/css/components/week-editor.css" />
@@ -144,7 +145,12 @@
         <!-- The same week twice: a calendar for laptops, a card per day for phones. The
              stylesheet shows only one of them; the hidden one is skipped by screen readers
              too. -->
-        <div id="calendar" class="week-calendar-card"></div>
+        <div class="schedule-board">
+          <!-- Laptops: the people menu (js/components/people-menu.js) on the left of the
+               calendar, to show or hide people's shifts and search by name. -->
+          <div id="people-menu" class="people-menu-slot"></div>
+          <div id="calendar" class="week-calendar-card"></div>
+        </div>
         <div id="days" class="days days--week"></div>
         <!-- Under the week: open shifts (laptops only; phones see them in the day cards)
              and the people without a shift this week. -->

@@ -50,10 +50,20 @@ main.schedule {
 }
 
 /* Phones and tablets: the day cards, not the calendar. The open shifts are already in the
-   day cards, so their own section is left out too. */
+   day cards, so their own section is left out too, and so is the people menu, which only
+   filters the calendar (a phone drawer is a later slice, CAL4). */
 .week-calendar-card,
-.week-section--open {
+.week-section--open,
+.people-menu-slot {
   display: none;
+}
+
+/* The line under the tiles while the people menu hides someone: across the whole row. */
+.stats__filter {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-warning);
 }
 
 @media (width >= 64rem) {
@@ -87,8 +97,31 @@ main.schedule {
 
   /* Laptops: the calendar and the open shifts section, not the day cards. */
   .week-calendar-card,
-  .week-section--open {
+  .week-section--open,
+  .people-menu-slot {
     display: block;
+  }
+
+  /* The people menu on the left of the calendar, as tall as the calendar at most, and
+     scrolling on its own when there are many people. */
+  .schedule-board {
+    display: grid;
+    grid-template-columns: 15rem minmax(0, 1fr);
+    gap: var(--space);
+    align-items: start;
+    margin-bottom: calc(var(--space) * 1.25);
+  }
+
+  .people-menu-slot {
+    position: sticky;
+    top: var(--space);
+    max-height: clamp(26rem, calc(100vh - 14rem), 52rem);
+    overflow-y: auto;
+  }
+
+  /* An empty slot (a week that could not load) takes no column. */
+  .schedule-board:has(.people-menu-slot:empty) {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .days--week {

@@ -23,7 +23,10 @@ import { api, getAll } from "./client.js";
 
 /**
  * @typedef {{ id: string, name: string }} DepartmentRef
- * @typedef {{ id: string, display_name: string }} EmployeeRef
+ * @typedef {{ name: string, built_in: "owner" | "administrator" | "manager" | "employee" | null }} RoleRef
+ *   one of a person's roles in the shift's department (null built_in: a role the company
+ *   added); in the people menu's order (workforce-ops-app/workforce-ops-backend#159)
+ * @typedef {{ id: string, display_name: string, roles?: RoleRef[] }} EmployeeRef
  * @typedef {{
  *   id: string, department: DepartmentRef, employee: EmployeeRef | null,
  *   starts_at: string, ends_at: string, timezone: string,

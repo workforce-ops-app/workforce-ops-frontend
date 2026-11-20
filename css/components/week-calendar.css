@@ -355,6 +355,12 @@
    on Sunday night): the bottom is cut square and drawn as a dashed line, so the block
    plainly goes on. The same at the top for a piece that continues from the day before.
    Screen readers hear "(ends the next day)" or "(continues into next week)" instead. */
+/* A person switched off in the people menu (showPeople): the block stays in the page, out
+   of sight and out of the accessibility tree. */
+.week-calendar__block[hidden] {
+  display: none;
+}
+
 .week-calendar__block--continues .calendar-shift {
   border-bottom: 2px dashed var(--person-edge, var(--color-accent));
   border-bottom-right-radius: 0;

@@ -15,15 +15,25 @@
 // session names none, it shows the first department of the company. When the company has
 // more than one department, a picker in the heading switches between them
 // (js/components/department-picker.js).
+//
+// Beside the calendar, the people menu (js/components/people-menu.js, #83) shows or hides
+// people's shifts and searches by name. Its choices stay while the page is open, also
+// across weeks and departments (by employee ID), and are not saved between visits.
 
 import { ApiError, NetworkError } from "../api/client.js";
 import { listDepartmentPeople, listDepartments, listShifts } from "../api/shifts.js";
 import { startSignedInPage } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
 import { followDepartmentPicker, showDepartmentPicker } from "../components/department-picker.js";
+import { isShown, noFilters, peopleMenu, peopleOf } from "../components/people-menu.js";
 import { weekEditor } from "../components/week-editor.js";
 import { weekStats } from "../components/week-stats.js";
-import { followNow, openAtFirstShift, weekCalendar } from "../components/week-calendar.js";
+import {
+  followNow,
+  openAtFirstShift,
+  showPeople,
+  weekCalendar,
+} from "../components/week-calendar.js";
 import { followWeekLinks } from "../components/week-nav.js";
 import { openShiftsSection, unscheduledSection } from "../components/week-sections.js";
 import { el, setText } from "../core/dom.js";
@@ -66,6 +76,40 @@ function showUnavailable(status, params, monday) {
     " ",
     el("a", { text: "Show my department", attrs: { href: weekLink(monday, 0, others) } }),
   );
+}
+
+/**
+ * What the people menu has chosen (who is switched off, and the search). One for the
+ * page, so it stays when another week or department loads. Exported for the tests.
+ */
+export const filters = noFilters();
+
+/**
+ * The tiles at the top, for the shifts the people menu shows: open shifts always count
+ * (they belong to nobody), assigned ones only if their person is shown. While some people
+ * are hidden, a line under the tiles says so, so the numbers are never mistaken for the
+ * whole week's.
+ * @param {HTMLElement} stats
+ * @param {import("../api/shifts.js").Shift[]} shifts the week's shifts
+ */
+function showStats(stats, shifts) {
+  const people = peopleOf(shifts);
+  const shownPeople = people.filter((person) => isShown(filters, person));
+  const visible = shifts.filter(
+    (shift) =>
+      !shift.employee ||
+      isShown(filters, { id: shift.employee.id, name: shift.employee.display_name }),
+  );
+  const note =
+    shownPeople.length < people.length
+      ? [
+          el("p", {
+            className: "stats__filter",
+            text: `Filter on: these numbers count ${shownPeople.length} of ${people.length} people, and every open shift.`,
+          }),
+        ]
+      : [];
+  stats.replaceChildren(...weekStats(visible), ...note);
 }
 
 /**
@@ -116,6 +160,7 @@ export async function showWeek(search) {
   const calendarCard = document.getElementById("calendar");
   const picker = document.getElementById("department-picker");
   const sections = document.getElementById("sections");
+  const menuSlot = document.getElementById("people-menu");
 
   // Everything that reads the address or the server is inside try, so a bad address or a
   // failed request shows a message instead of leaving the page on "Loading".
@@ -168,6 +213,7 @@ export async function showWeek(search) {
       setText(status, "No departments yet.");
       week.replaceChildren();
       calendarCard?.replaceChildren();
+      menuSlot?.replaceChildren();
       sections?.replaceChildren();
       if (stats) stats.hidden = true;
       return;
@@ -188,6 +234,7 @@ export async function showWeek(search) {
       showUnavailable(status, params, monday);
       week.replaceChildren();
       calendarCard?.replaceChildren();
+      menuSlot?.replaceChildren();
       sections?.replaceChildren();
       if (stats) stats.hidden = true;
       return;
@@ -217,6 +264,20 @@ export async function showWeek(search) {
     // share it), else the company's, else the viewer's own.
     if (calendarCard) {
       const calendar = weekCalendar(keys, shifts, { today: todayKey });
+
+      // The people menu on its left. Each change shows the chosen people's blocks and
+      // counts the tiles again; the choices from earlier weeks apply straight away. It is
+      // put on the page first, so the calendar arrives in its final place, next to it.
+      if (menuSlot) {
+        const names = new Map(peopleOf(shifts).map((person) => [person.id, person.name]));
+        const apply = () => {
+          showPeople(calendar, (id) => isShown(filters, { id, name: names.get(id) ?? "" }));
+          if (stats) showStats(stats, shifts);
+        };
+        menuSlot.replaceChildren(peopleMenu(peopleOf(shifts), filters, apply));
+        apply();
+      }
+
       calendarCard.replaceChildren(calendar);
       openAtFirstShift(calendar);
       const zone =
@@ -235,7 +296,7 @@ export async function showWeek(search) {
 
     // The week's numbers at the top.
     if (stats) {
-      stats.replaceChildren(...weekStats(shifts));
+      showStats(stats, shifts);
       stats.hidden = false;
     }
 
@@ -248,6 +309,7 @@ export async function showWeek(search) {
     if (stats) stats.hidden = true;
     week.replaceChildren();
     calendarCard?.replaceChildren();
+    menuSlot?.replaceChildren();
     sections?.replaceChildren();
     if (error instanceof ApiError || error instanceof NetworkError) {
       const message = error instanceof ApiError ? error.title : "the server could not be reached";
