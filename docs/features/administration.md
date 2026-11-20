@@ -1,6 +1,6 @@
 # Administration
 
-- **Status:** planned (core tier)
+- **Status:** the People screen, with giving a role and reporting lines, is built (UI7, #19). Departments and teams, Roles (with owners), and Approvals follow in #20.
 - **Related:** workforce-ops-app/workforce-ops-frontend#3; backend: [company structure, people, and access](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/organization.md), [authorization](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/architecture/authorization.md)
 
 ## In short
@@ -25,6 +25,16 @@ Through `js/api/users.js`, `js/api/org.js`, `js/api/roles.js`, and `js/api/appro
 - structure: `/api/departments`, `/api/teams`;
 - roles and access: `/api/roles`, `/api/role-assignments`, `/api/reporting-lines`, `/api/owners`;
 - approvals: `/api/approval-requests`.
+
+## People screen (built)
+
+`pages/admin-people.html`, `js/pages/admin-people.js`. The people the user may see on the left (search by any words of the name or email), the chosen person on the right:
+- **Details:** email, home department, teams, account status (no password yet, active, deactivated, locked).
+- **Account actions** (`user.manage`, and only for people the user is above): change details, setup link (no password yet) or reset link, unlock, sign out everywhere, deactivate (says how many upcoming shifts still need someone else), reactivate. Adding a person asks who they report to (the user by default) and then shows their setup link.
+- **Roles** (`role.assign`, people the user is above): each role and where it applies, a Remove button (never for the Owner role, which changes only through the owners), and **Give a role**: the role, then the whole company, one department, one team, or only one person. The answer says "Ana now holds Scheduler." or "Sent for approval to Owen ..." (the request's `reviewers`, backend #168).
+- **Reporting lines** (`reporting_line.manage`, people the user is above): who they report to and who reports to them, an End button on each, and Add a manager.
+- **Who is above whom** comes from the API (`you_are_above` on each person, backend #168), so the page never guesses. Someone not above a person sees why the buttons are missing. Your own entry points to My account.
+- Popups: `js/components/form-dialog.js` (a small form whose choices may depend on another field; the server's refusal is shown inside it), `js/components/link-dialog.js` (the link shown once), and `confirm-dialog.js` ("Are you sure?" before deactivating, signing out, removing a role, or ending a line).
 
 ## Notes
 - **Setup and reset links** are shown once, with a copy button and a reminder to pass them on in person or by text; the page never stores them.
