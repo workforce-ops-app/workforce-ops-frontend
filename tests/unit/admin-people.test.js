@@ -133,7 +133,7 @@ describe("the form popup", () => {
     expect(run).not.toHaveBeenCalled();
     expect(document.querySelector("dialog [role=alert]")?.textContent).toBe("Please fill in name.");
     const input = /** @type {HTMLInputElement} */ (
-      document.getElementById("form-dialog-display_name")
+      document.getElementById("form-dialog-field-display_name")
     );
     input.value = "  Dana  ";
     input.dispatchEvent(new Event("input"));
@@ -184,14 +184,15 @@ describe("the form popup", () => {
       ],
       run: vi.fn(),
     });
-    expect(document.getElementById("form-dialog-scope_id")).toBeNull();
+    expect(document.getElementById("form-dialog-field-scope_id")).toBeNull();
     const where = /** @type {HTMLSelectElement} */ (
-      document.getElementById("form-dialog-scope_type")
+      document.getElementById("form-dialog-field-scope_type")
     );
     where.value = "team";
     where.dispatchEvent(new Event("change"));
     expect(
-      /** @type {HTMLSelectElement} */ (document.getElementById("form-dialog-scope_id")).value,
+      /** @type {HTMLSelectElement} */ (document.getElementById("form-dialog-field-scope_id"))
+        .value,
     ).toBe("t1");
   });
 });

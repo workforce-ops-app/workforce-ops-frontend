@@ -13,6 +13,11 @@
 // A "checks" field is a list of checkboxes (what a role grants). Its value is the chosen
 // values joined by spaces (permission codes have none). A locked choice is shown but
 // cannot be changed: a permission the person lacks stays as it is (rule AZ3).
+//
+// A "textarea" field is several lines of text (an announcement's message); its line breaks
+// are kept. maxLength stops typing at the server's limit, so a too-long text is never sent.
+// A form may also show a preview under its fields (an announcement as readers will see
+// it), built again from the values after every keystroke.
 
 import { el } from "../core/dom.js";
 import { createModal, explainFailure } from "./modal.js";
@@ -21,8 +26,9 @@ import { createModal, explainFailure } from "./modal.js";
  * @typedef {{ value: string, label: string, locked?: boolean }} Choice
  * @typedef {Record<string, string>} Values
  * @typedef {{
- *   name: string, label: string, type: "text" | "email" | "select" | "checks",
+ *   name: string, label: string, type: "text" | "email" | "select" | "checks" | "textarea",
  *   value?: string, required?: boolean, autocomplete?: string, hint?: string,
+ *   maxLength?: number,
  *   options?: Choice[] | ((values: Values) => Choice[]),
  *   shown?: (values: Values) => boolean,
  * }} Field
@@ -35,7 +41,9 @@ import { createModal, explainFailure } from "./modal.js";
  * @param {{
  *   title: string, lead?: string, submitLabel: string, fields: Field[],
  *   run: (values: Values) => Promise<T>,
- * }} options
+ *   preview?: { label: string, render: (values: Values) => Node[] },
+ * }} options preview: a labelled area under the fields, filled by render (with el(),
+ *   never HTML) from the current values, and filled again as they change
  * @returns {Promise<T | null>}
  */
 export function openFormDialog(options) {
@@ -75,6 +83,25 @@ export function openFormDialog(options) {
       fieldArea.replaceChildren(...rows);
     };
     render();
+
+    // The preview, if the form has one: a labelled region filled from the values now, and
+    // again after every change. The field's own listener has updated the values by then,
+    // since an input event reaches the field before it bubbles up to the form.
+    /** @type {HTMLElement[]} */
+    const previewArea = [];
+    if (options.preview) {
+      const { label, render: show } = options.preview;
+      const content = el("div", { className: "form-dialog__preview-content" }, show(values));
+      const refresh = () => content.replaceChildren(...show(values));
+      form.addEventListener("input", refresh);
+      form.addEventListener("change", refresh);
+      previewArea.push(
+        el("section", { className: "form-dialog__preview", attrs: { "aria-label": label } }, [
+          el("p", { className: "field__label", text: label }),
+          content,
+        ]),
+      );
+    }
 
     const back = el("button", { className: "button", text: "Go back", attrs: { type: "button" } });
     back.addEventListener("click", () => modal.close());
@@ -128,6 +155,7 @@ export function openFormDialog(options) {
 
     form.append(
       fieldArea,
+      ...previewArea,
       problem,
       el("div", { className: "edit-dialog__buttons" }, [back, submit]),
     );
@@ -140,7 +168,7 @@ export function openFormDialog(options) {
       ...(options.lead ? [el("p", { className: "edit-dialog__lead", text: options.lead })] : []),
       form,
     );
-    modal.open(/** @type {HTMLElement | null} */ (form.querySelector("input, select")));
+    modal.open(/** @type {HTMLElement | null} */ (form.querySelector("input, select, textarea")));
   });
 }
 
@@ -152,10 +180,15 @@ export function openFormDialog(options) {
  * @returns {HTMLElement}
  */
 function fieldRow(field, values, rerender) {
-  const id = `form-dialog-${field.name}`;
-  /** @type {HTMLInputElement | HTMLSelectElement} */
+  // "field-" keeps a field named like a part of the popup (a "title" field) from taking
+  // the heading's ID, which names the popup and would then label the wrong element.
+  const id = `form-dialog-field-${field.name}`;
+  /** @type {HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement} */
   let input;
   if (field.type === "checks") return checksRow(field, values);
+  // The limit the server sets, as an attribute: the browser stops typing there.
+  /** @type {Record<string, string>} */
+  const limit = field.maxLength ? { maxlength: String(field.maxLength) } : {};
   if (field.type === "select") {
     const choices =
       typeof field.options === "function" ? field.options(values) : (field.options ?? []);
@@ -178,8 +211,22 @@ function fieldRow(field, values, rerender) {
       rerender();
       document.getElementById(id)?.focus();
     });
+  } else if (field.type === "textarea") {
+    // Several lines; the value keeps its line breaks, only the spaces around it go (as
+    // the server trims it too).
+    const area = /** @type {HTMLTextAreaElement} */ (
+      el("textarea", {
+        className: "field__input field__input--area",
+        attrs: { id, name: field.name, rows: "6", ...limit },
+      })
+    );
+    area.value = values[field.name];
+    area.addEventListener("input", () => {
+      values[field.name] = area.value.trim();
+    });
+    input = area;
   } else {
-    input = /** @type {HTMLInputElement} */ (
+    const line = /** @type {HTMLInputElement} */ (
       el("input", {
         className: "field__input",
         attrs: {
@@ -187,13 +234,15 @@ function fieldRow(field, values, rerender) {
           name: field.name,
           type: field.type,
           autocomplete: field.autocomplete ?? "off",
+          ...limit,
         },
       })
     );
-    input.value = values[field.name];
-    input.addEventListener("input", () => {
-      values[field.name] = input.value.trim();
+    line.value = values[field.name];
+    line.addEventListener("input", () => {
+      values[field.name] = line.value.trim();
     });
+    input = line;
   }
   const children = [
     el("label", { className: "field__label", text: field.label, attrs: { for: id } }),
@@ -214,7 +263,7 @@ function checksRow(field, values) {
     typeof field.options === "function" ? field.options(values) : (field.options ?? []);
   const chosen = new Set(values[field.name].split(" ").filter(Boolean));
   const boxes = choices.map((choice, index) => {
-    const id = `form-dialog-${field.name}-${index}`;
+    const id = `form-dialog-field-${field.name}-${index}`;
     const box = /** @type {HTMLInputElement} */ (
       el("input", { attrs: { id, type: "checkbox", name: field.name, value: choice.value } })
     );

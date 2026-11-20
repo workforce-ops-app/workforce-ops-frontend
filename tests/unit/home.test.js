@@ -210,6 +210,18 @@ describe("showAttention", () => {
     expect(listShifts).not.toHaveBeenCalled();
   });
 
+  it("shows someone who only posts announcements the link, with no tiles and no requests", async () => {
+    signedInWith(["announcement.create"]);
+
+    await showAttention();
+
+    expect(document.getElementById("attention")?.hidden).toBe(false);
+    expect(document.getElementById("attention-tiles")?.hidden).toBe(true);
+    expect(document.getElementById("attention-status")?.textContent).toBe("");
+    expect(waitingRequests).not.toHaveBeenCalled();
+    expect(listShifts).not.toHaveBeenCalled();
+  });
+
   it("shows a reviewer how many requests wait, without shift tiles", async () => {
     signedInWith(["time_off.review"]);
     asMock(waitingRequests).mockResolvedValue([request("a", "pending", "2026-10-20")]);

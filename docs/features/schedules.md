@@ -52,14 +52,14 @@ My week is the page everyone lands on after signing in (decision 0038, "screens 
 
 | Section | Who sees it | What it shows |
 |---|---|---|
-| **Needs your attention** | people with `time_off.review`, or `schedule.edit` and a home department | tiles: **Time off to review** (how many requests wait for this person, "200+" past one page, like the menu's count), and for people who plan the week **Open shifts this week** and **Open hours this week** in their own department; each tile is amber when there is work to do. Under the tiles, a link for each kind of work: **Review time off** and **Plan the department week** |
+| **Needs your attention** | people with `time_off.review`, `announcement.create`, or `schedule.edit` and a home department | tiles: **Time off to review** (how many requests wait for this person, "200+" past one page, like the menu's count), and for people who plan the week **Open shifts this week** and **Open hours this week** in their own department; each tile is amber when there is work to do. Under the tiles, a link for each kind of work: **Review time off**, **Plan the department week**, and **Post an announcement** (opens the posting form at once, [announcements](announcements.md)). Someone who only posts gets the link without tiles, and nothing is asked of the server |
 | **My time off** | people with `time_off.request_self` | up to three requests, soonest first: the ones still waiting for a decision (amber edge) and approved time off that has not ended; denied, cancelled, and past ones stay on the Time off page. Each shows its days and its status in words, then **All my time off** links to the Time off page. "No time off coming up." when there is none |
 | **Announcements** | everyone | the newest three ([announcements](announcements.md)) |
 
 - **Why on My week, not a page of its own:** employees open the application to see their week, so the week stays at the top on a phone; managers still find what needs them one scroll down, without a separate dashboard to learn.
 - **This week only:** the attention tiles always count the current week, even while the person browses other weeks above them; the department week has the full numbers for any week.
 - **Only a convenience:** each section is shown only with its permission, and the API checks every request again (threat E8). An employee who somehow showed a hidden section would get nothing the API would not already give them.
-- **Posting an announcement:** a link to post one joins Needs your attention with announcement posting (workforce-ops-app/workforce-ops-frontend#79).
+- **Posting an announcement:** the link (#79) goes to `pages/announcements-manage.html#post`, which opens the form straight away.
 - **One request for the waiting list:** the menu's count and the tile share it (`waitingRequests()` in `js/components/app-shell.js`).
 - **Tests:** `tests/unit/home.test.js` (which requests are listed and in what order, which tiles each kind of person gets, the requests sent, the empty and error states).
 

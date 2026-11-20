@@ -1,10 +1,10 @@
 # Announcements
 
-- **Status:** reading is built (slice AN4, workforce-ops-app/workforce-ops-frontend#78) against the agreed API, tested with stubbed answers until the backend's reading slice (AN2, workforce-ops-app/workforce-ops-backend#155) merges; posting, editing, archiving, and the read list are next (AN5, workforce-ops-app/workforce-ops-frontend#79)
+- **Status:** reading is built (slice AN4, workforce-ops-app/workforce-ops-frontend#78) against the agreed API, tested with stubbed answers until the backend's reading slice (AN2, workforce-ops-app/workforce-ops-backend#155) merges; posting, correcting, archiving, and the read list are built (AN5, workforce-ops-app/workforce-ops-frontend#79), using the backend's managing endpoints (AN1, workforce-ops-app/workforce-ops-backend#154) and its list of audiences you may post to (workforce-ops-app/workforce-ops-backend#177)
 - **Related:** screens workforce-ops-app/workforce-ops-frontend#65; tracker workforce-ops-app/.github#84; backend: [announcements](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/announcements.md)
 
 ## In short
-Everyone sees the announcements meant for them: the newest few under their week on My week, and all of them on the Announcements page, newest first. Unread ones say "Unread"; opening one shows its message and marks it read. The text is plain text with **bold** as the only formatting, and it is never treated as HTML, so an announcement cannot carry a script to the people who read it (threat T5).
+Everyone sees the announcements meant for them: the newest few under their week on My week, and all of them on the Announcements page, newest first. Unread ones say "Unread"; opening one shows its message and marks it read. Managers (anyone with `announcement.create`) also post announcements to the teams and departments they manage (owners and administrators to the whole company too), correct or archive them, and see who has read each one. The text is plain text with **bold** as the only formatting, and it is never treated as HTML, so an announcement cannot carry a script to the people who read it (threat T5).
 
 ## Screens
 
@@ -13,6 +13,11 @@ Everyone sees the announcements meant for them: the newest few under their week 
 | **Announcements**: every announcement meant for you, newest first, 20 at a time, with **Load more announcements** under the list while the server has more. Each is a card: the title (a button that opens and closes the message), an **Unread** label before the title until you open it, and a line with who posted it, who it is for, when, and **Edited** when it was corrected after posting | `pages/announcements.html` | everyone signed in | both; one column of cards |
 | **Newest announcements** on the home screen: the newest three, as the same cards, under the week, with **See all announcements** linking to the page above | `pages/my-shifts.html` (My week, where the brand logo leads) | everyone signed in | phone first, like My week |
 | **Announcements tab** in the main tabs of every signed-in page | the tab bar | everyone signed in | both |
+| **Manage announcements**: **Post an announcement** at the top, **Show archived**, then the announcements you manage, newest first, 20 at a time. Each card shows the title, who it is for, who posted it, when, **Edited**, its message (open, since managers read what they wrote), how many have read it ("12 of 30 read"), and **Who has read it**, **Correct**, and **Archive**. An archived one is greyed with the word **Archived** and keeps only **Who has read it** | `pages/announcements-manage.html`, linked from the Announcements page ("Post and manage announcements") and the home screen's Needs your attention ("Post an announcement", which opens the form at once) | people with `announcement.create` | both |
+| **Post an announcement** (a popup): **Audience** (only the ones the server lists for you), **Title** (up to 120 characters), **Message** (up to 4,000, line breaks kept, `**bold**`), and a **Preview** that shows it as readers will, updated as you type. The server's reason (403, 409, 422) is shown inside the form, and what was typed stays | a popup on the same page | people with `announcement.create` | both |
+| **Correct the announcement** (a popup): the title and message with the preview; the audience is named but cannot change. Only the fields that changed are sent | a popup on the same page | same | both |
+| **Archive this announcement?** (a question): archiving is asked first, since it cannot be undone | a popup on the same page | same | both |
+| **Who has read it** (a popup): the read count, then the people in the audience by name, each "Read <when>" or "Not yet", 50 at a time with **Load more people** | a popup on the same page | same | both |
 
 ## Server requests used
 
@@ -22,6 +27,12 @@ Through `js/api/announcements.js`:
 |---|---|
 | One page of your announcements, newest first | `GET /api/announcements?limit=20` for the first page, then `&cursor=<next_cursor>` for each further page; the home screen asks for `limit=3` only |
 | Mark one read (when it is opened) | `POST /api/announcements/{id}/read` with the `X-CSRF-Token` header; 204, and sending it again changes nothing; 404 when you are not in its audience |
+| Where you may post (for the form's Audience list) | `GET /api/announcements/audiences`: `{items: [{type, department_id, team_id, name, department_name}]}`, or 403 without `announcement.create` anywhere |
+| Post one | `POST /api/announcements` `{audience_type, department_id or team_id (only the one the type needs), title, body}`: 201 |
+| The announcements you manage | `GET /api/announcements/managed?limit=20` (and `&include_archived=true` with Show archived), then `&cursor=<next_cursor>`; each with `read_count` and `audience_count` |
+| Correct one | `PATCH /api/announcements/{id}` with only the changed `title` and/or `body`: 200 |
+| Archive one | `POST /api/announcements/{id}/archive`: 200 |
+| Who has read it | `GET /api/announcements/{id}/reads?limit=50`, then `&cursor=<next_cursor>`: `{items: [{id, display_name, read_at}]}` (`read_at` null: not yet) |
 
 `GET /api/announcements/{id}` (one announcement) is not needed yet: the list already carries everything the cards show.
 
@@ -54,6 +65,13 @@ Each announcement: `id`, `audience` (`type`: `company`, `department`, or `team`,
 - **The tab needs no permission:** everyone signed in reads the announcements meant for them, so the Announcements tab has no `data-permission` and is not hidden ([session and navigation](../architecture/session-and-navigation.md)).
 - **Where on the home screen:** under the week (and its hours), so My week keeps its week at the top on a phone; three cards keep the section short.
 - **Archived** announcements are never in the reader's list (the server leaves them out), so the page has no archived state to show.
+- **Managing** (AN5, `js/pages/announcements-manage.js`):
+  - **The audiences come from the server** (threat E11). The session lists permission names only, not where they apply, and managers cannot read what roles grant, so the form asks `GET /api/announcements/audiences`, which runs the same check posting does for each audience. A Kitchen manager is offered "Kitchen department" and "Weekend Crew team (Kitchen)", never the company. A team is named with its department, since two departments may have teams of the same name. The select's values are the choices' places in that list, not the server's IDs. Without any audience (the request refused, or an empty list), **Post an announcement** stays hidden; managing what exists still works.
+  - **The same safe renderer everywhere** (threat T5): titles and messages in the list, the preview, and the read list's heading all go through `announcementText()`, and names through `el()`. The preview is the bold renderer of AN4, so what the manager sees is exactly what readers will see.
+  - **Only what changed:** a correction sends only the fields that differ, so the audit log lists just those; a correction that changes nothing sends no request at all.
+  - **After every change** the list loads again from the newest, and a line says what happened ("Announcement posted.", "Correction saved.", "Announcement archived."). Show archived also starts the list again. Loads are counted, so an older answer arriving late never adds to a newer list.
+  - **Only a convenience** (threat E8): the links to this page are shown only with `announcement.create`, and the page shows the server's 403 if someone opens it without. Every request is checked again by the API.
+  - **The form popup** (`js/components/form-dialog.js`) gained a `textarea` field (line breaks kept, only the spaces around the text trimmed, as the server does), a `maxLength` that stops typing at the server's limit, and an optional preview under the fields, built again after every change. Field IDs now start with `form-dialog-field-`, so a field named `title` no longer takes the popup heading's ID (`form-dialog-title`); that had left the Title field without a label and the popup without a name.
 
 ## Tests
 
@@ -62,4 +80,6 @@ Each announcement: `id`, `audience` (`type`: `company`, `department`, or `team`,
 - `tests/unit/announcements-page.test.js`: the first page, Load more with the server's cursor until there is no more, one request per press, focus on the first new one, a failed further page keeping the list, the empty and error states; the home screen asking for 3 and using `h3` headings.
 - `tests/unit/announcements-api.test.js`: the addresses (limit, escaped cursor, encoded ID) and the CSRF token on the read mark.
 - `tests/integration/announcements.spec.js` (Chromium, Firefox, WebKit, behind nginx and its real policy, with the API answered by `page.route`): bold is a real `<strong>` and line breaks show on screen; `<img src=x onerror=alert(1)>` in a title and body is shown as text with no image element and no dialog; opening an unread one sends one read mark with the CSRF token; Load more adds the next page; My week shows the newest ones and links to the page; and the browser refuses nothing. Checked the other way round too: with the renderer temporarily switched to `innerHTML`, the unit tests above and every one of these browser tests failed (the browsers also reported the policy refusing the injected `onerror` handler).
-- `tests/integration/smoke.spec.js` includes the Announcements page among the signed-in pages that send a signed-out visitor to the sign-in page and stay hidden until the session has loaded.
+- `tests/unit/announcements-manage.test.js`: the audience words and POST bodies; the preview (bold as `<strong>`, HTML as text); the message field (line breaks, the limit, the preview updating while typing); a `title` field labelled with the popup still named; the managed list (read counts, archived ones without changes, HTML as text), Show archived, posting hidden without audiences, the list refused; posting to the chosen audience with the exact body, the server's reason kept in the form, `#post` opening the form; a correction sending only what changed (and nothing when nothing changed); archiving only after the question; the read list with "Read <when>", "Not yet", and Load more people.
+- `tests/integration/announcements-manage.spec.js` (Chromium, Firefox, WebKit, behind nginx and its real policy): `<img src=x onerror=alert(1)>` in a manager's title and message shows as text in the list, the read list, and the preview, with no image element, no dialog, and nothing refused; the form offers only the server's audiences and posts the exact body with the CSRF token.
+- `tests/integration/smoke.spec.js` includes the Announcements and Manage announcements pages among the signed-in pages that send a signed-out visitor to the sign-in page and stay hidden until the session has loaded.

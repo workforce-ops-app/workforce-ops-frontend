@@ -121,7 +121,8 @@
       </div>
       <!-- What needs a manager's attention: tiles filled in by the script, then a link for
            each kind of work, each shown only with its permission. The section starts hidden
-           and the script shows it for people who review time off or plan the week. -->
+           and the script shows it for people who review time off, plan the week, or post
+           announcements. -->
       <section id="attention" class="home-section" aria-labelledby="attention-title" hidden>
         <h2 id="attention-title" class="home-section__title">Needs your attention</h2>
         <p id="attention-status" class="status" aria-live="polite">Loading…</p>
@@ -139,6 +140,15 @@
           <li data-permission="schedule.edit" hidden>
             <a class="home-section__link" href="/pages/schedule.html">
               Plan the department week
+              <span
+                class="icon icon--chevron-right home-section__chevron"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li data-permission="announcement.create" hidden>
+            <a class="home-section__link" href="/pages/announcements-manage.html#post">
+              Post an announcement
               <span
                 class="icon icon--chevron-right home-section__chevron"
                 aria-hidden="true"
