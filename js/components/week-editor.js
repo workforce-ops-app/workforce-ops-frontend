@@ -324,7 +324,7 @@ export function weekEditor(options) {
   }
 
   /**
-   * Select or unselect a shift. The same shift has a box in the timeline and in the day cards
+   * Select or unselect a shift. The same shift has a box in the calendar and in the day cards
    * (only one is visible at a time), so both are kept in step.
    * @param {string} id
    * @param {boolean} on
