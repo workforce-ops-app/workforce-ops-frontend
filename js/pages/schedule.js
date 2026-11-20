@@ -21,15 +21,19 @@ import { listDepartmentPeople, listDepartments, listShifts } from "../api/shifts
 import { startSignedInPage } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
 import { followDepartmentPicker, showDepartmentPicker } from "../components/department-picker.js";
-import { statTile } from "../components/stat-tile.js";
 import { weekEditor } from "../components/week-editor.js";
+import { weekStats } from "../components/week-stats.js";
 import { followNow, openAtFirstShift, weekCalendar } from "../components/week-calendar.js";
 import { followWeekLinks } from "../components/week-nav.js";
 import { openShiftsSection, unscheduledSection } from "../components/week-sections.js";
 import { el, setText } from "../core/dom.js";
 import { can, currentSession } from "../core/session.js";
-import { addDays, formatWeekRange, hoursBetween, roundHours } from "../core/time.js";
+import { addDays, formatWeekRange } from "../core/time.js";
 import { requestedMonday, today, weekLink } from "../core/week.js";
+
+// The tiles' numbers live in components/week-stats.js (the home screen shows some of them
+// too); exported here as well, so the page's tests keep their import.
+export { weekStats };
 
 /** The heading when the department's name is not known (e.g. an ID from an old link). */
 const DEFAULT_TITLE = "Department week";
@@ -70,31 +74,6 @@ function showUnavailable(status, params, monday) {
  * @type {{ update: (context: import("../components/week-editor.js").WeekContext | null) => void } | null}
  */
 let editor = null;
-
-/**
- * The week's numbers for the tiles: shifts, open shifts, open hours, and people working.
- *
- * Open hours are the hours nobody is assigned to yet: what a manager still has to cover
- * (#51). A total of all scheduled hours was shown here before, but without a labor budget
- * to compare it with it did not help decide anything, and it left the open shifts out.
- * (The calendar draws each shift's length; it does not add up each person's hours.)
- * @param {import("../api/shifts.js").Shift[]} shifts the week's shifts (no cancelled ones)
- * @returns {HTMLElement[]}
- */
-export function weekStats(shifts) {
-  const open = shifts.filter((s) => !s.employee);
-  const assigned = shifts.filter((s) => s.employee);
-  // hoursBetween measures the real time between the UTC moments, so an overnight shift
-  // counts its full length, and so does a night when the clocks change.
-  const openHours = open.reduce((sum, s) => sum + hoursBetween(s.starts_at, s.ends_at), 0);
-  const people = new Set(assigned.map((s) => s.employee?.id)).size;
-  return [
-    statTile("Shifts", shifts.length),
-    statTile("Open shifts", open.length, { attention: open.length > 0 }),
-    statTile("Open hours", roundHours(openHours), { attention: openHours > 0 }),
-    statTile("People working", people),
-  ];
-}
 
 /**
  * The department's people, or null when the page should leave out the "Unscheduled

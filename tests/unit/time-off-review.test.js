@@ -19,7 +19,8 @@ vi.mock("../../js/core/session.js", () => ({
 const { decisionLine, reviewState, shiftLine, showReview, statusLabel } =
   await import("../../js/pages/time-off-review.js");
 const { decideTimeOff, teamRequests } = await import("../../js/api/time-off.js");
-const { showWaitingCount } = await import("../../js/components/app-shell.js");
+const { forgetWaitingRequests, showWaitingCount } =
+  await import("../../js/components/app-shell.js");
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -211,6 +212,8 @@ describe("the page", () => {
 describe("the waiting count in the menu", () => {
   /** @param {number} count */
   function menu(count) {
+    // Each call stands for a new page load, which asks the server again.
+    forgetWaitingRequests();
     document.body.innerHTML =
       '<a href="/pages/time-off-review.html"><span data-waiting-count hidden></span></a>';
     serve(() => ({ items: Array.from({ length: count }, (_, i) => ({ id: String(i) })) }));

@@ -139,6 +139,30 @@ export function reloadIfRestored(event, reload = () => window.location.reload())
   if (event.persisted) reload();
 }
 
+/** @type {Promise<import("../api/time-off.js").TimeOff[]> | null} */
+let waiting = null;
+
+/**
+ * The time-off requests waiting for the person's review, asked for once per page load:
+ * the menu's count and the home screen both need them, so they share one request. A
+ * failed request is forgotten, so a later call can try again.
+ * @returns {Promise<import("../api/time-off.js").TimeOff[]>}
+ */
+export function waitingRequests() {
+  if (!waiting) {
+    waiting = waitingForMe().catch((error) => {
+      waiting = null;
+      throw error;
+    });
+  }
+  return waiting;
+}
+
+/** Ask again on the next call (for the tests: in the browser, each page load starts fresh). */
+export function forgetWaitingRequests() {
+  waiting = null;
+}
+
 /**
  * The number of time-off requests waiting for the person's review, on the "Review time
  * off" menu entry (docs/features/time-off.md). There are no notifications in the core
@@ -150,7 +174,7 @@ export async function showWaitingCount() {
   const spot = document.querySelector("[data-waiting-count]");
   if (!(spot instanceof HTMLElement) || !can("time_off.review")) return;
   try {
-    const count = (await waitingForMe()).length;
+    const count = (await waitingRequests()).length;
     spot.textContent = count >= 200 ? "200+" : String(count);
     spot.setAttribute("aria-label", `${spot.textContent} waiting`);
     spot.hidden = count === 0;
