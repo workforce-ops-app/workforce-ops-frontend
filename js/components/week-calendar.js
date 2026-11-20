@@ -687,11 +687,17 @@ export function openAtFirstShift(calendar, framesLeft = 30) {
   const scroller = calendar.querySelector(".week-calendar__scroll");
   const day = calendar.querySelector(".week-calendar__day");
   if (!(scroller instanceof HTMLElement) || !(day instanceof HTMLElement)) return;
-  const sized = () => Boolean(day.offsetHeight && scroller.clientHeight);
-  // Some browsers (WebKit) have not laid the new calendar out yet right after it is put on
-  // the page, so it has no height to scroll by, and scrolling would leave it at midnight.
-  // How long that takes depends on how busy the computer is, so there is no time limit:
-  // a ResizeObserver says when the calendar gets its size, and it scrolls then, once.
+  // Ready to scroll: laid out with a height, and taller inside than its window (its
+  // stylesheet has given it a fixed height and a scroll bar).
+  const sized = () =>
+    Boolean(
+      day.offsetHeight && scroller.clientHeight && scroller.scrollHeight > scroller.clientHeight,
+    );
+  // Right after the calendar is put on the page, some browsers (WebKit) have not laid it
+  // out yet, or not with its stylesheets: then it has no height, or it is as tall as the
+  // whole day with nothing to scroll, and scrolling would leave it at midnight. How long
+  // that takes depends on how busy the computer is, so there is no time limit: a
+  // ResizeObserver says when the calendar's size changes, and it scrolls once it is ready.
   // It stops watching once the calendar is off the page (another week replaced it). A
   // hidden calendar (on a phone) is watched until it is shown or replaced, so turning a
   // tablet to landscape still opens it at the first shift.
