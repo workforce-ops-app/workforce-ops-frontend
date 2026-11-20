@@ -23,6 +23,8 @@ import { api, getAll } from "./client.js";
 
 /**
  * @typedef {{ id: string, name: string }} DepartmentRef
+ * @typedef {DepartmentRef & { timezone: string | null, permissions: string[] }} MyDepartment
+ *   A department of the signed-in person's, with the permission codes they hold there.
  * @typedef {{ name: string, built_in: "owner" | "administrator" | "manager" | "employee" | null }} RoleRef
  *   one of a person's roles in the shift's department (null built_in: a role the company
  *   added); in the people menu's order (workforce-ops-app/workforce-ops-backend#159)
@@ -60,6 +62,19 @@ export async function listShifts(query) {
  */
 export async function listDepartments() {
   return getAll("/api/departments");
+}
+
+/**
+ * The departments where the signed-in person holds a role, each with the permissions they
+ * hold there, sorted by name (GET /api/departments/mine, backend #186). The department
+ * week's picker lists only these, and its tools follow the chosen one's permissions
+ * (found in review: a Kitchen manager could switch to any department and still saw the
+ * manager buttons there). Only the screen changes: the API checks every request again.
+ * @returns {Promise<MyDepartment[]>}
+ */
+export async function myDepartments() {
+  const answer = /** @type {{ items: MyDepartment[] }} */ (await api.get("/api/departments/mine"));
+  return answer.items;
 }
 
 /**
