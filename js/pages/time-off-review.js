@@ -21,7 +21,7 @@ import { openFormDialog } from "../components/form-dialog.js";
 import { el } from "../core/dom.js";
 import { can, currentSession } from "../core/session.js";
 import { dayKey, formatTimeRange } from "../core/time.js";
-import { dayRange, statusText } from "../core/time-off-words.js";
+import { dayRange, decidedText, statusText, waitingText } from "../core/time-off-words.js";
 
 /** @typedef {import("../api/time-off.js").TimeOff} TimeOff */
 /** @typedef {import("../api/time-off.js").TimeOffDetail} TimeOffDetail */
@@ -60,7 +60,10 @@ export function reviewState(request) {
   if (request.status === "escalated") {
     return "Moved up to you: the managers who reviewed it disagreed. Your decision settles it.";
   }
-  return request.status === "pending" ? "Waiting for your decision." : statusText(request);
+  // Pending: what the other reviewers already decided (if anyone), then that it waits
+  // for this reviewer. The waiting list only holds requests this person has not decided.
+  if (request.status !== "pending") return statusText(request);
+  return [decidedText(request), "Waiting for your decision."].filter(Boolean).join(" ");
 }
 
 // --- The page ----------------------------------------------------------------------------
@@ -244,7 +247,11 @@ async function drawTeam(status) {
  * @param {TimeOff} request
  */
 export function statusLabel(request) {
-  if (request.status === "escalated") return "Moved up";
+  // Moved up: the short label, then who it now waits for (when the API names them).
+  if (request.status === "escalated") {
+    const waiting = waitingText(request);
+    return waiting ? `Moved up. ${waiting}` : "Moved up";
+  }
   return statusText(request);
 }
 

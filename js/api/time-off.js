@@ -13,7 +13,11 @@ import { api } from "./client.js";
  *   reason: string | null,
  *   status: "pending" | "escalated" | "approved" | "denied" | "cancelled",
  *   not_reviewed: boolean, created_at: string, decided_at: string | null,
+ *   progress?: Progress | null,
  * }} TimeOff
+ * @typedef {{ approver_id: string, approver_name: string, decision: "approve" | "deny" }} Step
+ * @typedef {{ decided: Step[], waiting_for: { id: string, display_name: string }[] }} Progress
+ *   While a request is open: who decided so far and who still has to (null once settled).
  * @typedef {{ id: string, department_id: string, starts_at: string, ends_at: string }} AffectedShift
  * @typedef {{ approver_id: string, approver_name: string, decision: "approve" | "deny", decided_at: string,
  *   comment: string | null }} Decision
