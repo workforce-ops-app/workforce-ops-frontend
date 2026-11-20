@@ -492,12 +492,87 @@ describe("weekCalendar", () => {
     }
     // And the scrolling area its window's height.
     Object.defineProperty(scroller, "clientHeight", { value: 600 });
+    Object.defineProperty(scroller, "scrollHeight", { value: 24 * 48 + 40 });
     openAtFirstShift(calendar);
     // Seven hours down, less a quarter of an hour so the label shows under the headers.
     expect(scroller.scrollTop).toBe(7 * 48 - 12);
   });
 
-  it("waits a frame for the calendar to be laid out before it scrolls", () => {
+  it("waits, however long, for the calendar to get its size, then scrolls once", () => {
+    // A stand-in ResizeObserver: the test says when the size changes. (jsdom has none.)
+    /** @type {{ callback: () => void, watched: Element[], stopped: boolean }[]} */
+    const watchers = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        /** @param {() => void} callback */
+        constructor(callback) {
+          this.record = { callback, watched: /** @type {Element[]} */ ([]), stopped: false };
+          watchers.push(this.record);
+        }
+        /** @param {Element} element */
+        observe(element) {
+          this.record.watched.push(element);
+        }
+        disconnect() {
+          this.record.stopped = true;
+        }
+      },
+    );
+    try {
+      const calendar = weekCalendar(KEYS, [
+        shiftOn("2026-10-06", { starts_at: "2026-10-06T12:00:00Z" }),
+      ]);
+      document.body.append(calendar);
+      const scroller = /** @type {HTMLElement} */ (
+        calendar.querySelector(".week-calendar__scroll")
+      );
+      openAtFirstShift(calendar);
+      expect(watchers).toHaveLength(1);
+      expect(watchers[0].watched).toContain(scroller);
+
+      // Still no size (a slow layout, well past half a second): it keeps waiting.
+      watchers[0].callback();
+      expect(scroller.scrollTop).toBe(0);
+      expect(watchers[0].stopped).toBe(false);
+
+      // Laid out, but before its stylesheet: as tall as the whole day, nothing to scroll.
+      // Scrolling now would stay at midnight, so it keeps waiting.
+      const days = [...calendar.querySelectorAll(".week-calendar__day")];
+      for (const day of days) {
+        Object.defineProperty(day, "offsetHeight", { value: 24 * 48, configurable: true });
+      }
+      Object.defineProperty(scroller, "clientHeight", { value: 24 * 48, configurable: true });
+      Object.defineProperty(scroller, "scrollHeight", { value: 24 * 48, configurable: true });
+      watchers[0].callback();
+      expect(watchers[0].stopped).toBe(false);
+
+      // Then its stylesheet applies: a 600 pixel window on the whole day. It scrolls, and
+      // stops watching.
+      for (const day of calendar.querySelectorAll(".week-calendar__day")) {
+        Object.defineProperty(day, "offsetHeight", { value: 24 * 48 });
+      }
+      Object.defineProperty(scroller, "clientHeight", { value: 600 });
+      Object.defineProperty(scroller, "scrollHeight", { value: 24 * 48 + 40 });
+      watchers[0].callback();
+      expect(scroller.scrollTop).toBe(7 * 48 - 12);
+      expect(watchers[0].stopped).toBe(true);
+
+      // A calendar replaced before it got a size stops waiting too.
+      const replaced = weekCalendar(KEYS, []);
+      document.body.append(replaced);
+      openAtFirstShift(replaced);
+      replaced.remove();
+      watchers[1].callback();
+      expect(watchers[1].stopped).toBe(true);
+      calendar.remove();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("without a ResizeObserver, waits a frame for the calendar to be laid out", () => {
+    vi.stubGlobal("ResizeObserver", undefined);
     // Some browsers have not laid out a calendar yet right after it is put on the page:
     // with no height, it tries again at the next frame instead of staying at midnight.
     const frames = /** @type {FrameRequestCallback[]} */ ([]);
@@ -522,11 +597,13 @@ describe("weekCalendar", () => {
         Object.defineProperty(day, "offsetHeight", { value: 24 * 48 });
       }
       Object.defineProperty(scroller, "clientHeight", { value: 600 });
+      Object.defineProperty(scroller, "scrollHeight", { value: 24 * 48 + 40 });
       frames[0](0);
       expect(scroller.scrollTop).toBe(7 * 48 - 12);
       calendar.remove();
     } finally {
       later.mockRestore();
+      vi.unstubAllGlobals();
     }
   });
 });
