@@ -379,6 +379,14 @@ function blockLabel(shift, piece) {
 }
 
 /**
+ * Each block's piece of the day (its start and end in minutes), so showPeople can share the
+ * day out again among the blocks still shown. Kept here rather than read back from the
+ * block's styles, which hold percentages.
+ * @type {WeakMap<Element, DayPiece>}
+ */
+const blockPieces = new WeakMap();
+
+/**
  * One block: one piece of one shift, placed in its day column by its start, length, and
  * column. The block (an <li>) does the placing; inside it is the button with the name and
  * time, so edit mode can put a select box next to the button without moving anything.
@@ -446,6 +454,7 @@ function calendarBlock(shift, span, piece, place, opener) {
   );
   block.style.setProperty("--block-column", String(place.column));
   block.style.setProperty("--block-columns", String(place.columns));
+  blockPieces.set(block, piece);
   return { block, button };
 }
 
@@ -672,6 +681,37 @@ export function weekCalendar(keys, shifts, options = {}) {
         ],
   );
   return calendar;
+}
+
+/**
+ * Show only some people's shifts (the people menu, js/components/people-menu.js). The other
+ * blocks are hidden, not removed, so edit mode's select boxes and the open popups keep
+ * working; and each day's columns are shared out again among the blocks still shown, so a
+ * shift that only overlapped hidden ones takes the whole width again instead of leaving a
+ * gap. With everyone shown, the columns are exactly as weekCalendar placed them.
+ * @param {HTMLElement} calendar what weekCalendar returned
+ * @param {(personId: string) => boolean} shown whether a person's shifts are shown
+ */
+export function showPeople(calendar, shown) {
+  for (const day of calendar.querySelectorAll(".week-calendar__day")) {
+    /** @type {HTMLElement[]} */
+    const visible = [];
+    for (const block of day.querySelectorAll(".week-calendar__block")) {
+      if (!(block instanceof HTMLElement)) continue;
+      block.hidden = !shown(block.dataset.person ?? "");
+      if (!block.hidden) visible.push(block);
+    }
+    // The same order and rule as weekCalendar: by start, longer first at the same start.
+    const pieces = visible.map((block) => blockPieces.get(block) ?? { start: 0, end: 0 });
+    const order = visible
+      .map((_, index) => index)
+      .sort((a, b) => pieces[a].start - pieces[b].start || pieces[b].end - pieces[a].end);
+    const place = assignColumns(order.map((index) => pieces[index]));
+    order.forEach((index, position) => {
+      visible[index].style.setProperty("--block-column", String(place.columns[position]));
+      visible[index].style.setProperty("--block-columns", String(place.counts[position]));
+    });
+  }
 }
 
 /**
