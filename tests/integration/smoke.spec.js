@@ -70,6 +70,18 @@ test("a setup link reaches the set-password page, which removes the token", asyn
   await expect(page.locator("#set-password-form")).toBeVisible();
 });
 
+// A new company starts from the sign-in page's link. The page's script runs under the
+// real Content Security Policy and fills the time zones, the browser's own chosen.
+test("the sign-in page links to company sign-up, which offers the time zones", async ({ page }) => {
+  await page.goto("/pages/sign-in.html");
+  await page.getByRole("link", { name: "Sign up your company" }).click();
+  await expect(page).toHaveURL(/\/pages\/sign-up\.html$/);
+  await expect(page.getByRole("heading", { name: "Sign up your company" })).toBeVisible();
+  const own = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+  await expect(page.locator("#timezone")).toHaveValue(own);
+  await expect(page.locator("#password-rules")).toContainText("15 characters");
+});
+
 test("API health response is forwarded through nginx", async ({ request }) => {
   const response = await request.get("/api/health");
 

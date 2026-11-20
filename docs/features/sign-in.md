@@ -1,10 +1,10 @@
 # Sign in and your account
 
-- **Status:** the sign-in screen is connected to backend authentication (S2). Every signed-in page loads the session, shows the person's name and a Sign out button, and sends signed-out visitors here (UI1, [session and navigation](../architecture/session-and-navigation.md)). Setting a password from a link, the password re-entry pop-up, and My account are built (UI2b, #21). Asking for a name change is Stretch (#73).
+- **Status:** the sign-in screen is connected to backend authentication (S2). Every signed-in page loads the session, shows the person's name and a Sign out button, and sends signed-out visitors here (UI1, [session and navigation](../architecture/session-and-navigation.md)). Setting a password from a link, the password re-entry pop-up, and My account are built (UI2b, #21). Company sign-up is built (SU2, #67). Asking for a name change is Stretch (#73).
 - **Related:** workforce-ops-app/workforce-ops-frontend#3; backend: [authentication](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/architecture/authentication.md), [company structure](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/organization.md)
 
 ## In short
-The screens for getting in and out: signing in with email and password, setting a password from a setup or reset link, the pop-up that asks for the password again before a risky action, and a small "my account" page for changing your password and signing out everywhere. Asking for a name change is Stretch (#73). Kept short on purpose; details are added when the screens are built.
+The screens for getting in and out: signing up a new company, signing in with email and password, setting a password from a setup or reset link, the pop-up that asks for the password again before a risky action, and a small "my account" page for changing your password and signing out everywhere. Asking for a name change is Stretch (#73). Kept short on purpose; details are added when the screens are built.
 
 ## Current implementation
 
@@ -26,6 +26,13 @@ Every signed-in page loads the session first, shows only the menu entries the pe
 - Every reason a link does not work (used, expired, replaced, unknown) gets one message, because the server gives one answer (400). The form is then hidden: that link will not start working.
 - Once set, the fields are cleared and the page points to Sign in. It does not sign the person in: signing in with the new password is the proof that it was saved as meant.
 
+**Sign up your company** (`pages/sign-up.html`, `js/pages/sign-up.js`; backend [company sign-up](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/organization.md#company-sign-up)):
+- Linked from the sign-in page ("New workplace? Sign up your company"), and back again.
+- One form: the company's name, its time zone, your name, your email, and the password twice. The time zones are the ones the browser knows (`Intl.supportedValuesOf`), with the browser's own chosen; a browser that cannot list them gets the common ones, and the server checks the name either way.
+- Before sending, the page checks that every field is filled in, the email looks like one, and the password's length and repeat (`js/core/password-rules.js`). The server checks again and has the last word; its reason (a common password, one containing the company's name or yours, "This email can't be used.") is shown as text.
+- `POST /api/sign-up` creates the company, its owner (you), and a first department, General, and signs you in exactly as at sign-in. The page clears the passwords and opens Administration, Structure (`/pages/admin-structure.html`), where the owner renames General, adds departments, and invites people.
+- Too many sign-ups from one address (5 an hour) answer 429, and the page says how long to wait. Someone already signed in is refused (409, sign out first).
+
 **The re-entry pop-up** (`js/components/reauth-dialog.js`): every signed-in page registers it with the API client when it starts (`startSignedInPage`). On a `403` with type `reauth-required` the client shows it; the password goes to `POST /api/sessions/current/reauth`, and once it is accepted the original request is sent once more. A wrong password keeps the pop-up open with a message; **Go back** resolves without repeating the request, so the page shows the original 403 as a refusal. The password is cleared once accepted and never kept.
 
 **My account** (`pages/account.html`, `js/pages/account.js`):
@@ -38,6 +45,7 @@ Every signed-in page loads the session first, shows only the menu entries the pe
 | Screen | Page | Who sees it | Phone / desktop |
 |---|---|---|---|
 | **Sign in**: the application's logo and name, then email, password, one error message for every failure | `pages/sign-in.html` | everyone, before signing in | both; phone first |
+| **Sign up your company**: company name, time zone, your name, email, password twice; then you are signed in as the owner | `pages/sign-up.html` | anyone not signed in | both; phone first |
 | **Set your password**: from a setup or reset link; shows the password rules (at least 15 characters, passphrases welcome) | `pages/set-password.html` | anyone with a valid link | both; phone first |
 | **Password re-entry pop-up**: shown before a sensitive action, then the action is retried | a component on any page (`js/components/reauth-dialog.js`) | signed-in users doing a sensitive action | both |
 | **My account**: change password, sign out everywhere; later (Stretch, #73): ask to change your display name and see pending requests | `pages/account.html` | every signed-in user | both |
@@ -51,6 +59,7 @@ All go through `js/api/client.js` ([architecture](../architecture/README.md)); t
 | Action | Endpoint |
 |---|---|
 | Sign in / out | `POST /api/sessions`, `DELETE /api/sessions/current` |
+| Sign up a company (and sign in as its owner) | `POST /api/sign-up` |
 | Who am I, my permissions, CSRF token | `GET /api/sessions/current` (on every page load) |
 | Re-enter password | `POST /api/sessions/current/reauth` |
 | Change password / sign out everywhere | `PUT /api/me/password`, `DELETE /api/sessions` |
@@ -58,6 +67,7 @@ All go through `js/api/client.js` ([architecture](../architecture/README.md)); t
 | Ask for a name change (Stretch, #73) | `POST /api/me/account-changes` |
 
 ## Security notes
+- **Sign-up says when an email is taken** ("This email can't be used.", from the server): there is no email confirmation yet to hide it, so the backend's limits per address and for the platform keep anyone from testing addresses in bulk (backend known limitations).
 - **One error message** for every sign-in failure ("Email or password is incorrect. After several failed attempts, sign-in is paused for a while."); the page never says whether the email exists.
 - **The link token lives after `#`.** `set-password.html` reads it, sends it in the request body, then removes it from the address bar with `history.replaceState`, so it is not left in the browser history.
 - **Re-entry:** when a request fails with the problem type `reauth-required`, `client.js` opens the pop-up, sends the password, and repeats the original request once.
