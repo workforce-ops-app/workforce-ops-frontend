@@ -2,7 +2,7 @@
 // (department week only), small "Event" and "Notes" markers when the shift has them, and
 // a chevron. It is a button: clicking it opens the shift's details in a popup
 // (js/components/shift-dialog.js), so the week stays easy to scan.
-// Used by My week and the department week; the week timeline reuses the markers.
+// Used by My week and the department week; the week calendar reuses the markers.
 //
 // Names are written by users, so everything goes through el(), which only ever sets text:
 // a name containing <script> shows those characters and never runs (stored cross-site
@@ -38,7 +38,7 @@ function roundIcon(name) {
  * tell people which shifts are worth opening; the event and notes themselves stay in the
  * popup, so the week stays short.
  * @param {Shift} shift
- * @param {{ compact?: boolean }} [options] compact: icons only, for the timeline's narrow
+ * @param {{ compact?: boolean }} [options] compact: icons only, for the calendar's narrow
  *   bars; the words are then kept for screen readers only
  * @returns {HTMLElement | null} null when the shift has neither
  */
