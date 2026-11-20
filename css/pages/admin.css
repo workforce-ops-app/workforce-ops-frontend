@@ -87,3 +87,9 @@
 .field__check input:disabled + label {
   color: var(--color-muted);
 }
+
+/* A card's button row with no buttons (a decided request, a role you cannot change) takes
+   no space. */
+.person-actions:empty {
+  display: none;
+}
