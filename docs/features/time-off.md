@@ -16,6 +16,8 @@ Employees ask for days off and follow their requests; managers see the requests 
 
 **Statuses shown to the employee:** Waiting for review, Moved up (managers disagreed), Approved, Declined, Declined: not reviewed in time, Cancelled.
 
+**Who decided, and who is left** (#104, backend #184): while a request is open, the API's `progress` lists the decisions so far and the reviewers still to decide, and every screen that shows the status uses it (`statusText()` in `js/core/time-off-words.js`): "Waiting for review by Ana Diaz and Felix Grant" before anyone decides, then "Ana Diaz declined. Waiting for Felix Grant." The signed-in person's own decision reads "You" ("You declined. Waiting for Felix Grant."), so a reviewer sees in the team list that they already acted. A request needing several reviewers waits for all of them, so one denial alone does not settle it (agreed in review, 2026-11-20). Moved up names who it waits for now. Names go into the page as text only.
+
 ## Server requests used
 
 Through `js/api/time-off.js`:

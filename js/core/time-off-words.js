@@ -1,18 +1,32 @@
 // Time off in plain words, shared by My time off and the review screen
 // (docs/features/time-off.md): a request's status, and its days.
 
+import { currentSession } from "./session.js";
+
 /** @typedef {import("../api/time-off.js").TimeOff} TimeOff */
 
 /**
- * A request's status in plain words.
+ * A request's status in plain words. A request still open says who has decided so far
+ * and who it is waiting for (found in review: after one of two managers declined, it
+ * still read "Waiting for review", as if nobody had looked at it).
  * @param {TimeOff} request
  */
 export function statusText(request) {
   switch (request.status) {
     case "pending":
-      return "Waiting for review";
+      // Nobody has decided yet: name who will (when the API says), else the plain words.
+      if (!request.progress?.decided.length) {
+        const who = namesList(request.progress?.waiting_for ?? []);
+        return who ? `Waiting for review by ${who}` : "Waiting for review";
+      }
+      return progressText(request);
     case "escalated":
-      return "Moved up: your managers disagreed, so someone above them decides";
+      return [
+        "Moved up: your managers disagreed, so someone above them decides.",
+        waitingText(request),
+      ]
+        .filter(Boolean)
+        .join(" ");
     case "approved":
       return "Approved";
     case "denied":
@@ -20,6 +34,53 @@ export function statusText(request) {
     default:
       return "Cancelled";
   }
+}
+
+/**
+ * What each reviewer decided so far, then who is still to decide, e.g. "You declined.
+ * Waiting for Felix Grant." The signed-in person's own decision reads "You", so a
+ * reviewer sees at once that they already acted. Empty for a settled request.
+ * @param {TimeOff} request
+ */
+export function progressText(request) {
+  return [decidedText(request), waitingText(request)].filter(Boolean).join(" ");
+}
+
+/**
+ * The decisions so far, one sentence each: "You declined." or "Ana Diaz approved."
+ * @param {TimeOff} request
+ */
+export function decidedText(request) {
+  // Step 1: who is signed in, so their own decision says "You".
+  const me = currentSession()?.user.id;
+  // Step 2: one short sentence per decision, oldest first, as the API lists them.
+  return (request.progress?.decided ?? [])
+    .map((step) => {
+      const who = step.approver_id === me ? "You" : step.approver_name;
+      return `${who} ${step.decision === "approve" ? "approved" : "declined"}.`;
+    })
+    .join(" ");
+}
+
+/**
+ * Who the request still waits for: "Waiting for Felix Grant." (empty when nobody is left
+ * or the request is settled).
+ * @param {TimeOff} request
+ */
+export function waitingText(request) {
+  const who = namesList(request.progress?.waiting_for ?? []);
+  return who ? `Waiting for ${who}.` : "";
+}
+
+/**
+ * Names joined as in a sentence: "A", "A and B", "A, B, and C". The names are written by
+ * users, so callers put the result in the page as text only (el(..., { text })).
+ * @param {{ display_name: string }[]} people
+ */
+function namesList(people) {
+  const names = people.map((person) => person.display_name);
+  if (names.length <= 2) return names.join(" and ");
+  return `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
 }
 
 /**

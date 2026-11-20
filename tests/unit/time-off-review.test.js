@@ -102,6 +102,38 @@ describe("the words", () => {
       "Declined: not reviewed in time",
     );
   });
+
+  // Found in review: after one of two managers declined, the team list still said
+  // "Waiting for review". The API's progress says who decided and who is left.
+  it("says who already decided and who the request still waits for", () => {
+    const felix = { id: "lead", display_name: "Felix Grant" };
+    /** @param {"approve" | "deny"} decision @param {string} id @param {string} name */
+    const step = (decision, id, name) => ({ approver_id: id, approver_name: name, decision });
+    // The signed-in reviewer (chef) declined: their own decision reads "You".
+    const mine = detail({
+      progress: { decided: [step("deny", "chef", "Chef")], waiting_for: [felix] },
+    });
+    expect(statusLabel(mine)).toBe("You declined. Waiting for Felix Grant.");
+    // Someone else decided first: named, and the card still asks for this reviewer's decision.
+    const theirs = detail({
+      progress: { decided: [step("approve", "lead", "Felix Grant")], waiting_for: [] },
+    });
+    expect(statusLabel(theirs)).toBe("Felix Grant approved.");
+    expect(reviewState(theirs)).toBe("Felix Grant approved. Waiting for your decision.");
+    // Nobody yet: who will review, with several names joined as in a sentence.
+    const kim = { id: "kim", display_name: "Kim Lee" };
+    const ray = { id: "ray", display_name: "Ray Ono" };
+    expect(statusLabel(detail({ progress: { decided: [], waiting_for: [felix, kim, ray] } }))).toBe(
+      "Waiting for review by Felix Grant, Kim Lee, and Ray Ono",
+    );
+    // Moved up: who it now waits for.
+    const up = detail({ status: "escalated", progress: { decided: [], waiting_for: [kim] } });
+    expect(statusLabel(up)).toBe("Moved up. Waiting for Kim Lee.");
+    // Names are written by users: shown as text, never as markup.
+    const odd = { id: "x", display_name: "<img src=x onerror=alert(1)>" };
+    const shown = statusLabel(detail({ progress: { decided: [], waiting_for: [odd] } }));
+    expect(shown).toBe("Waiting for review by <img src=x onerror=alert(1)>");
+  });
 });
 
 describe("the API calls", () => {

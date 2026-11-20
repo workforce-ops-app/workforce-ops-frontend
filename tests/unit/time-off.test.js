@@ -69,6 +69,15 @@ describe("the rules", () => {
     expect(statusText(request({ status: "cancelled" }))).toBe("Cancelled");
   });
 
+  it("tells the employee which manager decided and who is still to decide", () => {
+    const progress = {
+      decided: [{ approver_id: "chef", approver_name: "Ana Diaz", decision: "deny" }],
+      waiting_for: [{ id: "lead", display_name: "Felix Grant" }],
+    };
+    expect(statusText(request({ progress }))).toBe("Ana Diaz declined. Waiting for Felix Grant.");
+    expect(statusText(request({ progress: null }))).toBe("Waiting for review");
+  });
+
   it("offers cancelling while it waits, and once approved only before the first day", () => {
     expect(canCancel(request(), "2026-11-19")).toBe(true);
     expect(canCancel(request({ status: "approved" }), "2026-11-22")).toBe(true);
