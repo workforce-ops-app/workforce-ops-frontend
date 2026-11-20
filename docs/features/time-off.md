@@ -34,7 +34,7 @@ Through `js/api/time-off.js`:
 | Waiting for my review | `GET /api/time-off-requests/waiting` |
 | Requests in my scope | `GET /api/time-off-requests?status=&from=&to=` |
 | One request, with affected shifts and decisions | `GET /api/time-off-requests/{id}` |
-| Approve / deny | `POST /api/time-off-requests/{id}/approve`, `POST /api/time-off-requests/{id}/deny` |
+| Approve / deny | `POST /api/time-off-requests/{id}/approve` (`{comment, choices?}`), `POST /api/time-off-requests/{id}/deny` |
 
 ## My time off (built)
 
@@ -61,6 +61,7 @@ The rules are in the backend's [coverage](https://github.com/workforce-ops-app/w
 - **The form** has an **Offer Shift Swap / Coverage** checkbox. Ticked, the request starts as "Collecting coworkers' offers" and the status line says so; the API answers 409 when it is too late to collect offers, and the form shows its words.
 - **The employee's card** while collecting: **Send to my manager** (a question first, since coworkers cannot change their offers afterwards) and **Cancel request**. Any request asked with offers has **Coworkers' offers**: each affected shift with every answer by name ("Ben Okafor offers to cover", "Ana Diaz offers a swap: Monday, November 30, 8:00 AM - 4:00 PM", "Dee Park declined"), or "No offers yet."
 - **The coworker's home screen** (`coverage.respond_self`): a **Coworkers asking for cover** section with one card per request the API lists (`/offerable`: same department, could work the shift, not on time off themselves). Each shift has **Cover**, **Swap** (the person's own scheduled shifts in the next four weeks, in that department, outside the requested days; the API checks again that the employee could work it), and **Decline**; once answered, the answer shows ("You offer to cover.") with **Take back**. A coworker only ever sees their own answers. A refusal (409, for example offers closed) shows under that shift, and the cards load again after each answer.
+- **The reviewer** (Review time off): each affected shift on the card lists the coworkers' answers by name. **Approve** adds one select per shift with offers to choose: "Nobody: it becomes an open shift" first, then each open cover or swap (never the reviewer's own, E12; declines are only listed). The choices go with the approval as `choices: [{shift_id, offer_id}]` (`choicesFrom()`), and apply if this approval settles the request; the API checks each again and a refusal (403 or 409 naming the shift) shows in the form, which stays open. **Deny** sends no choices.
 
 ## Notes
 - The date picker does not offer today or earlier days; the server checks again.

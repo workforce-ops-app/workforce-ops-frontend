@@ -10,7 +10,9 @@
 //     status.
 //
 // Approving opens the employee's shifts on those days for someone else to take; the
-// question says so before anything is sent. Display only: the API checks every decision
+// question says so before anything is sent. When coworkers offered to cover or swap a
+// shift (docs/features/coverage.md), the card lists the offers under it and the approve
+// form lets the reviewer choose none or one per shift; the API checks each choice again. Display only: the API checks every decision
 // (threats E5, T5). Names, reasons, and comments are shown as text, never as HTML.
 
 import { listDepartments } from "../api/shifts.js";
@@ -21,10 +23,17 @@ import { openFormDialog } from "../components/form-dialog.js";
 import { el } from "../core/dom.js";
 import { can, currentSession } from "../core/session.js";
 import { dayKey, formatTimeRange } from "../core/time.js";
-import { dayRange, decidedText, statusText, waitingText } from "../core/time-off-words.js";
+import {
+  answerText,
+  dayRange,
+  decidedText,
+  statusText,
+  waitingText,
+} from "../core/time-off-words.js";
 
 /** @typedef {import("../api/time-off.js").TimeOff} TimeOff */
 /** @typedef {import("../api/time-off.js").TimeOffDetail} TimeOffDetail */
+/** @typedef {import("../api/time-off.js").Offer} Offer */
 
 // --- Small rules, exported for the tests --------------------------------------------------
 
@@ -50,6 +59,37 @@ export function decisionLine(decision) {
   return decision.comment
     ? `${decision.approver_name} ${verb}: ${decision.comment}`
     : `${decision.approver_name} ${verb}.`;
+}
+
+/**
+ * The offers a reviewer may choose for one shift: covers and swaps still open, never
+ * the reviewer's own (the API refuses that too, threat E12). Declines are only shown.
+ * @param {TimeOffDetail} request
+ * @param {string} shiftId
+ * @param {string | undefined} me the signed-in person's ID
+ * @returns {Offer[]}
+ */
+export function choosable(request, shiftId, me) {
+  return (request.offers ?? []).filter(
+    (offer) =>
+      offer.shift_id === shiftId &&
+      offer.status === "offered" &&
+      offer.answer !== "decline" &&
+      offer.offered_by !== me,
+  );
+}
+
+/**
+ * The choices to send from the approve form's values: one per shift where the reviewer
+ * picked an offer ("" means nobody: the shift becomes open).
+ * @param {TimeOffDetail} request
+ * @param {Record<string, string>} values the form's values, `offer-<shift id>` per shift
+ * @returns {{ shift_id: string, offer_id: string }[]}
+ */
+export function choicesFrom(request, values) {
+  return request.affected_shifts
+    .map((shift) => ({ shift_id: shift.id, offer_id: values[`offer-${shift.id}`] ?? "" }))
+    .filter((choice) => choice.offer_id !== "");
 }
 
 /**
@@ -128,7 +168,9 @@ function waitingCard(request) {
       ? el(
           "ul",
           {},
-          shifts.map((text) => el("li", { text })),
+          request.affected_shifts.map((shift, index) =>
+            el("li", { text: shifts[index] }, offersUnder(request, shift.id)),
+          ),
         )
       : el("p", { className: "muted", text: "None: no shifts on these days." }),
     ...(request.decisions.length
@@ -155,6 +197,24 @@ function waitingCard(request) {
 }
 
 /**
+ * The coworkers' answers under one shift on the card, by name (as text).
+ * @param {TimeOffDetail} request
+ * @param {string} shiftId
+ * @returns {HTMLElement[]}
+ */
+function offersUnder(request, shiftId) {
+  const offers = (request.offers ?? []).filter((offer) => offer.shift_id === shiftId);
+  if (offers.length === 0) return [];
+  return [
+    el(
+      "ul",
+      { className: "time-off-card__offers" },
+      offers.map((offer) => el("li", { text: answerText(offer, companyZone()) })),
+    ),
+  ];
+}
+
+/**
  * Ask for an optional comment, then send the decision.
  * @param {TimeOffDetail} request
  * @param {"approve" | "deny"} decision
@@ -166,11 +226,39 @@ async function decide(request, decision, shiftCount) {
     shiftCount === 0
       ? ""
       : ` If this settles it, ${shiftCount === 1 ? "their shift on these days becomes an open shift" : `their ${shiftCount} shifts on these days become open shifts`} for someone else to take.`;
+  // With an approval: one select per shift that has offers to choose, "Nobody" first.
+  const me = currentSession()?.user.id;
+  /** @type {import("../components/form-dialog.js").Field[]} */
+  const offerFields =
+    decision === "approve"
+      ? request.affected_shifts.flatMap((shift) => {
+          const offers = choosable(request, shift.id, me);
+          if (offers.length === 0) return [];
+          return [
+            {
+              name: `offer-${shift.id}`,
+              label: `Who works ${shiftLine(shift, departments, companyZone())}`,
+              type: /** @type {const} */ ("select"),
+              options: [
+                { value: "", label: "Nobody: it becomes an open shift" },
+                ...offers.map((offer) => ({
+                  value: offer.id,
+                  label: answerText(offer, companyZone()),
+                })),
+              ],
+            },
+          ];
+        })
+      : [];
   const done = await openFormDialog({
     title: `${decision === "approve" ? "Approve" : "Deny"} time off for ${request.employee_name}?`,
-    lead: decision === "approve" ? `${days}.${opens}` : `${days}. Their shifts stay as they are.`,
+    lead:
+      decision === "approve"
+        ? `${days}.${opens}${offerFields.length ? " A coworker you choose below takes the shift instead." : ""}`
+        : `${days}. Their shifts stay as they are.`,
     submitLabel: decision === "approve" ? "Approve" : "Deny",
     fields: [
+      ...offerFields,
       {
         name: "comment",
         label: "Comment (optional)",
@@ -178,7 +266,13 @@ async function decide(request, decision, shiftCount) {
         hint: `${request.employee_name} sees it.`,
       },
     ],
-    run: (values) => decideTimeOff(request.id, decision, values.comment.slice(0, 500) || null),
+    run: (values) =>
+      decideTimeOff(
+        request.id,
+        decision,
+        values.comment.slice(0, 500) || null,
+        decision === "approve" ? choicesFrom(request, values) : [],
+      ),
   });
   if (!done) return;
   say(
