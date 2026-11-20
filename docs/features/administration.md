@@ -53,3 +53,7 @@ A sub-menu under the tab bar links the administration screens, each shown by the
 - Buttons are hidden without the permission, and people the user is not above show no action buttons; the API checks everything regardless.
 - **Company logo** (planned, workforce-ops-app/workforce-ops-backend#101): an administrator uploads the logo shown in the header. Until then the demo companies' logos ship with the frontend (#56).
 - The Administration menu entry appears only for people with at least one of `user.manage`, `org.manage`, `role.manage`, `role.assign`, `reporting_line.manage`, or `security.view`.
+
+## Department send-up minimum (swaps and coverage)
+
+People with `time_off.review` reach Administration too, for a department's send-up minimum on Departments and teams and for confirming another manager's change on Approvals (kind `department_setting`). Without `org.manage` the structure screen has no department or team buttons; the API checks every request. See [time off](time-off.md#swaps-and-coverage).

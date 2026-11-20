@@ -41,6 +41,12 @@ export function describeRequest(request, places) {
       return `${who} proposes making ${whom} an owner of the company.`;
     case "owner_remove":
       return `${who} proposes that ${whom} stop being an owner of the company.`;
+    case "department_setting": {
+      // A department's send-up minimum (coverage.md): the other managers confirm it.
+      const department = places.departments.get(String(request.payload.department_id ?? ""));
+      const days = Number(request.payload.value);
+      return `${who} asks that time off with coworkers' offers in the ${department ?? "unknown"} department go to the managers at least ${days === 1 ? "1 day" : `${days} days`} before it starts.`;
+    }
     default:
       return `${who} asks for a change to ${whom}'s account.`;
   }

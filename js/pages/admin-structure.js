@@ -5,15 +5,24 @@
 // change a department's time zone, and add or remove team members. Archiving is refused
 // while a department still has people or teams; the API says why, and the page shows it.
 //
-// Display only: the API checks org.manage on every change regardless.
+// Each department also shows its send-up minimum for time off with coworkers' offers
+// (docs/features/coverage.md): how many days before the time off a collecting request goes
+// to the managers. Its managers, and people reviewing time off company-wide, may raise it
+// (never below the company's); with several managers the change waits until every other
+// one confirms it on the Approvals screen, and the card says who it waits for.
+//
+// Display only: the API checks org.manage (and the department's managers) on every change.
 
 import { listDepartments } from "../api/shifts.js";
+import { ApiError } from "../api/client.js";
 import {
   addMember,
   archiveDepartment,
   archiveTeam,
+  changeDepartmentSetting,
   createDepartment,
   createTeam,
+  departmentSettings,
   listTeams,
   removeMember,
   renameTeam,
@@ -26,11 +35,13 @@ import { confirmChange } from "../components/confirm-dialog.js";
 import { openFormDialog } from "../components/form-dialog.js";
 import { el } from "../core/dom.js";
 import { can, currentSession } from "../core/session.js";
+import { joinNames } from "../components/admin-page.js";
 
 /** @typedef {import("../api/org.js").Team} Team */
 /** @typedef {import("../api/users.js").Person} Person */
 /** @typedef {{ id: string, name: string }} Named */
 /** @typedef {Named & { timezone?: string | null }} DepartmentRow */
+/** @typedef {import("../api/org.js").DepartmentSetting} DepartmentSetting */
 
 // --- Small rules, exported for the tests --------------------------------------------------
 
@@ -59,10 +70,86 @@ export function zoneChoices(companyZone) {
   ];
 }
 
+/** "1 day", "3 days". @param {number} n */
+export function daysWord(n) {
+  return n === 1 ? "1 day" : `${n} days`;
+}
+
+/**
+ * The send-up minimum in words, with any change still waiting for the other managers.
+ * @param {DepartmentSetting} setting
+ */
+export function minimumText(setting) {
+  const own =
+    setting.department_value !== null && setting.department_value > setting.company_value
+      ? `this department's own (the company's is ${daysWord(setting.company_value)})`
+      : "the company's";
+  const line = `Time off with coworkers' offers goes to the managers at least ${daysWord(setting.value)} before it starts: ${own}.`;
+  if (!setting.pending) return line;
+  const who = setting.pending.waiting_for;
+  return `${line} A change to ${daysWord(setting.pending.value)} is waiting for ${who.length ? joinNames(who) : "the other managers"} to confirm.`;
+}
+
+/**
+ * The values a department may choose: from the company's up to the limit.
+ * @param {DepartmentSetting} setting
+ */
+export function minimumChoices(setting) {
+  const choices = [];
+  for (let n = setting.company_value; n <= setting.limit; n += 1) {
+    choices.push({
+      value: String(n),
+      label: n === setting.company_value ? `${daysWord(n)} (the company's)` : daysWord(n),
+    });
+  }
+  return choices;
+}
+
 // --- The page ----------------------------------------------------------------------------
 
-/** @type {{ departments: DepartmentRow[], teams: Team[], people: Person[] }} */
-const state = { departments: [], teams: [], people: [] };
+/**
+ * @type {{ departments: DepartmentRow[], teams: Team[], people: Person[],
+ *   minimums: Map<string, DepartmentSetting> }}
+ *   minimums: the send-up minimum of each department this person may manage it for
+ */
+const state = { departments: [], teams: [], people: [], minimums: new Map() };
+
+/**
+ * A request the API may refuse for this person (403, 404): the screen goes without it.
+ * @template T
+ * @param {Promise<T>} call
+ * @param {T} otherwise
+ * @returns {Promise<T>}
+ */
+async function orWithout(call, otherwise) {
+  try {
+    return await call;
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+      return otherwise;
+    }
+    throw error;
+  }
+}
+
+/**
+ * The send-up minimum of each department, where this person may see it.
+ * @param {DepartmentRow[]} departments
+ */
+async function loadMinimums(departments) {
+  const found = await Promise.all(
+    departments.map(async (department) => {
+      const settings = await orWithout(departmentSettings(department.id), []);
+      const minimum = settings.find((s) => s.key === "offers_close_days");
+      return /** @type {const} */ ([department.id, minimum]);
+    }),
+  );
+  return new Map(
+    found.flatMap(([id, minimum]) =>
+      minimum ? [/** @type {[string, DepartmentSetting]} */ ([id, minimum])] : [],
+    ),
+  );
+}
 
 function companyZone() {
   return currentSession()?.company.timezone ?? "UTC";
@@ -77,12 +164,15 @@ export async function showStructure() {
 
 async function reload() {
   try {
+    // Managers without org.manage reach this screen for the minimum: whatever the API
+    // refuses them is left out, and the page shows the rest.
     const [departments, teams, people] = await Promise.all([
       listDepartments(),
-      listTeams(),
-      listPeople(),
+      orWithout(listTeams(), []),
+      orWithout(listPeople(), []),
     ]);
-    Object.assign(state, { departments, teams, people });
+    const minimums = await loadMinimums(departments);
+    Object.assign(state, { departments, teams, people, minimums });
   } catch (error) {
     reportProblem(error);
     return;
@@ -118,6 +208,7 @@ function draw() {
           );
         }
         const zone = department.timezone;
+        const minimum = state.minimums.get(department.id);
         return el("li", { className: "request-card" }, [
           el("h2", { className: "role-card__name", text: department.name }),
           el("p", {
@@ -125,6 +216,7 @@ function draw() {
             text: `Time zone: ${zone ? zone.replaceAll("_", " ") : `the company's (${companyZone()})`}`,
           }),
           el("div", { className: "person-actions" }, buttons),
+          ...(minimum ? minimumSection(department, minimum) : []),
           el("h3", { text: "Teams" }),
           teams.length
             ? el(
@@ -136,6 +228,60 @@ function draw() {
         ]);
       }),
   );
+}
+
+/**
+ * The send-up minimum on a department's card, with its Change button (none while a
+ * change already waits: the API would answer 409).
+ * @param {DepartmentRow} department
+ * @param {DepartmentSetting} minimum
+ * @returns {HTMLElement[]}
+ */
+function minimumSection(department, minimum) {
+  return [
+    el("h3", { text: "Swaps and coverage" }),
+    el("p", { className: "muted", text: minimumText(minimum) }),
+    ...(minimum.pending || minimum.company_value >= minimum.limit
+      ? []
+      : [
+          el("div", { className: "person-actions" }, [
+            actionButton("Change minimum", () => minimumDialog(department, minimum), {
+              ariaLabel: `Change the send-up minimum of ${department.name}`,
+            }),
+          ]),
+        ]),
+  ];
+}
+
+/**
+ * Ask for the new minimum, send it, and say what happened: in force now, or waiting for
+ * the other managers (202).
+ * @param {DepartmentRow} department
+ * @param {DepartmentSetting} minimum
+ */
+async function minimumDialog(department, minimum) {
+  const changed = await openFormDialog({
+    title: `Send-up minimum for ${department.name}`,
+    lead: "Time off with coworkers' offers goes to the managers at least this many days before it starts. Never fewer than the company's.",
+    submitLabel: "Save",
+    fields: [
+      {
+        name: "value",
+        label: "Days before",
+        type: "select",
+        value: String(minimum.value),
+        options: minimumChoices(minimum),
+      },
+    ],
+    run: (values) => changeDepartmentSetting(department.id, minimum.key, Number(values.value)),
+  });
+  if (!changed) return;
+  say(
+    changed.approval_request_id
+      ? `${department.name}: the change waits for the department's other managers to confirm it on the Approvals screen.`
+      : `${department.name}: time off with coworkers' offers now goes up at least ${daysWord(changed.value ?? minimum.value)} before.`,
+  );
+  await reload();
 }
 
 /**
