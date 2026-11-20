@@ -1,31 +1,49 @@
 // Department week: everyone's shifts for one week, with open shifts highlighted
 // (frontend docs, features/schedules.md). It is laid out for planning: tiles with the
-// week's numbers at the top, then, on a laptop, a timeline with one row per person and
-// each shift drawn as a bar from its start to its end across the days
-// (js/components/week-timeline.js), with the open shifts in their own section under it. Phones see a card per day instead, open shifts included
-// (js/components/day-list.js); css/pages/schedule.css shows one or the other. Last comes
-// the list of the department's people without a shift that week
-// (js/components/week-sections.js), for people allowed to list them.
+// week's numbers at the top, then, on a laptop, a week calendar with the days across, the
+// hours down the side, and each shift drawn as a block in its person's colour
+// (js/components/week-calendar.js), with the open shifts in their own section under it.
+// Phones see a card per day instead, open shifts included (js/components/day-list.js);
+// css/pages/schedule.css shows one or the other. Last comes the list of the department's
+// people without a shift that week (js/components/week-sections.js), for people allowed to
+// list them.
 //
 // The address says which week and department to show, so a week can be bookmarked or
 // shared: schedule.html?week=2026-10-05&department=<id>. Without a week it shows the
 // current one. Without a department it shows the person's own (home) department, from the
 // loaded session, so shifts of different departments are never mixed on one page; if the
-// session names none, it shows the first department of the company.
+// session names none, it shows the first department of the company. When the company has
+// more than one department, a picker in the heading switches between them
+// (js/components/department-picker.js).
+//
+// Beside the calendar, the people menu (js/components/people-menu.js, #83) shows or hides
+// people's shifts and searches by name. Its choices stay while the page is open, also
+// across weeks and departments (by employee ID), and are not saved between visits.
 
 import { ApiError, NetworkError } from "../api/client.js";
-import { listDepartmentPeople, listDepartments, listShifts } from "../api/shifts.js";
+import { listDepartmentPeople, listShifts, myDepartments } from "../api/shifts.js";
 import { startSignedInPage } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
-import { statTile } from "../components/stat-tile.js";
+import { followDepartmentPicker, showDepartmentPicker } from "../components/department-picker.js";
+import { isShown, noFilters, peopleMenu, peopleOf } from "../components/people-menu.js";
 import { weekEditor } from "../components/week-editor.js";
-import { weekTimeline } from "../components/week-timeline.js";
+import { weekStats } from "../components/week-stats.js";
+import {
+  followNow,
+  openAtFirstShift,
+  showPeople,
+  weekCalendar,
+} from "../components/week-calendar.js";
 import { followWeekLinks } from "../components/week-nav.js";
 import { openShiftsSection, unscheduledSection } from "../components/week-sections.js";
 import { el, setText } from "../core/dom.js";
-import { can, currentSession } from "../core/session.js";
-import { addDays, formatWeekRange, hoursBetween, roundHours } from "../core/time.js";
+import { currentSession } from "../core/session.js";
+import { addDays, formatWeekRange } from "../core/time.js";
 import { requestedMonday, today, weekLink } from "../core/week.js";
+
+// The tiles' numbers live in components/week-stats.js (the home screen shows some of them
+// too); exported here as well, so the page's tests keep their import.
+export { weekStats };
 
 /** The heading when the department's name is not known (e.g. an ID from an old link). */
 const DEFAULT_TITLE = "Department week";
@@ -61,6 +79,40 @@ function showUnavailable(status, params, monday) {
 }
 
 /**
+ * What the people menu has chosen (who is switched off, and the search). One for the
+ * page, so it stays when another week or department loads. Exported for the tests.
+ */
+export const filters = noFilters();
+
+/**
+ * The tiles at the top, for the shifts the people menu shows: open shifts always count
+ * (they belong to nobody), assigned ones only if their person is shown. While some people
+ * are hidden, a line under the tiles says so, so the numbers are never mistaken for the
+ * whole week's.
+ * @param {HTMLElement} stats
+ * @param {import("../api/shifts.js").Shift[]} shifts the week's shifts
+ */
+function showStats(stats, shifts) {
+  const people = peopleOf(shifts);
+  const shownPeople = people.filter((person) => isShown(filters, person));
+  const visible = shifts.filter(
+    (shift) =>
+      !shift.employee ||
+      isShown(filters, { id: shift.employee.id, name: shift.employee.display_name }),
+  );
+  const note =
+    shownPeople.length < people.length
+      ? [
+          el("p", {
+            className: "stats__filter",
+            text: `Filter on: these numbers count ${shownPeople.length} of ${people.length} people, and every open shift.`,
+          }),
+        ]
+      : [];
+  stats.replaceChildren(...weekStats(visible), ...note);
+}
+
+/**
  * Edit mode (js/components/week-editor.js), set up once the session has loaded; null
  * before that, and in the tests that call showWeek directly.
  * @type {{ update: (context: import("../components/week-editor.js").WeekContext | null) => void } | null}
@@ -68,28 +120,12 @@ function showUnavailable(status, params, monday) {
 let editor = null;
 
 /**
- * The week's numbers for the tiles: shifts, open shifts, open hours, and people working.
- *
- * Open hours are the hours nobody is assigned to yet: what a manager still has to cover
- * (#51). A total of all scheduled hours was shown here before, but without a labor budget
- * to compare it with it did not help decide anything, and it left the open shifts out.
- * Each person's own hours stay at the end of their row in the timeline.
- * @param {import("../api/shifts.js").Shift[]} shifts the week's shifts (no cancelled ones)
- * @returns {HTMLElement[]}
+ * For the tests: put a stand-in editor in place, to see what each week tells it (for
+ * example whether the person may edit in that department).
+ * @param {{ update: (context: import("../components/week-editor.js").WeekContext | null) => void } | null} next
  */
-export function weekStats(shifts) {
-  const open = shifts.filter((s) => !s.employee);
-  const assigned = shifts.filter((s) => s.employee);
-  // hoursBetween measures the real time between the UTC moments, so an overnight shift
-  // counts its full length, and so does a night when the clocks change.
-  const openHours = open.reduce((sum, s) => sum + hoursBetween(s.starts_at, s.ends_at), 0);
-  const people = new Set(assigned.map((s) => s.employee?.id)).size;
-  return [
-    statTile("Shifts", shifts.length),
-    statTile("Open shifts", open.length, { attention: open.length > 0 }),
-    statTile("Open hours", roundHours(openHours), { attention: openHours > 0 }),
-    statTile("People working", people),
-  ];
+export function setEditor(next) {
+  editor = next;
 }
 
 /**
@@ -100,10 +136,12 @@ export function weekStats(shifts) {
  * - 404: the people endpoint does not exist yet (backend #54, after the midterm).
  * Any other failure is a real problem and is thrown on, like a failed shifts request.
  * @param {string} departmentId
+ * @param {string[]} permissions what the person may do in this department
  * @returns {Promise<import("../api/shifts.js").EmployeeRef[] | null>}
  */
-async function peopleOrNull(departmentId) {
-  if (!can("user.view")) return null;
+async function peopleOrNull(departmentId, permissions) {
+  // Only where they may see people: user.view in this department, not just somewhere.
+  if (!permissions.includes("user.view")) return null;
   try {
     return await listDepartmentPeople(departmentId);
   } catch (error) {
@@ -127,11 +165,13 @@ export async function showWeek(search) {
   const status = document.getElementById("status");
   const week = document.getElementById("days");
   if (!title || !range || !previous || !current || !next || !status || !week) return;
-  // The tiles, the timeline, and the sections are optional, so a page (or a test) without
-  // them still works.
+  // The tiles, the calendar, the department picker, and the sections are optional, so a
+  // page (or a test) without them still works.
   const stats = document.getElementById("stats");
-  const timeline = document.getElementById("timeline");
+  const calendarCard = document.getElementById("calendar");
+  const picker = document.getElementById("department-picker");
   const sections = document.getElementById("sections");
+  const menuSlot = document.getElementById("people-menu");
 
   // Everything that reads the address or the server is inside try, so a bad address or a
   // failed request shows a message instead of leaving the page on "Loading".
@@ -157,14 +197,17 @@ export async function showWeek(search) {
     }
     next.setAttribute("href", weekLink(monday, 1, params));
 
-    // Which department: the one in the address, else the person's own (from the session
-    // the page already loaded, so no second "who am I?" request), else the first one.
-    // The address is only a choice of what to look at: the API still filters every shift
-    // to what the person may see (another company's department simply has none).
-    const departments = await listDepartments();
+    // Which department: the one in the address, else the person's own home (when it is
+    // one of theirs), else the first of theirs. Only the departments where the person
+    // holds a role are offered (found in review): a Kitchen manager no longer sees Front
+    // of House in the picker. The address is only a choice of what to look at: a
+    // department not in the list gets the "not available" message below, and the API
+    // still filters every shift to what the person may see.
+    const departments = await myDepartments();
+    const home = currentSession()?.user.department_id;
     const departmentId =
       params.get("department") ??
-      currentSession()?.user.department_id ??
+      departments.find((d) => d.id === home)?.id ??
       departments[0]?.id ??
       null;
 
@@ -172,6 +215,9 @@ export async function showWeek(search) {
     // so a week with no shifts is still named.
     const department = departments.find((d) => d.id === departmentId);
     setText(title, department?.name ?? DEFAULT_TITLE);
+    // The picker lists the same departments, with this one selected (hidden when there is
+    // only one).
+    if (picker) showDepartmentPicker(picker, departments, departmentId);
 
     // No department at all (a company without departments yet): nothing to show.
     // Only null means that. An address with an empty "?department=" gives "" here (`??`
@@ -180,7 +226,8 @@ export async function showWeek(search) {
     if (departmentId === null) {
       setText(status, "No departments yet.");
       week.replaceChildren();
-      timeline?.replaceChildren();
+      calendarCard?.replaceChildren();
+      menuSlot?.replaceChildren();
       sections?.replaceChildren();
       if (stats) stats.hidden = true;
       return;
@@ -200,7 +247,8 @@ export async function showWeek(search) {
     if (!department) {
       showUnavailable(status, params, monday);
       week.replaceChildren();
-      timeline?.replaceChildren();
+      calendarCard?.replaceChildren();
+      menuSlot?.replaceChildren();
       sections?.replaceChildren();
       if (stats) stats.hidden = true;
       return;
@@ -211,7 +259,7 @@ export async function showWeek(search) {
     // so they run at the same time.
     const [shifts, people] = await Promise.all([
       listShifts({ from: monday, to: addDays(monday, 6), departmentId }),
-      sections ? peopleOrNull(departmentId) : null,
+      sections ? peopleOrNull(departmentId, department.permissions) : null,
     ]);
 
     // A card for all seven days, even empty ones, with who works each shift.
@@ -224,8 +272,34 @@ export async function showWeek(search) {
       ),
     );
 
-    // The same shifts as a timeline, for wide screens.
-    timeline?.replaceChildren(weekTimeline(keys, shifts, { today: todayKey }));
+    // The same shifts as a calendar, for wide screens. It can only scroll to the week's
+    // first shift once it is on the page and has a size. The red "now" line follows the
+    // workplace's clock, like the blocks: the zone of the department's shifts (they all
+    // share it), else the company's, else the viewer's own.
+    if (calendarCard) {
+      const calendar = weekCalendar(keys, shifts, { today: todayKey });
+
+      // The people menu on its left. Each change shows the chosen people's blocks and
+      // counts the tiles again; the choices from earlier weeks apply straight away. It is
+      // put on the page first, so the calendar arrives in its final place, next to it.
+      if (menuSlot) {
+        const names = new Map(peopleOf(shifts).map((person) => [person.id, person.name]));
+        const apply = () => {
+          showPeople(calendar, (id) => isShown(filters, { id, name: names.get(id) ?? "" }));
+          if (stats) showStats(stats, shifts);
+        };
+        menuSlot.replaceChildren(peopleMenu(peopleOf(shifts), filters, apply));
+        apply();
+      }
+
+      calendarCard.replaceChildren(calendar);
+      openAtFirstShift(calendar);
+      const zone =
+        shifts.find((shift) => shift.timezone)?.timezone ??
+        currentSession()?.company.timezone ??
+        Intl.DateTimeFormat().resolvedOptions().timeZone;
+      followNow(calendar, zone);
+    }
 
     // Under it, the open shifts (wide screens; phones have them in the day cards) and the
     // people without a shift, when the person may see the department's people.
@@ -236,19 +310,30 @@ export async function showWeek(search) {
 
     // The week's numbers at the top.
     if (stats) {
-      stats.replaceChildren(...weekStats(shifts));
+      showStats(stats, shifts);
       stats.hidden = false;
     }
 
     // Edit mode works on exactly this week and department.
-    editor?.update({ departmentId, monday, days: keys, shifts, people, today: todayKey });
+    // The tools follow what the person may do in THIS department: a manager of another
+    // department, or an employee here, gets no edit buttons (the API refuses anyway).
+    editor?.update({
+      departmentId,
+      monday,
+      days: keys,
+      shifts,
+      people,
+      today: todayKey,
+      canEdit: department.permissions.includes("schedule.edit"),
+    });
   } catch (error) {
     // The two failures a page expects get a plain-language message. Whatever week is still
     // on screen (the one before, when moving between weeks) is not this week's, so the
-    // tiles, the timeline, the day cards, and the sections all go.
+    // tiles, the calendar, the day cards, and the sections all go.
     if (stats) stats.hidden = true;
     week.replaceChildren();
-    timeline?.replaceChildren();
+    calendarCard?.replaceChildren();
+    menuSlot?.replaceChildren();
     sections?.replaceChildren();
     if (error instanceof ApiError || error instanceof NetworkError) {
       const message = error instanceof ApiError ? error.title : "the server could not be reached";
@@ -267,6 +352,8 @@ export async function showWeek(search) {
 // the week the address asks for. Other weeks then load in place (components/week-nav.js).
 startSignedInPage(() => {
   const load = followWeekLinks(showWeek);
+  // Choosing another department loads it through the same queue as the week links.
+  followDepartmentPicker(load);
   // After a saved change, edit mode loads the week again through the same queue as the
   // week links, so a reload and a week change never race each other.
   editor = weekEditor({ reload: () => load(window.location.search) });

@@ -1,0 +1,18 @@
+/* The announcements page (pages/announcements.html): the heading, a status line, the
+   cards (css/components/announcement.css), and "Load more announcements" under them. */
+
+/* The status line ("Loading...", "No announcements yet.", problems) takes no room when it
+   has nothing to say. */
+.announcements .status:empty {
+  display: none;
+}
+
+.announcements__more {
+  margin-top: var(--space);
+}
+
+/* .button shows itself (display: inline-flex), which would beat the hidden attribute, so
+   the button is hidden again here while there is nothing more to load. */
+.announcements__more[hidden] {
+  display: none;
+}
