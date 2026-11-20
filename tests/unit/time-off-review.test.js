@@ -16,7 +16,7 @@ vi.mock("../../js/core/session.js", () => ({
   signOut: vi.fn(),
   SIGN_IN_PAGE: "/pages/sign-in.html",
 }));
-const { decisionLine, reviewState, shiftLine, showReview, statusLabel } =
+const { choicesFrom, choosable, decisionLine, reviewState, shiftLine, showReview, statusLabel } =
   await import("../../js/pages/time-off-review.js");
 const { decideTimeOff, teamRequests } = await import("../../js/api/time-off.js");
 const { forgetWaitingRequests, showWaitingCount } =
@@ -149,6 +149,60 @@ describe("the API calls", () => {
   });
 });
 
+/** @returns {import("../../js/api/time-off.js").Offer} */
+function offer(overrides = {}) {
+  return {
+    id: "o1",
+    shift_id: "s1",
+    offered_by: "ben",
+    offered_by_name: "Ben Okafor",
+    answer: "cover",
+    swap_shift: null,
+    status: "offered",
+    updated_at: "2026-11-19T16:00:00Z",
+    ...overrides,
+  };
+}
+
+describe("choosing coworkers' offers (coverage.md)", () => {
+  const offers = [
+    offer(),
+    offer({ id: "o2", offered_by: "dee", offered_by_name: "Dee", answer: "decline" }),
+    offer({ id: "o3", offered_by: "chef", offered_by_name: "Chef" }),
+    offer({ id: "o4", offered_by: "eve", offered_by_name: "Eve", status: "dropped" }),
+    offer({ id: "o5", shift_id: "s2" }),
+  ];
+
+  it("offers only open covers and swaps for that shift, never the reviewer's own", () => {
+    const ids = choosable(detail({ offers }), "s1", "chef").map((o) => o.id);
+    expect(ids).toEqual(["o1"]);
+  });
+
+  it("sends one choice per shift where an offer was picked", () => {
+    const request = detail({
+      affected_shifts: [
+        { id: "s1", department_id: "d1", starts_at: "x", ends_at: "y" },
+        { id: "s2", department_id: "d1", starts_at: "x", ends_at: "y" },
+      ],
+    });
+    expect(choicesFrom(request, { "offer-s1": "o1", "offer-s2": "", comment: "" })).toEqual([
+      { shift_id: "s1", offer_id: "o1" },
+    ]);
+    expect(choicesFrom(request, { comment: "" })).toEqual([]);
+  });
+
+  it("sends the choices with an approval only", async () => {
+    const fetchMock = serve(() => ({}));
+    await decideTimeOff("t1", "approve", null, [{ shift_id: "s1", offer_id: "o1" }]);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      comment: null,
+      choices: [{ shift_id: "s1", offer_id: "o1" }],
+    });
+    await decideTimeOff("t1", "deny", null, [{ shift_id: "s1", offer_id: "o1" }]);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ comment: null });
+  });
+});
+
 describe("the page", () => {
   /** @param {import("../../js/api/time-off.js").TimeOffDetail} one */
   function serveWith(one) {
@@ -230,6 +284,43 @@ describe("the page", () => {
     const dialog = /** @type {HTMLElement} */ (document.querySelector("dialog"));
     expect(dialog.textContent).toContain("Approve time off for Ana Diaz?");
     expect(dialog.textContent).toContain("their shift on these days becomes an open shift");
+  });
+
+  it("lists the offers under each shift, and lets the reviewer choose one", async () => {
+    loadPage("time-off-review.html");
+    const evil = "<img src=x onerror=alert(1)>";
+    const fetchMock = serveWith(
+      detail({
+        offers: [
+          offer(),
+          offer({ id: "o2", offered_by: "dee", offered_by_name: evil, answer: "decline" }),
+        ],
+      }),
+    );
+    await showReview();
+    const card = /** @type {HTMLElement} */ (document.querySelector("#waiting-list li"));
+    expect(card.textContent).toContain("Ben Okafor offers to cover");
+    expect(card.textContent).toContain(`${evil} declined`);
+    expect(card.querySelector("img")).toBeNull();
+
+    /** @type {HTMLButtonElement} */ (card.querySelector("button.button--primary")).click();
+    await settle();
+    const dialog = /** @type {HTMLElement} */ (document.querySelector("dialog"));
+    const select = /** @type {HTMLSelectElement} */ (dialog.querySelector("select"));
+    expect([...select.options].map((o) => o.textContent)).toEqual([
+      "Nobody: it becomes an open shift",
+      "Ben Okafor offers to cover",
+    ]);
+    select.value = "o1";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    /** @type {HTMLFormElement} */ (dialog.querySelector("form")).requestSubmit();
+    await settle();
+    await settle();
+    const post = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/t1/approve"));
+    expect(JSON.parse(post?.[1].body)).toEqual({
+      comment: null,
+      choices: [{ shift_id: "s1", offer_id: "o1" }],
+    });
   });
 
   it("lists team requests by status", async () => {

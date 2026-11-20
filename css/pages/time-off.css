@@ -150,3 +150,9 @@ textarea.field__input {
   margin-left: auto;
   color: var(--color-muted);
 }
+
+/* The coworkers' answers under a shift on the review card (coverage.md). */
+.time-off-card__offers {
+  margin: 0.25rem 0 0;
+  color: var(--color-muted);
+}

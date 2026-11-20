@@ -99,10 +99,14 @@ export async function teamRequests(status) {
  * @param {string} id
  * @param {"approve" | "deny"} decision
  * @param {string | null} comment
+ * @param {{ shift_id: string, offer_id: string }[]} [choices] with an approval: the
+ *   coworkers' offers chosen, none or one per shift (coverage.md). They apply if this
+ *   approval settles the request; the API checks each again.
  * @returns {Promise<TimeOff>}
  */
-export function decideTimeOff(id, decision, comment) {
-  return api.post(`/api/time-off-requests/${encodeURIComponent(id)}/${decision}`, { comment });
+export function decideTimeOff(id, decision, comment, choices = []) {
+  const body = decision === "approve" && choices.length ? { comment, choices } : { comment };
+  return api.post(`/api/time-off-requests/${encodeURIComponent(id)}/${decision}`, body);
 }
 
 // --- Swaps and coverage (docs/features/coverage.md) ----------------------------------------
