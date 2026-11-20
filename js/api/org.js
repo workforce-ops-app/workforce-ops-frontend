@@ -90,3 +90,43 @@ export function removeMember(teamId, userId) {
     `/api/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`,
   );
 }
+
+// --- A department's own settings (docs/features/coverage.md, backend CV3) --------------------
+
+/**
+ * @typedef {{ approval_request_id: string, value: number, requested_by: string,
+ *   waiting_for: string[] }} PendingSetting
+ *   a change waiting for the department's other managers (their names in waiting_for)
+ * @typedef {{
+ *   setting: string, key: string, description: string,
+ *   company_value: number, department_value: number | null, value: number, limit: number,
+ *   pending: PendingSetting | null,
+ * }} DepartmentSetting
+ *   value is the one in force: the stricter of the company's and the department's
+ */
+
+/**
+ * A department's own settings. Only its managers and people reviewing time off
+ * company-wide may read them; anyone else gets 403 (the API decides).
+ * @param {string} id
+ * @returns {Promise<DepartmentSetting[]>}
+ */
+export async function departmentSettings(id) {
+  const answer = await api.get(`/api/departments/${encodeURIComponent(id)}/settings`);
+  return answer.items;
+}
+
+/**
+ * Change a department's setting. Answers { value } when it took effect at once, or
+ * { approval_request_id } when the department's other managers must confirm it first
+ * (202). Never below the company's value (the API answers 422).
+ * @param {string} id
+ * @param {string} key the setting's key, e.g. "offers_close_days"
+ * @param {number} value
+ * @returns {Promise<{ value: number | null, approval_request_id: string | null }>}
+ */
+export function changeDepartmentSetting(id, key, value) {
+  return api.put(`/api/departments/${encodeURIComponent(id)}/settings/${encodeURIComponent(key)}`, {
+    value,
+  });
+}

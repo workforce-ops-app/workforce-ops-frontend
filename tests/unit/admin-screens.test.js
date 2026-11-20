@@ -6,10 +6,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../js/components/app-shell.js", () => ({ startSignedInPage: vi.fn() }));
 const { describeRequest, handledHere, outcome } = await import("../../js/pages/admin-approvals.js");
 const { ownerMessage, permissionChoices, roleTag } = await import("../../js/pages/admin-roles.js");
-const { membersOf, zoneChoices } = await import("../../js/pages/admin-structure.js");
+const { membersOf, minimumChoices, minimumText, zoneChoices } =
+  await import("../../js/pages/admin-structure.js");
 const { decide } = await import("../../js/api/approvals.js");
 const { addOwner, removeOwner } = await import("../../js/api/roles.js");
-const { removeMember, updateDepartment } = await import("../../js/api/org.js");
+const { changeDepartmentSetting, departmentSettings, removeMember, updateDepartment } =
+  await import("../../js/api/org.js");
 const { openFormDialog } = await import("../../js/components/form-dialog.js");
 const { joinNames } = await import("../../js/components/admin-page.js");
 
@@ -63,6 +65,78 @@ function request(overrides = {}) {
 }
 
 const places = { departments: new Map([["d1", "Kitchen"]]), teams: new Map([["t1", "Crew"]]) };
+
+/** @returns {import("../../js/api/org.js").DepartmentSetting} */
+function minimum(overrides = {}) {
+  return {
+    setting: "time_off.offers_close_days",
+    key: "offers_close_days",
+    description: "Days before",
+    company_value: 2,
+    department_value: null,
+    value: 2,
+    limit: 5,
+    pending: null,
+    ...overrides,
+  };
+}
+
+describe("a department's send-up minimum (coverage.md)", () => {
+  it("says the minimum in force, whose it is, and any change waiting", () => {
+    expect(minimumText(minimum())).toBe(
+      "Time off with coworkers' offers goes to the managers at least 2 days before it starts: the company's.",
+    );
+    const own = minimum({ department_value: 4, value: 4 });
+    expect(minimumText(own)).toMatch(
+      /at least 4 days .*this department's own \(the company's is 2 days\)\.$/,
+    );
+    const waiting = minimum({
+      pending: {
+        approval_request_id: "q",
+        value: 3,
+        requested_by: "ana",
+        waiting_for: ["Felix", "<b>Dee</b>"],
+      },
+    });
+    expect(minimumText(waiting)).toMatch(
+      /A change to 3 days is waiting for Felix and <b>Dee<\/b> to confirm\.$/,
+    );
+  });
+
+  it("offers only values from the company's up to the limit", () => {
+    expect(minimumChoices(minimum()).map((c) => c.value)).toEqual(["2", "3", "4", "5"]);
+    expect(minimumChoices(minimum({ company_value: 1, limit: 2 }))[0].label).toBe(
+      "1 day (the company's)",
+    );
+  });
+
+  it("reads and changes it at the right addresses, and returns a waiting change", async () => {
+    answer(200, { items: [minimum()] });
+    expect(await departmentSettings("../d1")).toEqual([minimum()]);
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/departments/..%2Fd1/settings");
+
+    answer(202, { value: null, approval_request_id: "q1" });
+    expect(await changeDepartmentSetting("d1", "offers_close_days", 3)).toEqual({
+      value: null,
+      approval_request_id: "q1",
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/departments/d1/settings/offers_close_days");
+    expect(fetchMock.mock.calls[0][1].method).toBe("PUT");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ value: 3 });
+  });
+
+  it("describes the change on the Approvals screen", () => {
+    const change = request({
+      kind: "department_setting",
+      subject_user_id: null,
+      subject_name: null,
+      payload: { department_id: "d1", setting: "time_off.offers_close_days", value: 3 },
+    });
+    expect(describeRequest(change, places)).toBe(
+      "Ada asks that time off with coworkers' offers in the Kitchen department go to the managers at least 3 days before it starts.",
+    );
+  });
+});
 
 describe("the Approvals screen's rules", () => {
   it("says what each kind of request asks for", () => {
