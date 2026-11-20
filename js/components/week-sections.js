@@ -1,7 +1,7 @@
 // The two sections under the department week:
 // - Open shifts: the week's shifts nobody is assigned to yet, in time order. Filling them
-//   is a manager's first job, so they get a section of their own instead of a row in the
-//   timeline. Each one is a button that opens the details popup, like every shift.
+//   is a manager's first job, so they get a section of their own instead of a block in the
+//   calendar. Each one is a button that opens the details popup, like every shift.
 // - Unscheduled employees: the department's people without any shift that week, so a
 //   manager can see at once who is still free to take one.
 //
