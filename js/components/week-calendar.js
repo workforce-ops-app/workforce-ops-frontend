@@ -678,24 +678,53 @@ export function weekCalendar(keys, shifts, options = {}) {
  * Scroll the calendar so it opens at the week's earliest shift (or 6 AM), the way Google
  * Calendar opens at the start of the working day instead of at midnight. Call it once the
  * calendar is on the page: before that it has no size to scroll. On a phone the calendar
- * is hidden (the day cards show instead), has no size, and this does nothing.
+ * is hidden (the day cards show instead), has no size, and this waits until it gets one.
  * @param {HTMLElement} calendar what weekCalendar returned
- * @param {number} [framesLeft] how many more frames to wait for the calendar to get a size
+ * @param {number} [framesLeft] where there is no ResizeObserver: how many more frames to
+ *   wait for the calendar to get a size
  */
 export function openAtFirstShift(calendar, framesLeft = 30) {
   const scroller = calendar.querySelector(".week-calendar__scroll");
   const day = calendar.querySelector(".week-calendar__day");
   if (!(scroller instanceof HTMLElement) || !(day instanceof HTMLElement)) return;
+  const sized = () => Boolean(day.offsetHeight && scroller.clientHeight);
   // Some browsers (WebKit) have not laid the new calendar out yet right after it is put on
   // the page, so it has no height to scroll by, and scrolling would leave it at midnight.
-  // Then try again at the next frame, for up to about half a second (30 frames). A hidden
-  // calendar (on a phone) never gets a height, and simply stops trying.
-  if (!day.offsetHeight || !scroller.clientHeight) {
+  // How long that takes depends on how busy the computer is, so there is no time limit:
+  // a ResizeObserver says when the calendar gets its size, and it scrolls then, once.
+  // It stops watching once the calendar is off the page (another week replaced it). A
+  // hidden calendar (on a phone) is watched until it is shown or replaced, so turning a
+  // tablet to landscape still opens it at the first shift.
+  if (!sized()) {
+    if (typeof ResizeObserver === "function") {
+      const watcher = new ResizeObserver(() => {
+        if (!calendar.isConnected) {
+          watcher.disconnect();
+        } else if (sized()) {
+          watcher.disconnect();
+          scrollToFirstShift(scroller, day);
+        }
+      });
+      watcher.observe(scroller);
+      watcher.observe(day);
+      return;
+    }
+    // Without one (an old browser, or the unit tests' jsdom): try again at the next frame,
+    // for up to about half a second (30 frames).
     if (framesLeft > 0 && calendar.isConnected) {
       requestAnimationFrame(() => openAtFirstShift(calendar, framesLeft - 1));
     }
     return;
   }
+  scrollToFirstShift(scroller, day);
+}
+
+/**
+ * Scroll a calendar that has its size to the hour it should open at.
+ * @param {HTMLElement} scroller the calendar's scrolling area
+ * @param {HTMLElement} day one day column (24 hours tall)
+ */
+function scrollToFirstShift(scroller, day) {
   const hour = Number(scroller.dataset.firstHour ?? DEFAULT_FIRST_HOUR);
   // One hour is a 24th of a day column. A little less than the full distance, so the
   // hour's label is not tucked under the pinned day headers.
