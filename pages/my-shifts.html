@@ -14,6 +14,8 @@
     <link rel="stylesheet" href="/css/components/shift-dialog.css" />
     <link rel="stylesheet" href="/css/components/week-nav.css" />
     <link rel="stylesheet" href="/css/components/announcement.css" />
+    <link rel="stylesheet" href="/css/components/stat-tile.css" />
+    <link rel="stylesheet" href="/css/components/home.css" />
     <script type="module" src="/js/pages/my-shifts.js"></script>
   </head>
   <body>
@@ -117,6 +119,49 @@
         <div id="days" class="days"></div>
         <div id="summary" class="summary-card" hidden></div>
       </div>
+      <!-- What needs a manager's attention: tiles filled in by the script, then a link for
+           each kind of work, each shown only with its permission. The section starts hidden
+           and the script shows it for people who review time off or plan the week. -->
+      <section id="attention" class="home-section" aria-labelledby="attention-title" hidden>
+        <h2 id="attention-title" class="home-section__title">Needs your attention</h2>
+        <p id="attention-status" class="status" aria-live="polite">Loading…</p>
+        <div id="attention-tiles" class="stats" hidden></div>
+        <ul class="home-section__links">
+          <li data-permission="time_off.review" hidden>
+            <a class="home-section__link" href="/pages/time-off-review.html">
+              Review time off
+              <span
+                class="icon icon--chevron-right home-section__chevron"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li data-permission="schedule.edit" hidden>
+            <a class="home-section__link" href="/pages/schedule.html">
+              Plan the department week
+              <span
+                class="icon icon--chevron-right home-section__chevron"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+        </ul>
+      </section>
+      <!-- The person's upcoming time off, for people who can ask for it. -->
+      <section
+        class="home-section"
+        aria-labelledby="time-off-title"
+        data-permission="time_off.request_self"
+        hidden
+      >
+        <h2 id="time-off-title" class="home-section__title">My time off</h2>
+        <p id="time-off-status" class="status" aria-live="polite">Loading your time off…</p>
+        <ul id="home-time-off" class="home-time-off-list"></ul>
+        <a class="home-section__link" href="/pages/time-off.html">
+          All my time off
+          <span class="icon icon--chevron-right home-section__chevron" aria-hidden="true"></span>
+        </a>
+      </section>
       <!-- The newest announcements, under the week, and a link to all of them. The link is
            here in the HTML, so it works even when the list cannot load. -->
       <section class="home-announcements" aria-labelledby="home-announcements-title">

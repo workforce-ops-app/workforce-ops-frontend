@@ -1,17 +1,25 @@
 // My week: the signed-in person's shifts for one week, a card per day (days off included),
 // and the hours scheduled that week. The home page after signing in; phone first
 // (frontend docs, features/schedules.md). The address picks the week: ?week=YYYY-MM-DD.
-// Under the week, the newest announcements, with a link to all of them
-// (features/announcements.md).
+// Under the week, what the person's work calls for (decision 0038; features/schedules.md,
+// "Home screen"): managers see what needs their attention (time off to review, the open
+// work in their department this week), people who ask for time off see their upcoming
+// requests, and everyone sees the newest announcements, with a link to all of them
+// (features/announcements.md). Each part is shown only with the permission it needs; that
+// is a convenience, since the API checks every request again (threat E8).
 
 import { listAnnouncements } from "../api/announcements.js";
 import { ApiError, NetworkError } from "../api/client.js";
 import { listShifts } from "../api/shifts.js";
+import { myRequests } from "../api/time-off.js";
 import { announcementCard, workplaceTimeZone } from "../components/announcement-card.js";
-import { startSignedInPage } from "../components/app-shell.js";
+import { startSignedInPage, waitingRequests } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
+import { attentionTiles, timeOffItem, upcomingTimeOff } from "../components/home-sections.js";
 import { followWeekLinks } from "../components/week-nav.js";
+import { openWork } from "../components/week-stats.js";
 import { el, setText } from "../core/dom.js";
+import { can, currentSession } from "../core/session.js";
 import { addDays, formatHours, formatWeekRange, hoursBetween } from "../core/time.js";
 import { requestedMonday, today, weekLink } from "../core/week.js";
 
@@ -90,6 +98,24 @@ export async function showMyWeek(search) {
   }
 }
 
+/**
+ * Put a failure in a section's status line: the two failures a page expects in plain
+ * words, anything else (a bug in our own code) as a general message and thrown on, so it
+ * reaches the console with its real cause.
+ * @param {HTMLElement} status
+ * @param {unknown} error
+ * @param {string} fallback e.g. "Problem: your time off could not load"
+ */
+function showProblem(status, error, fallback) {
+  if (error instanceof ApiError || error instanceof NetworkError) {
+    const message = error instanceof ApiError ? error.title : "the server could not be reached";
+    status.replaceChildren(el("span", { className: "error", text: `Problem: ${message}` }));
+    return;
+  }
+  status.replaceChildren(el("span", { className: "error", text: fallback }));
+  throw error;
+}
+
 /** How many of the newest announcements the home screen shows. */
 export const HOME_ANNOUNCEMENTS = 3;
 
@@ -119,22 +145,83 @@ export async function showHomeAnnouncements() {
     setText(status, page.items.length === 0 ? "No announcements yet." : "");
   } catch (error) {
     // Like the week: the two expected failures in plain words, a bug thrown on.
-    if (error instanceof ApiError || error instanceof NetworkError) {
-      const message = error instanceof ApiError ? error.title : "the server could not be reached";
-      status.replaceChildren(el("span", { className: "error", text: `Problem: ${message}` }));
-      return;
-    }
-    status.replaceChildren(
-      el("span", { className: "error", text: "Problem: announcements could not load" }),
+    showProblem(status, error, "Problem: announcements could not load");
+  }
+}
+
+/**
+ * My time off: the person's requests still waiting for a decision and their approved time
+ * off still to come (components/home-sections.js). Only for people who can ask for time
+ * off; the section starts hidden in the HTML and applyPermissions shows it. Exported for
+ * the tests; the page calls it once, when it loads.
+ */
+export async function showMyTimeOff() {
+  const status = document.getElementById("time-off-status");
+  const list = document.getElementById("home-time-off");
+  if (!status || !list || !can("time_off.request_self")) return;
+
+  try {
+    const upcoming = upcomingTimeOff(await myRequests(), today());
+    list.replaceChildren(...upcoming.map(timeOffItem));
+    setText(status, upcoming.length === 0 ? "No time off coming up." : "");
+  } catch (error) {
+    list.replaceChildren();
+    showProblem(status, error, "Problem: your time off could not load");
+  }
+}
+
+/**
+ * Needs your attention: for people who review time off, how many requests wait for them;
+ * for people who plan the week (schedule.edit), the open shifts and open hours in their
+ * own department this week. The links under the tiles are in the HTML, each with its own
+ * permission. Exported for the tests; the page calls it once, when it loads.
+ */
+export async function showAttention() {
+  const section = document.getElementById("attention");
+  const status = document.getElementById("attention-status");
+  const tiles = document.getElementById("attention-tiles");
+  if (!section || !status || !tiles) return;
+
+  const reviews = can("time_off.review");
+  // The person's own department: where they plan, and what the department week opens on.
+  const departmentId = currentSession()?.user.department_id ?? null;
+  const plans = can("schedule.edit") && departmentId !== null;
+  // Nothing to show: the whole section stays hidden (it also starts hidden in the HTML).
+  section.hidden = !(reviews || plans);
+  if (section.hidden) return;
+
+  try {
+    // Both requests at once; the waiting list is the same request the menu's count uses.
+    const monday = requestedMonday(new URLSearchParams(), today());
+    const [waiting, shifts] = await Promise.all([
+      reviews ? waitingRequests() : null,
+      plans ? listShifts({ from: monday, to: addDays(monday, 6), departmentId }) : null,
+    ]);
+    const work = shifts ? openWork(shifts) : null;
+    tiles.replaceChildren(
+      ...attentionTiles({
+        waiting: waiting ? waiting.length : null,
+        open: work ? work.open.length : null,
+        openHours: work ? work.openHours : null,
+      }),
     );
-    throw error;
+    tiles.hidden = false;
+    setText(status, "");
+  } catch (error) {
+    tiles.hidden = true;
+    showProblem(status, error, "Problem: this section could not load");
   }
 }
 
 // Once the session has loaded (signed-out visitors go to the sign-in page instead), show
-// the week the address asks for, and the newest announcements under it (both requests at
-// once). Other weeks then load in place (components/week-nav.js).
+// the week the address asks for and the sections under it (all their requests at once).
+// Other weeks then load in place (components/week-nav.js); the sections stay as they are.
 startSignedInPage(async () => {
   followWeekLinks(showMyWeek);
-  await Promise.all([showMyWeek(window.location.search), showHomeAnnouncements()]);
+  await Promise.all([
+    showMyWeek(window.location.search),
+    showAttention(),
+    showMyTimeOff(),
+    showHomeAnnouncements(),
+  ]);
 });
