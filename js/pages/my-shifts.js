@@ -11,11 +11,12 @@
 import { listAnnouncements } from "../api/announcements.js";
 import { ApiError, NetworkError } from "../api/client.js";
 import { listShifts } from "../api/shifts.js";
-import { myRequests } from "../api/time-off.js";
+import { myRequests, offerable } from "../api/time-off.js";
 import { announcementCard, workplaceTimeZone } from "../components/announcement-card.js";
 import { startSignedInPage, waitingRequests } from "../components/app-shell.js";
 import { dayCard, groupByDay } from "../components/day-list.js";
 import { attentionTiles, timeOffItem, upcomingTimeOff } from "../components/home-sections.js";
+import { offerCard } from "../components/offer-card.js";
 import { followWeekLinks } from "../components/week-nav.js";
 import { openWork } from "../components/week-stats.js";
 import { el, setText } from "../core/dom.js";
@@ -171,6 +172,38 @@ export async function showMyTimeOff() {
 }
 
 /**
+ * Coworkers asking for cover (docs/features/coverage.md): their time-off requests still
+ * collecting offers, with the shifts this person could take, each with Cover, Swap (one
+ * of their own upcoming shifts), and Decline. Only with coverage.respond_self; the API
+ * lists only requests the person could answer, and only their own answers. Exported for
+ * the tests; the page calls it once, and again after each answer.
+ */
+export async function showOffers() {
+  const status = document.getElementById("offers-status");
+  const list = document.getElementById("home-offers");
+  if (!status || !list || !can("coverage.respond_self")) return;
+  const zone = currentSession()?.company.timezone ?? "UTC";
+  try {
+    // Step 1: the requests, and the person's own shifts for the next four weeks (the
+    // shifts a swap could give).
+    const start = today();
+    const [items, myShifts] = await Promise.all([
+      offerable(),
+      listShifts({ from: start, to: addDays(start, 28), mine: true }),
+    ]);
+    // Step 2: one card each.
+    const now = new Date();
+    list.replaceChildren(
+      ...items.map((item) => offerCard(item, { zone, myShifts, now, onChange: showOffers })),
+    );
+    setText(status, items.length === 0 ? "Nobody is asking for cover right now." : "");
+  } catch (error) {
+    list.replaceChildren();
+    showProblem(status, error, "Problem: coworkers' requests could not load");
+  }
+}
+
+/**
  * Needs your attention: for people who review time off, how many requests wait for them;
  * for people who plan the week (schedule.edit), the open shifts and open hours in their
  * own department this week; for people who post announcements, a link to post one. The
@@ -231,6 +264,7 @@ startSignedInPage(async () => {
     showMyWeek(window.location.search),
     showAttention(),
     showMyTimeOff(),
+    showOffers(),
     showHomeAnnouncements(),
   ]);
 });

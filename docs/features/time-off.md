@@ -14,7 +14,7 @@ Employees ask for days off and follow their requests; managers see the requests 
 | **Waiting for my review**: requests I can decide, each with the affected shifts and other reviewers' decisions; approve, or deny with a comment | `pages/time-off-review.html` | people with `time_off.review` (the Review time off menu entry, with the waiting count) | both |
 | **Team requests**: requests of people in my scope, by status and date | tab on the review page, with `time_off.view` | managers, administrators, owners | desktop first |
 
-**Statuses shown to the employee:** Waiting for review, Moved up (managers disagreed), Approved, Declined, Declined: not reviewed in time, Cancelled.
+**Statuses shown to the employee:** Collecting coworkers' offers (asked with Offer Shift Swap / Coverage), Waiting for review, Moved up (managers disagreed), Approved, Declined, Declined: not reviewed in time, Cancelled.
 
 **Who decided, and who is left** (#104, backend #184): while a request is open, the API's `progress` lists the decisions so far and the reviewers still to decide, and every screen that shows the status uses it (`statusText()` in `js/core/time-off-words.js`): "Waiting for review by Ana Diaz and Felix Grant" before anyone decides, then "Ana Diaz declined. Waiting for Felix Grant." The signed-in person's own decision reads "You" ("You declined. Waiting for Felix Grant."), so a reviewer sees in the team list that they already acted. A request needing several reviewers waits for all of them, so one denial alone does not settle it (agreed in review, 2026-11-20). Moved up names who it waits for now. Names go into the page as text only.
 
@@ -25,6 +25,10 @@ Through `js/api/time-off.js`:
 | Action | Endpoint |
 |---|---|
 | My requests | `GET /api/time-off-requests?mine=true` |
+| Send my collecting request up now | `POST /api/time-off-requests/{id}/send-up` |
+| Coworkers' requests I could answer (home screen) | `GET /api/time-off-requests/offerable` |
+| Answer for one shift: cover, swap, or decline | `PUT /api/time-off-requests/{id}/offers/{shift_id}` |
+| Take back my answer | `DELETE /api/time-off-requests/{id}/offers/{shift_id}` |
 | Ask for time off | `POST /api/time-off-requests` |
 | Cancel my request | `POST /api/time-off-requests/{id}/cancel` |
 | Waiting for my review | `GET /api/time-off-requests/waiting` |
@@ -49,6 +53,14 @@ Through `js/api/time-off.js`:
 - **Approve** and **Deny** open a small form with an optional comment the employee sees. Approving says first how many of the employee's shifts become open shifts if it settles the request. Afterwards the status line says what the request became (approved, declined, moved up, or still waiting for other reviewers), and the lists and the count load again.
 - **Team requests** (`time_off.view`): every request of the people in scope, filtered by status.
 - **Waiting count:** a red badge on the Review time off menu entry with the number waiting (`aria-label` "3 waiting"), loaded on every signed-in page by `showWaitingCount()` in `js/components/app-shell.js`, without holding the page up. Hidden at zero, without `time_off.review`, or if the request fails. This is how reviewers notice new requests in the core tier (no notifications).
+
+## Swaps and coverage
+
+The rules are in the backend's [coverage](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/coverage.md) page; these screens follow it. Slices CV5 (#110, the employee and the coworker), CV6 (#111, the reviewer), CV7 (#112, the department minimum).
+
+- **The form** has an **Offer Shift Swap / Coverage** checkbox. Ticked, the request starts as "Collecting coworkers' offers" and the status line says so; the API answers 409 when it is too late to collect offers, and the form shows its words.
+- **The employee's card** while collecting: **Send to my manager** (a question first, since coworkers cannot change their offers afterwards) and **Cancel request**. Any request asked with offers has **Coworkers' offers**: each affected shift with every answer by name ("Ben Okafor offers to cover", "Ana Diaz offers a swap: Monday, November 30, 8:00 AM - 4:00 PM", "Dee Park declined"), or "No offers yet."
+- **The coworker's home screen** (`coverage.respond_self`): a **Coworkers asking for cover** section with one card per request the API lists (`/offerable`: same department, could work the shift, not on time off themselves). Each shift has **Cover**, **Swap** (the person's own scheduled shifts in the next four weeks, in that department, outside the requested days; the API checks again that the employee could work it), and **Decline**; once answered, the answer shows ("You offer to cover.") with **Take back**. A coworker only ever sees their own answers. A refusal (409, for example offers closed) shows under that shift, and the cards load again after each answer.
 
 ## Notes
 - The date picker does not offer today or earlier days; the server checks again.
