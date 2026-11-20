@@ -54,7 +54,8 @@ export function openFormDialog(options) {
     const form = /** @type {HTMLFormElement} */ (
       el("form", { className: "form", attrs: { method: "post", novalidate: "" } })
     );
-    const fieldArea = el("div");
+    // Its own grid, spaced like the form, so the fields do not touch.
+    const fieldArea = el("div", { className: "form" });
     const problem = el("p", { className: "form__message", attrs: { role: "alert" } });
     problem.hidden = true;
 
