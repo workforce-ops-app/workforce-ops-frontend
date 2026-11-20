@@ -1,0 +1,404 @@
+/* The week calendar (js/components/week-calendar.js): one white card holding a grid like
+   Google Calendar's week view. The seven days run across, the 24 hours run down the left
+   side, and each shift is a block in its day's column from its start down to its end, in
+   its person's colour (css/components/person-colour.css). The day is 24 hours tall, so the
+   grid scrolls up and down inside the card, and the day headers stay pinned at the top.
+
+   The script never writes style attributes (the Content Security Policy refuses them). It
+   sets four numbers on each block through the DOM, and the rules below turn them into a
+   position:
+   --block-start     where the block starts, as a percentage of the day (0 is midnight)
+   --block-length    how long it is, as a percentage of the day
+   --block-column    which column it is in, when shifts overlap (0 is the left)
+   --block-columns   how many columns its overlapping group is split into (normally 1)
+   One hour is --hour-height tall. */
+
+.week-calendar-card {
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-card);
+  /* The rounded corners also cut off the grid scrolling inside. */
+  overflow: hidden;
+}
+
+.week-calendar {
+  /* One hour: tall enough for a one-hour shift to show its name and its time on two
+     lines. */
+  --hour-height: 3rem;
+  /* The column of hour labels on the left. */
+  --hours-width: 4.5rem;
+  /* Where today's column is tinted: a very light green, so the coloured blocks on it stay
+     clear. */
+  --today-tint: color-mix(in srgb, var(--color-accent-soft) 55%, transparent);
+}
+
+/* The area that scrolls: about the height of the window under the page heading and the
+   tiles, never smaller than eight hours or so, and never taller than the whole day. It is
+   the positioning box for the grid, so the script can scroll it to an hour. */
+.week-calendar__scroll {
+  position: relative;
+  height: clamp(26rem, calc(100vh - 14rem), 52rem);
+  overflow-y: auto;
+  /* A scroll inside the card does not drag the page along when it reaches its end. */
+  overscroll-behavior-y: contain;
+}
+
+/* The grid: the hour labels, then seven equal days. Row 1 holds the corner and the day
+   headers, row 2 the labels and the day columns (the script adds them in that order). */
+.week-calendar__grid {
+  display: grid;
+  grid-template-columns: var(--hours-width) repeat(7, minmax(0, 1fr));
+  grid-template-rows: auto calc(24 * var(--hour-height));
+}
+
+/* --- The day headers, pinned at the top while the hours scroll ------------------------- */
+
+.week-calendar__corner,
+.week-calendar__day-head {
+  position: sticky;
+  top: 0;
+  /* Above the blocks scrolling under them. */
+  z-index: 2;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background);
+}
+
+/* A day header: "MON" in small green letters over a large "5". */
+.week-calendar__day-head {
+  display: grid;
+  justify-items: center;
+  gap: 0.125rem;
+  padding: 0.625rem 0.25rem 0.5rem;
+  border-left: 1px solid var(--color-border);
+  line-height: 1.1;
+}
+
+.week-calendar__weekday {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-accent);
+}
+
+.week-calendar__number {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 1.375rem;
+  color: var(--color-heading);
+}
+
+/* Today: the date in a green circle (white on green, 8:1), and the column tinted below. */
+.week-calendar__day-head--today {
+  background: linear-gradient(var(--today-tint), var(--today-tint)), var(--color-background);
+}
+
+.week-calendar__day-head--today .week-calendar__number {
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+/* --- The hours down the side, and the hour lines ---------------------------------------- */
+
+/* The labels: one per hour, each as tall as an hour, its text centred on the hour's line
+   (pulled up by half a line). The first, "12 AM", would then poke above the grid, so it
+   stays just under the top instead. */
+.week-calendar__hours {
+  display: grid;
+  grid-template-rows: repeat(24, var(--hour-height));
+}
+
+.week-calendar__hour {
+  padding-right: 0.625rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--color-muted);
+  text-align: right;
+  white-space: nowrap;
+  transform: translateY(-0.4rem);
+}
+
+.week-calendar__hour:first-child {
+  transform: translateY(0.25rem);
+}
+
+/* A day column: a light line on its left (between days) and one across it at every hour,
+   drawn as a repeating background so it needs no element per line. It is the positioning
+   box for its blocks: 0% is midnight at the top, 100% midnight at the bottom. It is a list
+   (<ul>), so the list's own spacing goes. */
+.week-calendar__day {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--color-border);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--color-border) 0 1px,
+    transparent 1px var(--hour-height)
+  );
+}
+
+.week-calendar__day--today {
+  background-color: var(--today-tint);
+}
+
+/* The "now" line: across today's column at the time it is now (--now-at, a percentage
+   of the day set by placeNowLine through the CSSOM), with a dot at its left end, as in
+   Google Calendar. It is drawn over the blocks (which have no z-index of their own), so it
+   shows even across a shift, but under the pinned day headers (z-index 2), and it lets
+   clicks through to the block under it. Red (the error colour) stands out against every
+   person colour. */
+.week-calendar__now {
+  position: absolute;
+  top: calc(var(--now-at, 0) * 1%);
+  right: 0;
+  left: 0;
+  z-index: 1;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--color-error);
+  pointer-events: none;
+}
+
+.week-calendar__now::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-error);
+}
+
+/* --- The blocks ----------------------------------------------------------------------- */
+
+/* A block: placed from the four numbers the script set (see the top of this file). Side by
+   side blocks share the day's width; a small gap on the right keeps them apart, and so
+   does the white ring each button draws (below). At least 1.375rem tall, so a short shift
+   can still be clicked and read; one that would then poke past midnight moves up instead. */
+.week-calendar__block {
+  --block-gap: 4px;
+  position: absolute;
+  top: min(calc(var(--block-start) * 1%), calc(100% - 1.375rem));
+  left: calc(100% * var(--block-column, 0) / var(--block-columns, 1) + 1px);
+  width: calc(100% / var(--block-columns, 1) - var(--block-gap));
+  height: max(calc(var(--block-length) * 1% - 1px), 1.375rem);
+  /* The label inside chooses what to show by this block's own size (the container
+     queries below), not the window's: a long shift and a short one, a wide block and a
+     narrow one, each get the label that fits. */
+  container-type: size;
+}
+
+/* The button fills its block: a light tint of the person's colour with a strong edge of
+   it on the left, dark text on it (at least 10:1 on every tint, base.css), the name on top
+   and the time under it. The white ring keeps neighbouring blocks apart. */
+.calendar-shift {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0.25rem 0.375rem 0.25rem 0.4375rem;
+  overflow: hidden;
+  border: 0;
+  border-left: 4px solid var(--person-edge, var(--color-accent));
+  border-radius: var(--radius);
+  background: var(--person-tint, var(--color-accent-soft));
+  box-shadow: 0 0 0 1px var(--color-background);
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  color: var(--color-heading);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Under the mouse: a little more of the person's colour, and lifted, to say it opens. */
+.calendar-shift:hover {
+  background: color-mix(
+    in srgb,
+    var(--person-tint, var(--color-accent-soft)),
+    var(--person-edge, var(--color-accent)) 14%
+  );
+  box-shadow:
+    0 0 0 1px var(--color-background),
+    var(--shadow-card);
+}
+
+/* The name: bold, on up to two lines (a narrow block wraps "Ana Diaz" into "Ana" over
+   "Diaz" instead of cutting it to "Ana ..."), then cut with "..." (the tooltip and the
+   description have it whole). The line clamp is the standard way to stop text after a
+   number of lines, and works in all three browser engines. */
+.calendar-shift__name {
+  display: -webkit-box;
+  flex: none;
+  overflow: hidden;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* The second line: the time, then the markers ("+1" and the icons). The time never
+   shrinks for the markers; when the line is too narrow for both, the markers wrap onto a
+   line of their own under the time. */
+.calendar-shift__when {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.25rem;
+  align-items: center;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.calendar-shift__time,
+.calendar-shift__markers {
+  flex: none;
+}
+
+.calendar-shift__markers {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+/* The time in two lengths (blockLabel in week-calendar.js); the stylesheet shows one:
+     at least 7rem wide   "9 AM - 5 PM"
+     narrower             "9a-5p"
+   In edit mode a select box takes 1.75rem of the block (below), so the full time needs a
+   block 1.75rem wider. */
+.calendar-shift__time--short {
+  display: none;
+}
+
+@container (width < 7rem) {
+  .calendar-shift__time--full {
+    display: none;
+  }
+
+  .calendar-shift__time--short {
+    display: block;
+  }
+}
+
+@container (width < 8.75rem) {
+  .shift-pick .calendar-shift__time--full {
+    display: none;
+  }
+
+  .shift-pick .calendar-shift__time--short {
+    display: block;
+  }
+}
+
+/* Very narrow blocks (three or more shifts side by side on a small laptop): a thinner
+   edge, less padding, and slightly smaller text, so a first name like "Farid" still fits
+   on its line instead of being broken in the middle. */
+@container (width < 4.5rem) {
+  .calendar-shift {
+    padding-inline: 0.25rem 0.125rem;
+    border-left-width: 3px;
+    font-size: 0.6875rem;
+  }
+}
+
+/* Short blocks (under about 50 minutes) have room for one line: the name and the time
+   side by side, the name cut with "..." first. */
+@container (height < 2.5rem) {
+  .calendar-shift {
+    flex-direction: row;
+    gap: 0.375rem;
+    align-items: center;
+    padding-block: 0;
+  }
+
+  .calendar-shift__name {
+    display: block;
+    flex: 0 1 auto;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .calendar-shift__when {
+    flex-wrap: nowrap;
+  }
+}
+
+/* "+1": the shift ends the next day. The same pill as "+1 day" on the other screens, made
+   small, in dark text with an edge of the person's colour. */
+.calendar-shift__next-day {
+  flex: none;
+  padding: 0 0.1875rem;
+  border: 1px solid var(--person-edge, var(--color-accent));
+  border-radius: var(--radius-pill);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+/* The icons only; their words are for screen readers (shift-card.css styles the rest). */
+.calendar-shift .shift-extras {
+  flex: none;
+  margin-top: 0;
+}
+
+/* A shift that goes on past the bottom of its piece (into the next day, or into next week
+   on Sunday night): the bottom is cut square and drawn as a dashed line, so the block
+   plainly goes on. The same at the top for a piece that continues from the day before.
+   Screen readers hear "(ends the next day)" or "(continues into next week)" instead. */
+/* A person switched off in the people menu (showPeople): the block stays in the page, out
+   of sight and out of the accessibility tree. */
+.week-calendar__block[hidden] {
+  display: none;
+}
+
+.week-calendar__block--continues .calendar-shift {
+  border-bottom: 2px dashed var(--person-edge, var(--color-accent));
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.week-calendar__block--continued .calendar-shift {
+  border-top: 2px dashed var(--person-edge, var(--color-accent));
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* Edit mode wraps the button with a select box (css/components/week-editor.css styles the
+   box). A block has no room beside the button, so the box sits over its top right corner;
+   it comes first in the page, so Tab reaches it before the button, as on the day cards.
+   The button leaves room on the right so the name is not hidden under the box. */
+.week-calendar__block .shift-pick {
+  position: relative;
+  display: block;
+  height: 100%;
+}
+
+.week-calendar__block .shift-pick > .calendar-shift {
+  padding-right: 1.75rem;
+}
+
+.week-calendar__block .shift-pick__box {
+  position: absolute;
+  top: 0.125rem;
+  right: 0.125rem;
+  z-index: 1;
+}
+
+/* A week without assigned shifts: one line above the empty days. */
+.week-calendar__empty {
+  margin: 0;
+  padding: 0.75rem var(--space);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted);
+  text-align: center;
+}

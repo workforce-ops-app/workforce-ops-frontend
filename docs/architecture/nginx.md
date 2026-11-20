@@ -18,6 +18,13 @@ project joins that existing network, where Docker DNS resolves the backend servi
 `api`. Because `proxy_pass` has no replacement path, `/api/health` arrives at FastAPI as
 `/api/health`.
 
+Two addresses are redirected rather than served: `/` goes to the sign-in page, and
+`/set-password.html` (the address in the backend's setup and reset links,
+`/set-password.html#token=...`) goes to `/pages/set-password.html`. The `#token=...` part
+is never sent to nginx, so it is not in any log; browsers carry it over to the redirect's
+new address, where the page reads it and removes it from the address bar. The smoke test
+follows such a link in every browser.
+
 The important files are:
 
 - `Dockerfile`: copies only the static application (`pages/`, `css/`, `js/`, `icons/`,
@@ -49,13 +56,13 @@ files. Each directive has one job:
 | `frame-ancestors 'none'` | Do not allow another page to frame the application. |
 | `form-action 'self'` | Submit forms only to this origin. |
 
-**Positions computed by a script** (the bars of the department week's timeline) still
+**Positions computed by a script** (the blocks of the department week's calendar) still
 follow `style-src 'self'`: the script never writes a `style` attribute or HTML that carries
 one, which the browser would refuse. It sets CSS custom properties through the CSSOM
-(`element.style.setProperty("--bar-start", "12.5")`), which the policy allows because only
+(`element.style.setProperty("--block-start", "37.5")`), which the policy allows because only
 our own script can call it, and the stylesheet turns them into positions. The values are
 numbers computed from server data, never text a user wrote.
-`tests/integration/timeline.spec.js` checks in all three browser engines that the bars land
+`tests/integration/calendar.spec.js` checks in all three browser engines that the blocks land
 where they belong behind the real policy and that nothing is refused.
 
 ## Other response headers

@@ -18,7 +18,7 @@ const { listShifts, listDepartments, listDepartmentPeople } =
   await import("../../js/api/shifts.js");
 const { currentSession, can } = await import("../../js/core/session.js");
 const { showMyWeek } = await import("../../js/pages/my-shifts.js");
-const { showWeek, weekStats, UNAVAILABLE } = await import("../../js/pages/schedule.js");
+const { showWeek, weekStats, UNAVAILABLE, filters } = await import("../../js/pages/schedule.js");
 const { mondayOf } = await import("../../js/core/time.js");
 const { today } = await import("../../js/core/week.js");
 /** @param {unknown} fn */
@@ -221,7 +221,7 @@ describe("Department week", () => {
     expect(text("title")).toBe("Kitchen");
   });
 
-  it("fills the timeline and the week's numbers when the page has them", async () => {
+  it("fills the calendar and the week's numbers when the page has them", async () => {
     page([
       "title",
       "week-range",
@@ -230,7 +230,7 @@ describe("Department week", () => {
       "next-week",
       "status",
       "days",
-      "timeline",
+      "calendar",
       "stats",
     ]);
     mocked.mockResolvedValue([
@@ -240,8 +240,11 @@ describe("Department week", () => {
 
     await showWeek("?week=2026-10-05&department=d1");
 
-    // One row: Ana. The open shift is not a row of the timeline.
-    expect(document.querySelectorAll("#timeline table tbody tr")).toHaveLength(1);
+    // One block: Ana's, on Monday. The open shift is not in the calendar.
+    expect(document.querySelectorAll("#calendar .week-calendar__block")).toHaveLength(1);
+    expect(
+      document.querySelector('#calendar .week-calendar__day[data-day="2026-10-05"] li'),
+    ).not.toBeNull();
     expect(document.getElementById("stats")?.hidden).toBe(false);
     expect(document.querySelectorAll("#stats .stat")).toHaveLength(4);
   });
@@ -352,7 +355,7 @@ describe("Department week", () => {
       "next-week",
       "status",
       "days",
-      "timeline",
+      "calendar",
       "stats",
       "sections",
     ]);
@@ -373,7 +376,7 @@ describe("Department week", () => {
       "next-week",
       "status",
       "days",
-      "timeline",
+      "calendar",
     ]);
     mocked.mockResolvedValueOnce([shiftOn("2026-10-05")]);
     await showWeek("?week=2026-10-05");
@@ -382,8 +385,29 @@ describe("Department week", () => {
     await showWeek("?week=2026-10-12");
 
     expect(document.getElementById("days")?.childElementCount).toBe(0);
-    expect(document.getElementById("timeline")?.childElementCount).toBe(0);
+    expect(document.getElementById("calendar")?.childElementCount).toBe(0);
     expect(text("status")).toBe("Problem: Forbidden");
+  });
+
+  it("fills the department picker with the company's departments, the one shown selected", async () => {
+    // The picker as the page has it: a wrapper holding a list.
+    const picker = document.createElement("div");
+    picker.id = "department-picker";
+    picker.hidden = true;
+    picker.append(document.createElement("select"));
+    document.body.append(picker);
+    mocked.mockResolvedValue([]);
+
+    await showWeek("?week=2026-10-05&department=d2");
+
+    expect(picker.hidden).toBe(false);
+    expect(picker.querySelector("select")?.value).toBe("d2");
+    expect(picker.querySelectorAll("option")).toHaveLength(2);
+
+    // A company with one department: nothing to choose, so no picker.
+    departmentsMock.mockResolvedValue([{ id: "d1", name: "Kitchen" }]);
+    await showWeek("?week=2026-10-05&department=d1");
+    expect(picker.hidden).toBe(true);
   });
 
   it("links to other weeks, keeping the department", async () => {
@@ -475,7 +499,7 @@ describe("Department week", () => {
       "status",
       "days",
       "stats",
-      "timeline",
+      "calendar",
       "sections",
     ]);
     mocked.mockResolvedValue([shiftOn("2026-10-05")]);
@@ -484,7 +508,7 @@ describe("Department week", () => {
     await showWeek("?week=2026-10-05&department=unknown");
 
     expect(document.getElementById("stats")?.hidden).toBe(true);
-    expect(text("timeline")).toBe("");
+    expect(text("calendar")).toBe("");
     expect(text("sections")).toBe("");
     expect(text("days")).toBe("");
   });
@@ -573,5 +597,88 @@ describe("weekStats", () => {
 
     expect(tiles[2].querySelector(".stat__value")?.textContent).toBe("0");
     expect(tiles[2].classList.contains("stat--attention")).toBe(false);
+  });
+});
+
+describe("Department week: the people menu", () => {
+  const MONDAY = "2026-10-05";
+  const ana = { id: "u1", display_name: "Ana Diaz" };
+  const ben = { id: "u2", display_name: "Ben Okafor" };
+
+  beforeEach(() => {
+    // The page's filters stay between weeks; each test starts with none.
+    filters.hidden.clear();
+    filters.query = "";
+    page([
+      "title",
+      "week-range",
+      "previous-week",
+      "current-week",
+      "next-week",
+      "status",
+      "days",
+      "stats",
+      "people-menu",
+      "calendar",
+    ]);
+    mocked.mockResolvedValue([
+      shiftOn(MONDAY, { id: "a", employee: ana }),
+      shiftOn("2026-10-06", { id: "b", employee: ben }),
+      shiftOn("2026-10-07", { id: "o", employee: null, status: "open" }),
+    ]);
+  });
+
+  /** @param {string} name */
+  const toggle = (name) =>
+    /** @type {HTMLButtonElement} */ (
+      [...document.querySelectorAll("#people-menu .people-menu__person")].find((b) =>
+        b.textContent?.includes(name),
+      )
+    );
+  const hiddenBlocks = () =>
+    [...document.querySelectorAll("#calendar .week-calendar__block")]
+      .filter((b) => /** @type {HTMLElement} */ (b).hidden)
+      .map((b) => /** @type {HTMLElement} */ (b).dataset.shift);
+  const tile = (/** @type {string} */ label) =>
+    [...document.querySelectorAll("#stats .stat")]
+      .find((t) => t.querySelector(".stat__label")?.textContent === label)
+      ?.querySelector(".stat__value")?.textContent;
+
+  it("lists the week's people beside the calendar", async () => {
+    await showWeek(`?week=${MONDAY}`);
+    const names = [...document.querySelectorAll("#people-menu .people-menu__name")].map(
+      (n) => n.textContent,
+    );
+    expect(names).toEqual(["Ana Diaz", "Ben Okafor"]);
+    expect(document.querySelector("#stats .stats__filter")).toBeNull();
+  });
+
+  it("hides a person's blocks, counts the tiles again, and says a filter is on", async () => {
+    await showWeek(`?week=${MONDAY}`);
+    expect(tile("Shifts")).toBe("3");
+    toggle("Ben Okafor").click();
+    expect(hiddenBlocks()).toEqual(["b"]);
+    // Ben's shift is no longer counted; the open shift still is.
+    expect(tile("Shifts")).toBe("2");
+    expect(tile("People working")).toBe("1");
+    expect(tile("Open shifts")).toBe("1");
+    expect(document.querySelector("#stats .stats__filter")?.textContent).toBe(
+      "Filter on: these numbers count 1 of 2 people, and every open shift.",
+    );
+  });
+
+  it("keeps the choices when another week loads", async () => {
+    await showWeek(`?week=${MONDAY}`);
+    toggle("Ana Diaz").click();
+    await showWeek("?week=2026-10-12");
+    expect(toggle("Ana Diaz").getAttribute("aria-pressed")).toBe("false");
+    expect(hiddenBlocks()).toEqual(["a"]);
+  });
+
+  it("empties the menu when a week cannot load", async () => {
+    await showWeek(`?week=${MONDAY}`);
+    mocked.mockRejectedValue(new NetworkError(new TypeError("Failed to fetch")));
+    await showWeek("?week=2026-10-12");
+    expect(document.getElementById("people-menu")?.childElementCount).toBe(0);
   });
 });
