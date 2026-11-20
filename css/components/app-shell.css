@@ -198,8 +198,14 @@
   color: var(--color-muted);
 }
 
+/* The name links to My account. */
 .account__name {
   overflow-wrap: anywhere;
+  color: inherit;
+}
+
+.account__name:hover {
+  color: var(--color-accent);
 }
 
 /* A quiet text button: signing out is always available but never the main action. */
@@ -237,5 +243,40 @@
   /* In the top bar the empty spot takes no room anyway. */
   .account[hidden] {
     display: none;
+  }
+}
+
+/* The number of time-off requests waiting for the person's review, on "Review time off"
+   (js/components/app-shell.js, showWaitingCount). A small badge at the icon's corner;
+   its aria-label says "3 waiting", so it is not only a coloured number. */
+.tab-bar__link:has(.tab-bar__count) {
+  position: relative;
+}
+
+.tab-bar__count {
+  position: absolute;
+  top: 0.25rem;
+  left: calc(50% + 0.5rem);
+  min-width: 1.25rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #b3261e;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+  text-align: center;
+}
+
+.tab-bar__count[hidden] {
+  display: none;
+}
+
+/* On the desktop bar the icon sits beside the words: the count follows the words instead
+   of covering them. */
+@media (width >= 48rem) {
+  .tab-bar__count {
+    position: static;
+    margin-left: 0.25rem;
   }
 }
