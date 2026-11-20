@@ -52,3 +52,10 @@ main.sign-in {
   font-size: 0.875rem;
   text-align: center;
 }
+
+/* The line under the card that points to the other form: sign-up from sign-in, and
+   sign-in from sign-up. */
+.sign-in__switch {
+  margin: 0;
+  text-align: center;
+}

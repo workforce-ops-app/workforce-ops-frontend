@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Review time off · Workforce Operations</title>
+    <link rel="icon" type="image/png" href="/images/logos/app-square.png" />
+    <link rel="stylesheet" href="/css/base/base.css" />
+    <link rel="stylesheet" href="/css/components/app-shell.css" />
+    <link rel="stylesheet" href="/css/components/form.css" />
+    <link rel="stylesheet" href="/css/components/reauth-dialog.css" />
+    <!-- The "Are you sure?" popup's look. -->
+    <link rel="stylesheet" href="/css/components/week-editor.css" />
+    <link rel="stylesheet" href="/css/pages/time-off.css" />
+    <script type="module" src="/js/pages/time-off-review.js"></script>
+  </head>
+  <body>
+    <!-- The app shell, as on every signed-in page (see pages/my-shifts.html). No tab is
+         marked current: My account is reached from the name in the header. -->
+    <div class="app-shell-top">
+      <header class="app-header">
+        <a class="brand" href="/pages/my-shifts.html">
+          <span class="brand__logo" aria-hidden="true">
+            <img src="/images/logos/app-square.png" alt="" width="40" height="40" />
+          </span>
+          <span class="brand__name">Workforce Operations</span>
+        </a>
+      </header>
+      <nav class="tab-bar" aria-label="Main">
+        <a
+          class="tab-bar__link"
+          href="/pages/my-shifts.html"
+          data-permission="schedule.view_self"
+          hidden
+        >
+          <span class="icon icon--calendar" aria-hidden="true"></span>
+          My week
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off.html"
+          data-permission="time_off.request_self"
+          hidden
+        >
+          <span class="icon icon--lounge" aria-hidden="true"></span>
+          Time off
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off-review.html"
+          aria-current="page"
+          data-permission="time_off.review"
+          hidden
+        >
+          <span class="icon icon--clock" aria-hidden="true"></span>
+          Review time off
+          <!-- How many requests wait for this person; filled in on every page load. -->
+          <span class="tab-bar__count" data-waiting-count hidden></span>
+        </a>
+        <a class="tab-bar__link" href="/pages/schedule.html" data-permission="schedule.view" hidden>
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Department
+        </a>
+        <!-- No permission: everyone signed in reads the announcements meant for them. -->
+        <a class="tab-bar__link" href="/pages/announcements.html">
+          <span class="icon icon--announcement" aria-hidden="true"></span>
+          Announcements
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/admin-people.html"
+          data-permission-any="user.manage org.manage role.manage role.assign reporting_line.manage security.view"
+          hidden
+        >
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Administration
+        </a>
+      </nav>
+      <div id="account" class="account" hidden></div>
+    </div>
+    <p id="page-loading" class="page-loading" role="status">Loading…</p>
+    <main class="app-main time-off" hidden>
+      <h1>Review time off</h1>
+      <!-- What just happened, or a problem (role="status": read out politely). -->
+      <p id="status" class="status" role="status"></p>
+
+      <section aria-labelledby="waiting-title">
+        <h2 id="waiting-title">Waiting for you</h2>
+        <ul id="waiting-list" class="time-off__list"></ul>
+      </section>
+
+      <!-- Every request of the people you look after (time_off.view). -->
+      <section aria-labelledby="team-title" data-permission="time_off.view" hidden>
+        <h2 id="team-title">Team requests</h2>
+        <div class="field team-filter">
+          <label class="field__label" for="team-status">Show</label>
+          <select id="team-status" class="field__input">
+            <option value="">Every request</option>
+            <option value="pending">Waiting for review</option>
+            <option value="escalated">Moved up</option>
+            <option value="approved">Approved</option>
+            <option value="denied">Declined</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <ul id="team-list" class="team-list"></ul>
+      </section>
+    </main>
+  </body>
+</html>
