@@ -1,6 +1,6 @@
 # Sign in and your account
 
-- **Status:** the sign-in screen is connected to backend authentication (S2). Every signed-in page loads the session, shows the person's name and a Sign out button, and sends signed-out visitors here (UI1, [session and navigation](../architecture/session-and-navigation.md)). The remaining account-management screens are planned.
+- **Status:** the sign-in screen is connected to backend authentication (S2). Every signed-in page loads the session, shows the person's name and a Sign out button, and sends signed-out visitors here (UI1, [session and navigation](../architecture/session-and-navigation.md)). Setting a password from a link, the password re-entry pop-up, and My account are built (UI2b, #21). Asking for a name change is Stretch (#73).
 - **Related:** workforce-ops-app/workforce-ops-frontend#3; backend: [authentication](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/architecture/authentication.md), [company structure](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/organization.md)
 
 ## In short
@@ -17,7 +17,21 @@ The sign-in page (`pages/sign-in.html`) uses `js/pages/sign-in.js` to validate i
 - Server failures include a reference number when one is available, rate limits explain when to retry, and network failures display a separate connection error.
 - The submit button is disabled while a request is in progress, and cached back-navigation clears the password for shared-computer safety.
 
-Every signed-in page loads the session first, shows only the menu entries the person may use, and has a Sign out button in the header (UI1, #13; [session and navigation](../architecture/session-and-navigation.md)).
+Every signed-in page loads the session first, shows only the menu entries the person may use, and has a Sign out button in the header (UI1, #13; [session and navigation](../architecture/session-and-navigation.md)). The person's name in the header links to My account.
+
+**Set your password** (`pages/set-password.html`, `js/pages/set-password.js`):
+- The backend's links have the address `/set-password.html#token=...` (backend `app/auth/links.py`). nginx redirects that address to `/pages/set-password.html` ([nginx](../architecture/nginx.md)); browsers keep the `#token=...` part across a redirect and never send it to a server, so it never appears in any log.
+- The page reads the token once, keeps it in memory, and removes it from the address bar at once with `history.replaceState`, before anything is sent.
+- It checks the length rules and that both entries match before sending. The server checks again and has the last word: a company's longer minimum, common passwords, and passwords containing the person's or the company's name are refused there, and its reason is shown as text.
+- Every reason a link does not work (used, expired, replaced, unknown) gets one message, because the server gives one answer (400). The form is then hidden: that link will not start working.
+- Once set, the fields are cleared and the page points to Sign in. It does not sign the person in: signing in with the new password is the proof that it was saved as meant.
+
+**The re-entry pop-up** (`js/components/reauth-dialog.js`): every signed-in page registers it with the API client when it starts (`startSignedInPage`). On a `403` with type `reauth-required` the client shows it; the password goes to `POST /api/sessions/current/reauth`, and once it is accepted the original request is sent once more. A wrong password keeps the pop-up open with a message; **Go back** resolves without repeating the request, so the page shows the original 403 as a refusal. The password is cleared once accepted and never kept.
+
+**My account** (`pages/account.html`, `js/pages/account.js`):
+- Shows who is signed in (as text).
+- Change your password: current password, the new one twice, the rules shown. `PUT /api/me/password` signs out every other browser and answers with a new session for this one; the page hands its new CSRF token to the API client at once, since the old token ended with the old session. A wrong current password (403) is said plainly. A hidden `username` field holding the email lets password managers save the new password under the right account.
+- Sign out everywhere: asks first ("Are you sure?"), then `DELETE /api/sessions` ends every session, this one too, and the page goes to Sign in.
 
 ## Screens
 

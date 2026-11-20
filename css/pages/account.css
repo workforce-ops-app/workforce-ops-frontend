@@ -1,0 +1,24 @@
+/* My account (pages/account.html): two cards, one per action, one above the other. */
+
+.account-page {
+  max-width: 40rem;
+}
+
+.account-card {
+  margin-top: calc(var(--space) * 1.5);
+  padding: calc(var(--space) * 1.5);
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-card);
+}
+
+.account-card h2 {
+  margin: 0 0 0.25em;
+}
+
+/* "Your password is changed." */
+.account-page__done {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-heading);
+}
