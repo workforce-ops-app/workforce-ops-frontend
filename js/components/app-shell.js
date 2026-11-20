@@ -8,9 +8,11 @@
 // visitor never sees it, not even for a moment.
 
 import { ApiError, NetworkError } from "../api/client.js";
+import { waitingForMe } from "../api/time-off.js";
 import { companyLogoPath } from "../core/company-logos.js";
 import { el, setText } from "../core/dom.js";
 import { can, loadSession, signOut } from "../core/session.js";
+import { useReauthDialog } from "./reauth-dialog.js";
 
 /**
  * Show or hide every element marked data-permission="<code>" (menu entries, buttons).
@@ -23,6 +25,14 @@ export function applyPermissions(root = document) {
   for (const element of root.querySelectorAll("[data-permission]")) {
     if (element instanceof HTMLElement) {
       element.hidden = !can(element.dataset.permission ?? "");
+    }
+  }
+  // data-permission-any="a b c": shown with any one of them (the Administration entry,
+  // docs/features/administration.md).
+  for (const element of root.querySelectorAll("[data-permission-any]")) {
+    if (element instanceof HTMLElement) {
+      const codes = (element.dataset.permissionAny ?? "").split(/\s+/).filter(Boolean);
+      element.hidden = !codes.some((code) => can(code));
     }
   }
 }
@@ -51,8 +61,13 @@ export function showCompanyLogo(session, root = document) {
  */
 export function accountItems(session, navigate) {
   // The name comes from the server and is shown as text, never parsed as HTML (it is a
-  // value people choose, so it could contain markup).
-  const name = el("span", { className: "account__name", text: session.user.display_name });
+  // value people choose, so it could contain markup). It links to My account, where the
+  // person changes their password or signs out everywhere.
+  const name = el("a", {
+    className: "account__name",
+    text: session.user.display_name,
+    attrs: { href: ACCOUNT_PAGE },
+  });
   const button = el("button", {
     className: "account__sign-out",
     text: "Sign out",
@@ -82,6 +97,9 @@ export function accountItems(session, navigate) {
 
   return [name, button];
 }
+
+/** My account (pages/account.html): the person's own password and sessions. */
+export const ACCOUNT_PAGE = "/pages/account.html";
 
 /** The application's name, as the pages' HTML writes it in the brand and the tab title. */
 const APP_NAME = "Workforce Operations";
@@ -121,6 +139,50 @@ export function reloadIfRestored(event, reload = () => window.location.reload())
   if (event.persisted) reload();
 }
 
+/** @type {Promise<import("../api/time-off.js").TimeOff[]> | null} */
+let waiting = null;
+
+/**
+ * The time-off requests waiting for the person's review, asked for once per page load:
+ * the menu's count and the home screen both need them, so they share one request. A
+ * failed request is forgotten, so a later call can try again.
+ * @returns {Promise<import("../api/time-off.js").TimeOff[]>}
+ */
+export function waitingRequests() {
+  if (!waiting) {
+    waiting = waitingForMe().catch((error) => {
+      waiting = null;
+      throw error;
+    });
+  }
+  return waiting;
+}
+
+/** Ask again on the next call (for the tests: in the browser, each page load starts fresh). */
+export function forgetWaitingRequests() {
+  waiting = null;
+}
+
+/**
+ * The number of time-off requests waiting for the person's review, on the "Review time
+ * off" menu entry (docs/features/time-off.md). There are no notifications in the core
+ * tier, so the count is how reviewers notice new requests; it is loaded again on every
+ * page load. Only for people with time_off.review, and only where the page has the spot
+ * (data-waiting-count). A failure just leaves the count out.
+ */
+export async function showWaitingCount() {
+  const spot = document.querySelector("[data-waiting-count]");
+  if (!(spot instanceof HTMLElement) || !can("time_off.review")) return;
+  try {
+    const count = (await waitingRequests()).length;
+    spot.textContent = count >= 200 ? "200+" : String(count);
+    spot.setAttribute("aria-label", `${spot.textContent} waiting`);
+    spot.hidden = count === 0;
+  } catch {
+    spot.hidden = true;
+  }
+}
+
 /**
  * Load the session, fill in the frame, then show the page.
  *
@@ -136,6 +198,8 @@ export function reloadIfRestored(event, reload = () => window.location.reload())
  */
 export async function startSignedInPage(showPage, navigate) {
   window.addEventListener("pageshow", (event) => reloadIfRestored(event));
+  // A sensitive action answered "reauth-required": ask for the password, then repeat it.
+  useReauthDialog();
 
   /** @type {import("../core/session.js").SessionInfo | null | undefined} */
   let session;
@@ -156,6 +220,8 @@ export async function startSignedInPage(showPage, navigate) {
     }
     showCompanyName(session);
     applyPermissions();
+    // Not awaited: the page never waits for the count.
+    showWaitingCount();
   }
 
   // Only now show the page (its <main> starts hidden in the HTML), in place of the

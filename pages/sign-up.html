@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sign up your company · Workforce Operations</title>
+    <link rel="icon" type="image/png" href="/images/logos/app-square.png" />
+    <link rel="stylesheet" href="/css/base/base.css" />
+    <link rel="stylesheet" href="/css/components/app-shell.css" />
+    <link rel="stylesheet" href="/css/components/form.css" />
+    <link rel="stylesheet" href="/css/pages/sign-in.css" />
+    <script type="module" src="/js/pages/sign-up.js"></script>
+  </head>
+  <body>
+    <!-- Nobody is signed in here: the same frame as the sign-in page. -->
+    <main class="sign-in">
+      <p class="sign-in__brand">
+        <img class="sign-in__logo" src="/images/logos/app.png" alt="" width="640" height="289" />
+        <span class="brand__name">Workforce Operations</span>
+      </p>
+
+      <section class="sign-in__card" aria-labelledby="sign-up-title">
+        <h1 id="sign-up-title">Sign up your company</h1>
+        <p class="muted sign-in__intro">
+          You become the company's owner and can invite everyone else afterwards.
+        </p>
+
+        <!-- method="post" and novalidate as on the sign-in page: the script checks the
+             fields and sends them, so the password never lands in an address. -->
+        <form id="sign-up-form" class="form" method="post" novalidate>
+          <div class="field">
+            <label class="field__label" for="company-name">Company name</label>
+            <input
+              id="company-name"
+              class="field__input"
+              name="company-name"
+              type="text"
+              autocomplete="organization"
+              maxlength="200"
+              required
+            />
+          </div>
+          <div class="field">
+            <label class="field__label" for="timezone">Time zone</label>
+            <!-- Filled by the script with every time zone the browser knows, the
+                 browser's own chosen. Shifts are shown in this zone. -->
+            <select
+              id="timezone"
+              class="field__input"
+              name="timezone"
+              aria-describedby="timezone-hint"
+              required
+            ></select>
+            <span id="timezone-hint" class="field__hint">Where your workplace is.</span>
+          </div>
+          <div class="field">
+            <label class="field__label" for="display-name">Your name</label>
+            <input
+              id="display-name"
+              class="field__input"
+              name="display-name"
+              type="text"
+              autocomplete="name"
+              maxlength="120"
+              required
+            />
+          </div>
+          <div class="field">
+            <label class="field__label" for="email">Email</label>
+            <!-- username: password managers save the new account under this address. -->
+            <input
+              id="email"
+              class="field__input"
+              name="email"
+              type="email"
+              autocomplete="username"
+              maxlength="254"
+              required
+            />
+          </div>
+          <div class="field">
+            <label class="field__label" for="new-password">Password</label>
+            <!-- new-password: password managers offer to make and save a strong one;
+                 pasting is allowed, so long generated passwords work. -->
+            <input
+              id="new-password"
+              class="field__input"
+              name="new-password"
+              type="password"
+              autocomplete="new-password"
+              aria-describedby="password-rules"
+              required
+            />
+            <span id="password-rules" class="field__hint"></span>
+          </div>
+          <div class="field">
+            <label class="field__label" for="repeat-password">Password again</label>
+            <input
+              id="repeat-password"
+              class="field__input"
+              name="repeat-password"
+              type="password"
+              autocomplete="new-password"
+              required
+            />
+          </div>
+          <p id="sign-up-message" class="form__message" role="alert" hidden></p>
+          <button class="button button--primary button--wide" type="submit">Create company</button>
+        </form>
+      </section>
+
+      <p class="sign-in__switch">
+        Already have an account? <a href="/pages/sign-in.html">Sign in</a>
+      </p>
+    </main>
+  </body>
+</html>
