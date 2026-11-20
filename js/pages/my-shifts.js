@@ -173,8 +173,9 @@ export async function showMyTimeOff() {
 /**
  * Needs your attention: for people who review time off, how many requests wait for them;
  * for people who plan the week (schedule.edit), the open shifts and open hours in their
- * own department this week. The links under the tiles are in the HTML, each with its own
- * permission. Exported for the tests; the page calls it once, when it loads.
+ * own department this week; for people who post announcements, a link to post one. The
+ * links under the tiles are in the HTML, each with its own permission. Exported for the
+ * tests; the page calls it once, when it loads.
  */
 export async function showAttention() {
   const section = document.getElementById("attention");
@@ -186,9 +187,17 @@ export async function showAttention() {
   // The person's own department: where they plan, and what the department week opens on.
   const departmentId = currentSession()?.user.department_id ?? null;
   const plans = can("schedule.edit") && departmentId !== null;
+  // Posting has a link only (in the HTML), no tile.
+  const posts = can("announcement.create");
   // Nothing to show: the whole section stays hidden (it also starts hidden in the HTML).
-  section.hidden = !(reviews || plans);
+  section.hidden = !(reviews || plans || posts);
   if (section.hidden) return;
+  // Only the link: no tiles, and nothing to ask the server.
+  if (!reviews && !plans) {
+    tiles.hidden = true;
+    setText(status, "");
+    return;
+  }
 
   try {
     // Both requests at once; the waiting list is the same request the menu's count uses.

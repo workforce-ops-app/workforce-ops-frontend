@@ -23,6 +23,7 @@ test("a signed-in page sends a signed-out visitor to the sign-in page", async ({
     "/pages/time-off.html",
     "/pages/time-off-review.html",
     "/pages/announcements.html",
+    "/pages/announcements-manage.html",
   ]) {
     await page.goto(path);
     await expect(page, path).toHaveURL(/\/pages\/sign-in\.html$/);
@@ -43,6 +44,7 @@ test("a signed-in page stays hidden until the session has loaded", async ({ page
     "/pages/time-off.html",
     "/pages/time-off-review.html",
     "/pages/announcements.html",
+    "/pages/announcements-manage.html",
   ]) {
     // Hold the answer back until the page has been checked, then let the 401 through.
     /** @type {() => void} */
