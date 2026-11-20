@@ -8,6 +8,7 @@
 // visitor never sees it, not even for a moment.
 
 import { ApiError, NetworkError } from "../api/client.js";
+import { waitingForMe } from "../api/time-off.js";
 import { companyLogoPath } from "../core/company-logos.js";
 import { el, setText } from "../core/dom.js";
 import { can, loadSession, signOut } from "../core/session.js";
@@ -139,6 +140,26 @@ export function reloadIfRestored(event, reload = () => window.location.reload())
 }
 
 /**
+ * The number of time-off requests waiting for the person's review, on the "Review time
+ * off" menu entry (docs/features/time-off.md). There are no notifications in the core
+ * tier, so the count is how reviewers notice new requests; it is loaded again on every
+ * page load. Only for people with time_off.review, and only where the page has the spot
+ * (data-waiting-count). A failure just leaves the count out.
+ */
+export async function showWaitingCount() {
+  const spot = document.querySelector("[data-waiting-count]");
+  if (!(spot instanceof HTMLElement) || !can("time_off.review")) return;
+  try {
+    const count = (await waitingForMe()).length;
+    spot.textContent = count >= 200 ? "200+" : String(count);
+    spot.setAttribute("aria-label", `${spot.textContent} waiting`);
+    spot.hidden = count === 0;
+  } catch {
+    spot.hidden = true;
+  }
+}
+
+/**
  * Load the session, fill in the frame, then show the page.
  *
  * - Signed out (401): the visitor is on the way to the sign-in page; the page stays hidden
@@ -175,6 +196,8 @@ export async function startSignedInPage(showPage, navigate) {
     }
     showCompanyName(session);
     applyPermissions();
+    // Not awaited: the page never waits for the count.
+    showWaitingCount();
   }
 
   // Only now show the page (its <main> starts hidden in the HTML), in place of the

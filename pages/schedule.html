@@ -56,6 +56,17 @@
         </a>
         <a
           class="tab-bar__link"
+          href="/pages/time-off-review.html"
+          data-permission="time_off.review"
+          hidden
+        >
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Review time off
+          <!-- How many requests wait for this person; filled in on every page load. -->
+          <span class="tab-bar__count" data-waiting-count hidden></span>
+        </a>
+        <a
+          class="tab-bar__link"
           href="/pages/schedule.html"
           aria-current="page"
           data-permission="schedule.view"

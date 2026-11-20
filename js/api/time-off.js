@@ -9,13 +9,13 @@ import { api } from "./client.js";
 
 /**
  * @typedef {{
- *   id: string, employee_id: string, first_day: string, last_day: string,
+ *   id: string, employee_id: string, employee_name: string, first_day: string, last_day: string,
  *   reason: string | null,
  *   status: "pending" | "escalated" | "approved" | "denied" | "cancelled",
  *   not_reviewed: boolean, created_at: string, decided_at: string | null,
  * }} TimeOff
  * @typedef {{ id: string, department_id: string, starts_at: string, ends_at: string }} AffectedShift
- * @typedef {{ approver_id: string, decision: "approve" | "deny", decided_at: string,
+ * @typedef {{ approver_id: string, approver_name: string, decision: "approve" | "deny", decided_at: string,
  *   comment: string | null }} Decision
  * @typedef {TimeOff & { affected_shifts: AffectedShift[], decisions: Decision[] }} TimeOffDetail
  */
@@ -53,4 +53,37 @@ export function cancelTimeOff(id) {
  */
 export function viewTimeOff(id) {
   return api.get(`/api/time-off-requests/${encodeURIComponent(id)}`);
+}
+
+// --- Reviewing (the review screen) --------------------------------------------------------
+
+/** @returns {Promise<TimeOff[]>} the requests waiting for this person's decision */
+export async function waitingForMe() {
+  const answer = await api.get(
+    `/api/time-off-requests/waiting?${new URLSearchParams({ limit: "200" })}`,
+  );
+  return answer.items;
+}
+
+/**
+ * Requests of the people in this person's time_off.view scope, newest first.
+ * @param {TimeOff["status"] | ""} status "" for every status
+ * @returns {Promise<TimeOff[]>}
+ */
+export async function teamRequests(status) {
+  const params = new URLSearchParams({ limit: "200" });
+  if (status) params.set("status", status);
+  const answer = await api.get(`/api/time-off-requests?${params}`);
+  return answer.items;
+}
+
+/**
+ * Approve or deny as a reviewer, with an optional comment the employee sees.
+ * @param {string} id
+ * @param {"approve" | "deny"} decision
+ * @param {string | null} comment
+ * @returns {Promise<TimeOff>}
+ */
+export function decideTimeOff(id, decision, comment) {
+  return api.post(`/api/time-off-requests/${encodeURIComponent(id)}/${decision}`, { comment });
 }
