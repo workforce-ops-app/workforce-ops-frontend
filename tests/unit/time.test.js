@@ -2,6 +2,8 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  clockTime,
+  compactTime,
   dayKey,
   daysLater,
   formatDayHeading,
@@ -30,6 +32,27 @@ describe("formatTimeRange", () => {
     expect(formatTimeRange("2026-10-05T14:00:00Z", "2026-10-05T22:00:00Z", CHICAGO)).toBe(
       "9:00 AM - 5:00 PM",
     );
+  });
+});
+
+describe("compactTime", () => {
+  it("writes times as short as possible, for the timeline's narrow bars", () => {
+    // Whole hours drop ":00"; half hours keep their minutes.
+    expect(compactTime("2026-10-05T14:00:00Z", CHICAGO)).toBe("9a");
+    expect(compactTime("2026-10-05T19:30:00Z", CHICAGO)).toBe("2:30p");
+    // Midnight and noon both read as 12, with a and p.
+    expect(compactTime("2026-10-05T05:00:00Z", CHICAGO)).toBe("12a");
+    expect(compactTime("2026-10-05T17:00:00Z", CHICAGO)).toBe("12p");
+  });
+});
+
+describe("clockTime", () => {
+  it("writes times as people say them, for the timeline's widest labels", () => {
+    // Whole hours drop ":00"; other times keep their minutes; AM and PM spelled out.
+    expect(clockTime("2026-10-05T14:00:00Z", CHICAGO)).toBe("9 AM");
+    expect(clockTime("2026-10-05T19:30:00Z", CHICAGO)).toBe("2:30 PM");
+    expect(clockTime("2026-10-05T05:00:00Z", CHICAGO)).toBe("12 AM");
+    expect(clockTime("2026-10-05T17:00:00Z", CHICAGO)).toBe("12 PM");
   });
 });
 

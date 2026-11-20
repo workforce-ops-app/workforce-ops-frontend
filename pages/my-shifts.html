@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/css/components/shift-card.css" />
     <link rel="stylesheet" href="/css/components/day-list.css" />
     <link rel="stylesheet" href="/css/components/form.css" />
+    <link rel="stylesheet" href="/css/components/reauth-dialog.css" />
     <link rel="stylesheet" href="/css/components/shift-dialog.css" />
     <link rel="stylesheet" href="/css/components/week-nav.css" />
     <link rel="stylesheet" href="/css/components/announcement.css" />
@@ -41,6 +42,26 @@
           <span class="icon icon--calendar" aria-hidden="true"></span>
           My week
         </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off.html"
+          data-permission="time_off.request_self"
+          hidden
+        >
+          <span class="icon icon--lounge" aria-hidden="true"></span>
+          Time off
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off-review.html"
+          data-permission="time_off.review"
+          hidden
+        >
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Review time off
+          <!-- How many requests wait for this person; filled in on every page load. -->
+          <span class="tab-bar__count" data-waiting-count hidden></span>
+        </a>
         <a class="tab-bar__link" href="/pages/schedule.html" data-permission="schedule.view" hidden>
           <span class="icon icon--people" aria-hidden="true"></span>
           Department
@@ -49,6 +70,15 @@
         <a class="tab-bar__link" href="/pages/announcements.html">
           <span class="icon icon--announcement" aria-hidden="true"></span>
           Announcements
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/admin-people.html"
+          data-permission-any="user.manage org.manage role.manage role.assign reporting_line.manage"
+          hidden
+        >
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Administration
         </a>
       </nav>
       <!-- The signed-in person's name and the sign-out button, filled in by the script. -->

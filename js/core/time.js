@@ -86,6 +86,46 @@ export function formatMoment(moment, timeZone) {
 }
 
 /**
+ * A moment's time written as short as possible, e.g. "9a" or "2:30p", in a time zone. The
+ * timeline's bars are narrow (an 8-hour shift is about 3rem wide on a laptop), so they use
+ * this instead of "9:00 AM"; the full time is always there for screen readers and in the
+ * details popup.
+ * @param {string} moment an ISO 8601 moment
+ * @param {string} timeZone
+ * @returns {string}
+ */
+export function compactTime(moment, timeZone) {
+  // Start from the 24-hour wall-clock time ("14:30"), which is already in the right zone.
+  const [hour, minute] = wallTime(moment, timeZone).split(":").map(Number);
+  // 0 to 11 is morning ("a"), 12 to 23 afternoon and evening ("p").
+  const suffix = hour < 12 ? "a" : "p";
+  // A 12-hour clock: 0 and 12 both read as 12 (midnight is "12a", noon "12p").
+  const twelve = hour % 12 === 0 ? 12 : hour % 12;
+  // Whole hours leave out ":00", so "9a" instead of "9:00a".
+  return minute === 0
+    ? `${twelve}${suffix}`
+    : `${twelve}:${String(minute).padStart(2, "0")}${suffix}`;
+}
+
+/**
+ * A moment's time as people say it, e.g. "9 AM" or "2:30 PM", in a time zone: like
+ * formatTime, but whole hours leave out ":00". The timeline's widest bar label uses it
+ * ("9 AM - 5 PM"), so the time is easy to scan without wasting room on ":00".
+ * @param {string} moment an ISO 8601 moment
+ * @param {string} timeZone
+ * @returns {string}
+ */
+export function clockTime(moment, timeZone) {
+  // The same steps as compactTime, with "AM"/"PM" spelled out and a space before them.
+  const [hour, minute] = wallTime(moment, timeZone).split(":").map(Number);
+  const suffix = hour < 12 ? "AM" : "PM";
+  const twelve = hour % 12 === 0 ? 12 : hour % 12;
+  return minute === 0
+    ? `${twelve} ${suffix}`
+    : `${twelve}:${String(minute).padStart(2, "0")} ${suffix}`;
+}
+
+/**
  * A day heading for a day key, e.g. "Monday, October 5".
  * @param {string} key "YYYY-MM-DD"
  * @returns {string}
