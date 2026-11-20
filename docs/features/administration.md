@@ -1,6 +1,6 @@
 # Administration
 
-- **Status:** the People screen, with giving a role and reporting lines, is built (UI7, #19). Departments and teams, Roles (with owners), and Approvals follow in #20.
+- **Status:** built. The People screen, with giving a role and reporting lines (UI7, #19); Departments and teams, Roles and owners, and Approvals (UI8, #20).
 - **Related:** workforce-ops-app/workforce-ops-frontend#3; backend: [company structure, people, and access](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/features/organization.md), [authorization](https://github.com/workforce-ops-app/workforce-ops-backend/blob/main/docs/architecture/authorization.md)
 
 ## In short
@@ -15,7 +15,7 @@ The screens administrators and owners use to run their company: people and their
 | **Roles**: each role and what it grants; create, change, archive (only where every holder is below you) | `pages/admin-roles.html` | `role.view` to see; `role.manage` to change | desktop first |
 | **Give a role**: role and scope (company, department, team, or one person); shows when it will need approval from above | dialog on the People page | `role.assign` | desktop first |
 | **Reporting lines**: a person's managers and reports; add or end a line | section of the People page | `reporting_line.manage` | desktop first |
-| **Approvals**: requests waiting for me (same-level roles, owner changes, name changes) and requests I made | `pages/approvals.html` | everyone (most people see only their own) | both |
+| **Approvals**: requests waiting for me (same-level roles, owner changes, name changes) and requests I made | `pages/admin-approvals.html` | everyone with the Administration entry (most see only their own) | both |
 | **Owners**: current owners; propose adding or removing one | section of the Roles page | Owner only | desktop first |
 
 ## Server requests used
@@ -35,6 +35,15 @@ Through `js/api/users.js`, `js/api/org.js`, `js/api/roles.js`, and `js/api/appro
 - **Reporting lines** (`reporting_line.manage`, people the user is above): who they report to and who reports to them, an End button on each, and Add a manager.
 - **Who is above whom** comes from the API (`you_are_above` on each person, backend #168), so the page never guesses. Someone not above a person sees why the buttons are missing. Your own entry points to My account.
 - Popups: `js/components/form-dialog.js` (a small form whose choices may depend on another field; the server's refusal is shown inside it), `js/components/link-dialog.js` (the link shown once), and `confirm-dialog.js` ("Are you sure?" before deactivating, signing out, removing a role, or ending a line).
+
+## Departments and teams, Roles and owners, Approvals (built)
+
+A sub-menu under the tab bar links the four administration screens, each shown by the permission it needs (People always; Departments and teams with `org.manage`; Roles and owners with `role.view`; Approvals always). Shared pieces: `js/components/admin-page.js` (the status line, buttons that report a failure there, "A, B and C"), `css/pages/admin.css` (the sub-menu and cards).
+
+- **Departments and teams** (`js/pages/admin-structure.js`): each active department with its time zone (the company's unless set; from the list, backend #170), its teams, and who is in each. With `org.manage`: add, change (name and time zone), and archive a department; add, rename, and archive a team; Members (tick to keep, choose one to add). Archiving a department with people or teams is refused by the API, and the reason is shown.
+- **Roles and owners** (`js/pages/admin-roles.js`): every role with what it grants. Change and Archive appear only with `role.manage` and where the API says `you_may_change` (backend #170: above every holder, or an owner; never the Owner role or an archived one); otherwise the card says why. The permission list offers only what the user holds (AZ3); a permission the role grants that they lack is shown ticked and locked. Owners: the list, and for owners (`company.transfer_ownership`) Add an owner and Remove; the answer is "Done" or "Sent for approval to ..." (every other owner must agree).
+- **Approvals** (`js/pages/admin-approvals.js`): "Waiting for you" (Approve, Deny) and "Yours" (what became of each; Cancel request on your own pending ones). Each request is one sentence, such as "Ada asks to give Chef the Scheduler role, for the Kitchen department.", from the names the API sends (backend #170). Time-off requests are left out: they are decided on the time-off screens.
+- Every change asks "Are you sure?" or opens a form first; changing what a role grants, archiving a role, approving admin-level changes, and owner changes ask for the password again.
 
 ## Notes
 - **Setup and reset links** are shown once, with a copy button and a reminder to pass them on in person or by text; the page never stores them.

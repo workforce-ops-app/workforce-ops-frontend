@@ -9,15 +9,19 @@
 // A select's choices may depend on the other fields (give a role: the places to choose
 // from depend on whether it is for a department, a team, or one person). Such a field
 // gives a function for its options; the field is rebuilt whenever another field changes.
+//
+// A "checks" field is a list of checkboxes (what a role grants). Its value is the chosen
+// values joined by spaces (permission codes have none). A locked choice is shown but
+// cannot be changed: a permission the person lacks stays as it is (rule AZ3).
 
 import { el } from "../core/dom.js";
 import { createModal, explainFailure } from "./modal.js";
 
 /**
- * @typedef {{ value: string, label: string }} Choice
+ * @typedef {{ value: string, label: string, locked?: boolean }} Choice
  * @typedef {Record<string, string>} Values
  * @typedef {{
- *   name: string, label: string, type: "text" | "email" | "select",
+ *   name: string, label: string, type: "text" | "email" | "select" | "checks",
  *   value?: string, required?: boolean, autocomplete?: string, hint?: string,
  *   options?: Choice[] | ((values: Values) => Choice[]),
  *   shown?: (values: Values) => boolean,
@@ -150,6 +154,7 @@ function fieldRow(field, values, rerender) {
   const id = `form-dialog-${field.name}`;
   /** @type {HTMLInputElement | HTMLSelectElement} */
   let input;
+  if (field.type === "checks") return checksRow(field, values);
   if (field.type === "select") {
     const choices =
       typeof field.options === "function" ? field.options(values) : (field.options ?? []);
@@ -195,4 +200,36 @@ function fieldRow(field, values, rerender) {
   ];
   if (field.hint) children.push(el("span", { className: "field__hint", text: field.hint }));
   return el("div", { className: "field" }, children);
+}
+
+/**
+ * A list of checkboxes in a fieldset; the value is the checked values joined by spaces.
+ * @param {Field} field
+ * @param {Values} values
+ * @returns {HTMLElement}
+ */
+function checksRow(field, values) {
+  const choices =
+    typeof field.options === "function" ? field.options(values) : (field.options ?? []);
+  const chosen = new Set(values[field.name].split(" ").filter(Boolean));
+  const boxes = choices.map((choice, index) => {
+    const id = `form-dialog-${field.name}-${index}`;
+    const box = /** @type {HTMLInputElement} */ (
+      el("input", { attrs: { id, type: "checkbox", name: field.name, value: choice.value } })
+    );
+    box.checked = chosen.has(choice.value);
+    box.disabled = Boolean(choice.locked);
+    box.addEventListener("change", () => {
+      if (box.checked) chosen.add(choice.value);
+      else chosen.delete(choice.value);
+      values[field.name] = [...chosen].sort().join(" ");
+    });
+    return el("div", { className: "field__check" }, [
+      box,
+      el("label", { text: choice.label, attrs: { for: id } }),
+    ]);
+  });
+  const children = [el("legend", { className: "field__label", text: field.label }), ...boxes];
+  if (field.hint) children.push(el("span", { className: "field__hint", text: field.hint }));
+  return el("fieldset", { className: "field field--checks" }, children);
 }
