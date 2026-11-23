@@ -33,3 +33,16 @@ export function signOut() {
 export function signOutEverywhere() {
   return api.delete("/api/sessions");
 }
+
+/**
+ * Sign up a new company: creates the company and its owner, and signs the owner in
+ * (backend POST /api/sign-up). The backend sets the HttpOnly session cookie, exactly as
+ * at sign-in, and answers with the same body.
+ *
+ * @param {{ company_name: string, timezone: string, display_name: string, email: string,
+ *   password: string }} form
+ * @returns {Promise<object>} The new owner, their company, permissions, and expiration.
+ */
+export function signUp(form) {
+  return api.post("/api/sign-up", form);
+}

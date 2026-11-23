@@ -10,8 +10,12 @@
     <link rel="stylesheet" href="/css/components/shift-card.css" />
     <link rel="stylesheet" href="/css/components/day-list.css" />
     <link rel="stylesheet" href="/css/components/form.css" />
+    <link rel="stylesheet" href="/css/components/reauth-dialog.css" />
     <link rel="stylesheet" href="/css/components/shift-dialog.css" />
     <link rel="stylesheet" href="/css/components/week-nav.css" />
+    <link rel="stylesheet" href="/css/components/announcement.css" />
+    <link rel="stylesheet" href="/css/components/stat-tile.css" />
+    <link rel="stylesheet" href="/css/components/home.css" />
     <script type="module" src="/js/pages/my-shifts.js"></script>
   </head>
   <body>
@@ -40,9 +44,43 @@
           <span class="icon icon--calendar" aria-hidden="true"></span>
           My week
         </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off.html"
+          data-permission="time_off.request_self"
+          hidden
+        >
+          <span class="icon icon--lounge" aria-hidden="true"></span>
+          Time off
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off-review.html"
+          data-permission="time_off.review"
+          hidden
+        >
+          <span class="icon icon--clock" aria-hidden="true"></span>
+          Review time off
+          <!-- How many requests wait for this person; filled in on every page load. -->
+          <span class="tab-bar__count" data-waiting-count hidden></span>
+        </a>
         <a class="tab-bar__link" href="/pages/schedule.html" data-permission="schedule.view" hidden>
           <span class="icon icon--people" aria-hidden="true"></span>
           Department
+        </a>
+        <!-- No permission: everyone signed in reads the announcements meant for them. -->
+        <a class="tab-bar__link" href="/pages/announcements.html">
+          <span class="icon icon--announcement" aria-hidden="true"></span>
+          Announcements
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/admin-people.html"
+          data-permission-any="user.manage org.manage role.manage role.assign reporting_line.manage security.view"
+          hidden
+        >
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Administration
         </a>
       </nav>
       <!-- The signed-in person's name and the sign-out button, filled in by the script. -->
@@ -81,6 +119,73 @@
         <div id="days" class="days"></div>
         <div id="summary" class="summary-card" hidden></div>
       </div>
+      <!-- What needs a manager's attention: tiles filled in by the script, then a link for
+           each kind of work, each shown only with its permission. The section starts hidden
+           and the script shows it for people who review time off, plan the week, or post
+           announcements. -->
+      <section id="attention" class="home-section" aria-labelledby="attention-title" hidden>
+        <h2 id="attention-title" class="home-section__title">Needs your attention</h2>
+        <p id="attention-status" class="status" aria-live="polite">Loading…</p>
+        <div id="attention-tiles" class="stats" hidden></div>
+        <ul class="home-section__links">
+          <li data-permission="time_off.review" hidden>
+            <a class="home-section__link" href="/pages/time-off-review.html">
+              Review time off
+              <span
+                class="icon icon--chevron-right home-section__chevron"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li data-permission="schedule.edit" hidden>
+            <a class="home-section__link" href="/pages/schedule.html">
+              Plan the department week
+              <span
+                class="icon icon--chevron-right home-section__chevron"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+          <li data-permission="announcement.create" hidden>
+            <a class="home-section__link" href="/pages/announcements-manage.html#post">
+              Post an announcement
+              <span
+                class="icon icon--chevron-right home-section__chevron"
+                aria-hidden="true"
+              ></span>
+            </a>
+          </li>
+        </ul>
+      </section>
+      <!-- The person's upcoming time off, for people who can ask for it. -->
+      <section
+        class="home-section"
+        aria-labelledby="time-off-title"
+        data-permission="time_off.request_self"
+        hidden
+      >
+        <h2 id="time-off-title" class="home-section__title">My time off</h2>
+        <p id="time-off-status" class="status" aria-live="polite">Loading your time off…</p>
+        <ul id="home-time-off" class="home-time-off-list"></ul>
+        <a class="home-section__link" href="/pages/time-off.html">
+          All my time off
+          <span class="icon icon--chevron-right home-section__chevron" aria-hidden="true"></span>
+        </a>
+      </section>
+      <!-- The newest announcements, under the week, and a link to all of them. The link is
+           here in the HTML, so it works even when the list cannot load. -->
+      <section class="home-announcements" aria-labelledby="home-announcements-title">
+        <h2 id="home-announcements-title" class="home-announcements__title">Announcements</h2>
+        <p id="announcements-status" class="status" aria-live="polite">Loading announcements…</p>
+        <ul id="home-announcements" class="announcement-list"></ul>
+        <a class="home-announcements__all" href="/pages/announcements.html">
+          See all announcements
+          <span
+            class="icon icon--chevron-right home-announcements__chevron"
+            aria-hidden="true"
+          ></span>
+        </a>
+      </section>
     </main>
   </body>
 </html>
