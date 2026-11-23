@@ -93,6 +93,27 @@ describe("startSignedInPage", () => {
     expect(showPage).toHaveBeenCalledTimes(1);
   });
 
+  it("shows an entry needing any one of several permissions to whoever holds one", async () => {
+    const admin = document.createElement("a");
+    admin.id = "administration";
+    admin.dataset.permissionAny = "user.manage role.assign";
+    admin.hidden = true;
+    document.body.append(admin);
+    fetchSession.mockResolvedValue(sessionWith(["schedule.view_self", "role.assign"]));
+    await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+    expect(byId("administration").hidden).toBe(false);
+  });
+
+  it("hides that entry from someone holding none of them", async () => {
+    const admin = document.createElement("a");
+    admin.id = "administration";
+    admin.dataset.permissionAny = "user.manage role.assign";
+    document.body.append(admin);
+    fetchSession.mockResolvedValue(sessionWith(["schedule.view_self"]));
+    await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+    expect(byId("administration").hidden).toBe(true);
+  });
+
   it("shows the page only once the session has loaded", async () => {
     /** @type {(value: unknown) => void} */
     let answer = () => {};
