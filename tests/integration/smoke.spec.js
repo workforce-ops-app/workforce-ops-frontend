@@ -12,7 +12,17 @@ test("placeholder page loads through nginx and reaches the API", async ({ page }
 // Signed-in pages ask the API "who am I" first. Without a session the answer is 401, and
 // the page must send the visitor to sign in instead of showing an empty schedule.
 test("a signed-in page sends a signed-out visitor to the sign-in page", async ({ page }) => {
-  for (const path of ["/pages/my-shifts.html", "/pages/schedule.html"]) {
+  for (const path of [
+    "/pages/my-shifts.html",
+    "/pages/schedule.html",
+    "/pages/account.html",
+    "/pages/admin-people.html",
+    "/pages/admin-structure.html",
+    "/pages/admin-roles.html",
+    "/pages/admin-approvals.html",
+    "/pages/time-off.html",
+    "/pages/time-off-review.html",
+  ]) {
     await page.goto(path);
     await expect(page, path).toHaveURL(/\/pages\/sign-in\.html$/);
   }
@@ -21,7 +31,17 @@ test("a signed-in page sends a signed-out visitor to the sign-in page", async ({
 // While the "who am I" answer is on its way, the signed-in page must not show itself: a
 // signed-out visitor should never glimpse its heading or week buttons before leaving.
 test("a signed-in page stays hidden until the session has loaded", async ({ page }) => {
-  for (const path of ["/pages/my-shifts.html", "/pages/schedule.html"]) {
+  for (const path of [
+    "/pages/my-shifts.html",
+    "/pages/schedule.html",
+    "/pages/account.html",
+    "/pages/admin-people.html",
+    "/pages/admin-structure.html",
+    "/pages/admin-roles.html",
+    "/pages/admin-approvals.html",
+    "/pages/time-off.html",
+    "/pages/time-off-review.html",
+  ]) {
     // Hold the answer back until the page has been checked, then let the 401 through.
     /** @type {() => void} */
     let release = () => {};
@@ -38,6 +58,28 @@ test("a signed-in page stays hidden until the session has loaded", async ({ page
     await expect(page, path).toHaveURL(/\/pages\/sign-in\.html$/);
     await page.unroute("**/api/sessions/current");
   }
+});
+
+// Setup and reset links from the backend point at /set-password.html#token=... nginx sends
+// them on to the page, the token survives the redirect, and the page then takes it out of
+// the address bar so it is not left in the browser's history.
+test("a setup link reaches the set-password page, which removes the token", async ({ page }) => {
+  await page.goto("/set-password.html#token=not-a-real-token");
+  await expect(page).toHaveURL(/\/pages\/set-password\.html$/);
+  await expect(page.getByRole("heading", { name: "Set your password" })).toBeVisible();
+  await expect(page.locator("#set-password-form")).toBeVisible();
+});
+
+// A new company starts from the sign-in page's link. The page's script runs under the
+// real Content Security Policy and fills the time zones, the browser's own chosen.
+test("the sign-in page links to company sign-up, which offers the time zones", async ({ page }) => {
+  await page.goto("/pages/sign-in.html");
+  await page.getByRole("link", { name: "Sign up your company" }).click();
+  await expect(page).toHaveURL(/\/pages\/sign-up\.html$/);
+  await expect(page.getByRole("heading", { name: "Sign up your company" })).toBeVisible();
+  const own = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+  await expect(page.locator("#timezone")).toHaveValue(own);
+  await expect(page.locator("#password-rules")).toContainText("15 characters");
 });
 
 test("API health response is forwarded through nginx", async ({ request }) => {
