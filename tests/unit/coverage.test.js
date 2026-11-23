@@ -205,12 +205,15 @@ describe("the coworker's card", () => {
       [...root.querySelectorAll("button")].find((b) => b.textContent === label)
     ).click();
 
-  it("shows the name and reason as text, never as HTML", () => {
+  it("shows the name as text, never as HTML, and never a reason", () => {
+    // Threat I10: coworkers never see why someone asked for time off. The API leaves the
+    // reason out for them; even if one arrived, the card has no place to show it.
     const made = card({
-      request: request({ employee_name: "<b>Cara</b>", reason: "<img src=x onerror=alert(1)>" }),
+      request: request({ employee_name: "<b>Cara</b>", reason: "hospital appointment" }),
     });
     expect(made.textContent).toContain("<b>Cara</b> asked for time off");
-    expect(made.textContent).toContain("Reason: <img src=x onerror=alert(1)>");
+    expect(made.textContent).not.toContain("Reason");
+    expect(made.textContent).not.toContain("hospital");
     expect(made.querySelector("img, b")).toBeNull();
     expect(made.textContent).toContain("Tuesday, November 24, 8:00 AM - 4:00 PM");
     expect(made.textContent).toContain("You have not answered.");
