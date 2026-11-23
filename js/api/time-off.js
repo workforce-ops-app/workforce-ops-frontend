@@ -32,8 +32,10 @@ import { api } from "./client.js";
  *   A coworker's answer about one shift. A coworker only ever gets their own; the employee
  *   and the managers get everyone's (the API decides, threat I10).
  * @typedef {TimeOff & { affected_shifts: AffectedShift[], decisions: Decision[], offers?: Offer[] }} TimeOffDetail
- * @typedef {{ request: TimeOff, shifts: AffectedShift[], answers: Offer[] }} Offerable
+ * @typedef {{ request: Omit<TimeOff, "reason">, shifts: AffectedShift[], answers: Offer[] }} Offerable
  *   A coworker's card: a request still collecting, the shifts they could take, their answers.
+ *   The request has no reason: coworkers never see why someone asked for time off (it may
+ *   be medical or personal; threat I10), and the API leaves the field out for them.
  */
 
 /** @returns {Promise<TimeOff[]>} the person's own requests, newest first */
