@@ -2,8 +2,10 @@
 // still collecting offers, with each shift the person could take, their own answer so far,
 // and the buttons to cover it, swap it for one of their own shifts, or decline.
 //
-// Only the builders live here; js/pages/my-shifts.js loads the data. Every name, reason,
-// and API message goes on the page as text with el(), never as HTML (threat T5). The API
+// Only the builders live here; js/pages/my-shifts.js loads the data. Every name and API
+// message goes on the page as text with el(), never as HTML (threat T5). The card never
+// shows why the time off was asked for: that may be medical or personal, so the API does
+// not send the reason to coworkers at all (threat I10), and the card has no place for it. The API
 // checks every rule again (who may offer, overlaps, the swap shift), and a refusal (409)
 // is shown in place, under the shift it is about.
 
@@ -61,7 +63,6 @@ export function offerCard(item, options) {
       className: "offer-card__title",
       text: `${request.employee_name} asked for time off: ${dayRange(request.first_day, request.last_day)}`,
     }),
-    ...(request.reason ? [el("p", { className: "muted", text: `Reason: ${request.reason}` })] : []),
     el(
       "ul",
       { className: "offer-card__shifts" },
