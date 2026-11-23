@@ -199,6 +199,27 @@ describe("who gets edit mode", () => {
     expect(boxes()).toHaveLength(0);
     expect(button("Add shift").hidden).toBe(true);
   });
+
+  // Found in review: the manager tools followed a Kitchen manager into Front of House.
+  it("hides the tools and leaves edit mode in a department where the person may not edit", () => {
+    const { editor } = setUp([shift("s1", MONDAY)]);
+    toggle().click();
+    expect(toggle().getAttribute("aria-pressed")).toBe("true");
+    expect(boxes().length).toBeGreaterThan(0);
+
+    // The next week shown is another department, without schedule.edit there.
+    const week = { departmentId: "d2", monday: MONDAY, days: DAYS, people: null };
+    editor.update({ ...week, shifts: [shift("s2", MONDAY)], today: "2099-10-07", canEdit: false });
+    expect(get("#edit-tools").hidden).toBe(true);
+    expect(toggle().getAttribute("aria-pressed")).toBe("false");
+    expect(boxes()).toHaveLength(0);
+    expect(get("#batch-bar").hidden).toBe(true);
+
+    // Back in a department where they may edit: the button is there again, switched off.
+    editor.update({ ...week, departmentId: "d1", shifts: [], today: "2099-10-07", canEdit: true });
+    expect(get("#edit-tools").hidden).toBe(false);
+    expect(toggle().textContent).toBe("Edit week");
+  });
 });
 
 describe("switching edit mode on and off", () => {
