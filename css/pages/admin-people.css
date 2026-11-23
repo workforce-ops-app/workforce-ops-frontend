@@ -1,0 +1,134 @@
+/* People (pages/admin-people.html): the list on the left, the chosen person on the right.
+   On phones the two stack: the list first, the details under it. */
+
+.admin-people {
+  max-width: 72rem;
+}
+
+.admin-people__columns {
+  display: grid;
+  gap: calc(var(--space) * 1.5);
+}
+
+@media (width >= 56rem) {
+  .admin-people__columns {
+    grid-template-columns: minmax(16rem, 22rem) 1fr;
+    align-items: start;
+  }
+}
+
+.admin-people__list,
+.admin-people__details {
+  padding: calc(var(--space) * 1.25);
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-card);
+}
+
+.people-list {
+  display: grid;
+  gap: 0.25rem;
+  margin: var(--space) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each person is a button: name, then their account status. */
+.people-list__person {
+  display: grid;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.people-list__person:hover,
+.people-list__person[aria-pressed="true"] {
+  background: var(--color-surface-soft);
+}
+
+.people-list__person[aria-pressed="true"] .people-list__name {
+  font-weight: 700;
+}
+
+.people-list__status {
+  font-size: 0.8125rem;
+}
+
+.admin-people__details h2 {
+  margin-top: 0;
+}
+
+.person-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0 0 var(--space);
+}
+
+.person-facts dt {
+  color: var(--color-muted);
+}
+
+.person-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.person-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: var(--space);
+}
+
+.person-section {
+  margin-top: calc(var(--space) * 1.25);
+  padding-top: var(--space);
+  border-top: 1px solid var(--color-border);
+}
+
+.person-section h3 {
+  margin: 0 0 0.5rem;
+}
+
+.person-section h4 {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.9375rem;
+  color: var(--color-muted);
+}
+
+.person-rows {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.person-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* A quieter, smaller button for row actions (Remove, End). */
+.button--small {
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* The link shown once: long, so it wraps inside its field instead of widening the popup. */
+.link-dialog__link {
+  width: 100%;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8125rem;
+}

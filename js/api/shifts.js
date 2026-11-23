@@ -19,11 +19,14 @@
 //   { id, department: { id, name }, employee: { id, display_name } | null,
 //     starts_at, ends_at, timezone, status, details, notes, event_name, event_description }
 
-import { api } from "./client.js";
+import { api, getAll } from "./client.js";
 
 /**
  * @typedef {{ id: string, name: string }} DepartmentRef
- * @typedef {{ id: string, display_name: string }} EmployeeRef
+ * @typedef {{ name: string, built_in: "owner" | "administrator" | "manager" | "employee" | null }} RoleRef
+ *   one of a person's roles in the shift's department (null built_in: a role the company
+ *   added); in the people menu's order (workforce-ops-app/workforce-ops-backend#159)
+ * @typedef {{ id: string, display_name: string, roles?: RoleRef[] }} EmployeeRef
  * @typedef {{
  *   id: string, department: DepartmentRef, employee: EmployeeRef | null,
  *   starts_at: string, ends_at: string, timezone: string,
@@ -46,17 +49,17 @@ export async function listShifts(query) {
   const params = new URLSearchParams({ from: query.from, to: query.to });
   if (query.departmentId) params.set("department_id", query.departmentId);
   if (query.mine) params.set("mine", "true");
-  return fetchAll(params, "/api/shifts");
+  return getAll("/api/shifts", params);
 }
 
 /**
- * The company's active departments (id and name only), sorted by name, for naming the
- * department a week belongs to. From GET /api/departments, which anyone signed in may
- * call (backend organization feature, workforce-ops-backend#88).
- * @returns {Promise<DepartmentRef[]>}
+ * The company's active departments (id, name, and time zone: null for the company's),
+ * sorted by name, for naming the department a week belongs to. From GET /api/departments,
+ * which anyone signed in may call (backend organization feature, workforce-ops-backend#88).
+ * @returns {Promise<(DepartmentRef & { timezone?: string | null })[]>}
  */
 export async function listDepartments() {
-  return fetchAll(new URLSearchParams(), "/api/departments");
+  return getAll("/api/departments");
 }
 
 /**
@@ -70,7 +73,7 @@ export async function listDepartments() {
  * @returns {Promise<EmployeeRef[]>}
  */
 export async function listDepartmentPeople(departmentId) {
-  return fetchAll(new URLSearchParams({ department_id: departmentId }), "/api/users");
+  return getAll("/api/users", new URLSearchParams({ department_id: departmentId }));
 }
 
 // --- Changing shifts (edit mode, workforce-ops-app/workforce-ops-frontend#16) -----------
@@ -150,26 +153,4 @@ export function cancelShift(id) {
  */
 export function batchShifts(batch) {
   return api.post("/api/shifts/batch", batch);
-}
-
-/**
- * Every item of a paged list (decision 0026). The API sends long lists a page at a time;
- * each page names the cursor of the next one, until next_cursor is null.
- * @param {URLSearchParams} params the list's filters
- * @param {string} path e.g. "/api/shifts"
- * @returns {Promise<any[]>}
- */
-async function fetchAll(params, path) {
-  /** @type {any[]} */
-  const items = [];
-  /** @type {string | null} */
-  let cursor = null;
-  do {
-    if (cursor) params.set("cursor", cursor);
-    const query = params.size > 0 ? `?${params}` : "";
-    const page = await api.get(`${path}${query}`);
-    items.push(...page.items);
-    cursor = page.next_cursor;
-  } while (cursor);
-  return items;
 }
