@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>People · Workforce Operations</title>
+    <link rel="icon" type="image/png" href="/images/logos/app-square.png" />
+    <link rel="stylesheet" href="/css/base/base.css" />
+    <link rel="stylesheet" href="/css/components/app-shell.css" />
+    <link rel="stylesheet" href="/css/components/form.css" />
+    <link rel="stylesheet" href="/css/components/reauth-dialog.css" />
+    <!-- The popups' look (forms, "Are you sure?", the link shown once). -->
+    <link rel="stylesheet" href="/css/components/week-editor.css" />
+    <link rel="stylesheet" href="/css/pages/admin.css" />
+    <link rel="stylesheet" href="/css/pages/admin-people.css" />
+    <script type="module" src="/js/pages/admin-people.js"></script>
+  </head>
+  <body>
+    <!-- The app shell, as on every signed-in page (see pages/my-shifts.html). -->
+    <div class="app-shell-top">
+      <header class="app-header">
+        <a class="brand" href="/pages/my-shifts.html">
+          <span class="brand__logo" aria-hidden="true">
+            <img src="/images/logos/app-square.png" alt="" width="40" height="40" />
+          </span>
+          <span class="brand__name">Workforce Operations</span>
+        </a>
+      </header>
+      <nav class="tab-bar" aria-label="Main">
+        <a
+          class="tab-bar__link"
+          href="/pages/my-shifts.html"
+          data-permission="schedule.view_self"
+          hidden
+        >
+          <span class="icon icon--calendar" aria-hidden="true"></span>
+          My week
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off.html"
+          data-permission="time_off.request_self"
+          hidden
+        >
+          <span class="icon icon--lounge" aria-hidden="true"></span>
+          Time off
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off-review.html"
+          data-permission="time_off.review"
+          hidden
+        >
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Review time off
+          <!-- How many requests wait for this person; filled in on every page load. -->
+          <span class="tab-bar__count" data-waiting-count hidden></span>
+        </a>
+        <a class="tab-bar__link" href="/pages/schedule.html" data-permission="schedule.view" hidden>
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Department
+        </a>
+        <!-- No permission: everyone signed in reads the announcements meant for them. -->
+        <a class="tab-bar__link" href="/pages/announcements.html">
+          <span class="icon icon--announcement" aria-hidden="true"></span>
+          Announcements
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/admin-people.html"
+          aria-current="page"
+          data-permission-any="user.manage org.manage role.manage role.assign reporting_line.manage"
+          hidden
+        >
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Administration
+        </a>
+      </nav>
+      <div id="account" class="account" hidden></div>
+    </div>
+    <p id="page-loading" class="page-loading" role="status">Loading…</p>
+    <main class="app-main admin-people" hidden>
+      <!-- The administration screens (docs/features/administration.md), each shown by the
+           permission it needs; the API checks every request regardless. -->
+      <nav class="admin-nav" aria-label="Administration">
+        <a class="admin-nav__link" href="/pages/admin-people.html" aria-current="page">People</a>
+        <a
+          class="admin-nav__link"
+          href="/pages/admin-structure.html"
+          data-permission="org.manage"
+          hidden
+          >Departments and teams</a
+        >
+        <a class="admin-nav__link" href="/pages/admin-roles.html" data-permission="role.view" hidden
+          >Roles and owners</a
+        >
+        <a class="admin-nav__link" href="/pages/admin-approvals.html">Approvals</a>
+      </nav>
+      <h1>People</h1>
+      <!-- Results of actions, and problems loading (role="status": read out politely). -->
+      <p id="status" class="status" role="status">Loading people…</p>
+
+      <div class="admin-people__columns">
+        <section class="admin-people__list" aria-labelledby="people-list-title">
+          <h2 id="people-list-title" class="visually-hidden">Everyone you can see</h2>
+          <div class="field">
+            <label class="field__label" for="people-search">Search by name or email</label>
+            <input id="people-search" class="field__input" type="search" autocomplete="off" />
+          </div>
+          <button
+            id="add-person"
+            class="button button--primary"
+            type="button"
+            data-permission="user.manage"
+            hidden
+          >
+            Add a person
+          </button>
+          <ul id="people-list" class="people-list"></ul>
+        </section>
+
+        <!-- Filled in when a person is chosen. aria-live: the new details are announced. -->
+        <section
+          id="person-details"
+          class="admin-people__details"
+          aria-labelledby="person-name"
+          aria-live="polite"
+          hidden
+        ></section>
+      </div>
+    </main>
+  </body>
+</html>
