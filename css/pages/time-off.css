@@ -1,0 +1,107 @@
+/* Time off (pages/time-off.html): the request form, then the person's requests. Phone
+   first: one column; the two date fields sit side by side when there is room. */
+
+.time-off {
+  max-width: 40rem;
+}
+
+.time-off__panel,
+.time-off-card {
+  padding: calc(var(--space) * 1.25);
+  border-radius: var(--radius-card);
+  background: var(--color-background);
+  box-shadow: var(--shadow-card);
+}
+
+.time-off__panel {
+  margin-bottom: calc(var(--space) * 1.5);
+}
+
+.time-off__panel h2 {
+  margin-top: 0;
+}
+
+.time-off__days {
+  display: grid;
+  gap: var(--space);
+}
+
+@media (width >= 30rem) {
+  .time-off__days {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* The affected-shifts preview: quiet until there is something to say. */
+.time-off__affected:empty {
+  display: none;
+}
+
+.time-off__affected {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  background: var(--color-surface-soft);
+}
+
+.time-off__affected p,
+.time-off__affected ul {
+  margin: 0 0 0.25rem;
+}
+
+textarea.field__input {
+  min-height: 5rem;
+  resize: vertical;
+  font: inherit;
+}
+
+.time-off__list {
+  display: grid;
+  gap: var(--space);
+  margin: var(--space) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.time-off-card p {
+  margin: 0 0 0.375rem;
+}
+
+.time-off-card__days {
+  font-weight: 700;
+}
+
+/* The status, with a coloured edge so it reads at a glance (the words say it too). */
+.time-off-card {
+  border-left: 4px solid var(--color-border);
+}
+
+.time-off-card--approved {
+  border-left-color: #2f7a4b;
+}
+
+.time-off-card--denied {
+  border-left-color: #b3261e;
+}
+
+.time-off-card--escalated,
+.time-off-card--pending {
+  border-left-color: #c58a00;
+}
+
+.person-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.person-actions:empty {
+  display: none;
+}
+
+.time-off-card__details:empty {
+  display: none;
+}
+
+.time-off-card__details ul {
+  margin: 0.5rem 0 0;
+}
