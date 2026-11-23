@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>My account · Workforce Operations</title>
+    <link rel="icon" type="image/png" href="/images/logos/app-square.png" />
+    <link rel="stylesheet" href="/css/base/base.css" />
+    <link rel="stylesheet" href="/css/components/app-shell.css" />
+    <link rel="stylesheet" href="/css/components/form.css" />
+    <link rel="stylesheet" href="/css/components/reauth-dialog.css" />
+    <!-- The "Are you sure?" popup's look (js/components/confirm-dialog.js). -->
+    <link rel="stylesheet" href="/css/components/week-editor.css" />
+    <link rel="stylesheet" href="/css/pages/account.css" />
+    <script type="module" src="/js/pages/account.js"></script>
+  </head>
+  <body>
+    <!-- The app shell, as on every signed-in page (see pages/my-shifts.html). No tab is
+         marked current: My account is reached from the name in the header. -->
+    <div class="app-shell-top">
+      <header class="app-header">
+        <a class="brand" href="/pages/my-shifts.html">
+          <span class="brand__logo" aria-hidden="true">
+            <img src="/images/logos/app-square.png" alt="" width="40" height="40" />
+          </span>
+          <span class="brand__name">Workforce Operations</span>
+        </a>
+      </header>
+      <nav class="tab-bar" aria-label="Main">
+        <a
+          class="tab-bar__link"
+          href="/pages/my-shifts.html"
+          data-permission="schedule.view_self"
+          hidden
+        >
+          <span class="icon icon--calendar" aria-hidden="true"></span>
+          My week
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off.html"
+          data-permission="time_off.request_self"
+          hidden
+        >
+          <span class="icon icon--lounge" aria-hidden="true"></span>
+          Time off
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off-review.html"
+          data-permission="time_off.review"
+          hidden
+        >
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Review time off
+          <!-- How many requests wait for this person; filled in on every page load. -->
+          <span class="tab-bar__count" data-waiting-count hidden></span>
+        </a>
+        <a class="tab-bar__link" href="/pages/schedule.html" data-permission="schedule.view" hidden>
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Department
+        </a>
+        <!-- No permission: everyone signed in reads the announcements meant for them. -->
+        <a class="tab-bar__link" href="/pages/announcements.html">
+          <span class="icon icon--announcement" aria-hidden="true"></span>
+          Announcements
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/admin-people.html"
+          data-permission-any="user.manage org.manage role.manage role.assign reporting_line.manage"
+          hidden
+        >
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Administration
+        </a>
+      </nav>
+      <div id="account" class="account" hidden></div>
+    </div>
+    <p id="page-loading" class="page-loading" role="status">Loading…</p>
+    <main class="app-main account-page" hidden>
+      <h1>My account</h1>
+      <p id="account-who" class="muted"></p>
+
+      <section class="account-card" aria-labelledby="password-title">
+        <h2 id="password-title">Change your password</h2>
+        <p class="muted">
+          Every other browser where you are signed in is signed out. This one stays signed in.
+        </p>
+        <!-- method="post" and novalidate as on the sign-in page. -->
+        <form id="password-form" class="form" method="post" novalidate>
+          <!-- Who the password belongs to, for password managers (filled in by the script);
+               they save the new password under this name. Not shown. -->
+          <input
+            id="account-username"
+            name="username"
+            type="email"
+            autocomplete="username"
+            hidden
+          />
+          <div class="field">
+            <label class="field__label" for="current-password">Current password</label>
+            <input
+              id="current-password"
+              class="field__input"
+              name="current-password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+          <div class="field">
+            <label class="field__label" for="new-password">New password</label>
+            <input
+              id="new-password"
+              class="field__input"
+              name="new-password"
+              type="password"
+              autocomplete="new-password"
+              aria-describedby="password-rules"
+              required
+            />
+            <span id="password-rules" class="field__hint"></span>
+          </div>
+          <div class="field">
+            <label class="field__label" for="repeat-password">New password again</label>
+            <input
+              id="repeat-password"
+              class="field__input"
+              name="repeat-password"
+              type="password"
+              autocomplete="new-password"
+              required
+            />
+          </div>
+          <p id="password-message" class="form__message" role="alert" hidden></p>
+          <p id="password-done" class="account-page__done" role="status" hidden></p>
+          <button class="button button--primary" type="submit">Change password</button>
+        </form>
+      </section>
+
+      <section class="account-card" aria-labelledby="sessions-title">
+        <h2 id="sessions-title">Sign out everywhere</h2>
+        <p class="muted">
+          Ends every session of yours, on every phone and computer, this one included. Use it if you
+          signed in on a computer you no longer have, or think someone else might be using your
+          account.
+        </p>
+        <p id="sessions-message" class="form__message" role="alert" hidden></p>
+        <button id="sign-out-everywhere" class="button button--danger" type="button">
+          Sign out everywhere
+        </button>
+      </section>
+    </main>
+  </body>
+</html>

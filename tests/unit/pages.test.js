@@ -221,7 +221,7 @@ describe("Department week", () => {
     expect(text("title")).toBe("Kitchen");
   });
 
-  it("fills the timeline and the week's numbers when the page has them", async () => {
+  it("fills the calendar and the week's numbers when the page has them", async () => {
     page([
       "title",
       "week-range",
@@ -230,7 +230,7 @@ describe("Department week", () => {
       "next-week",
       "status",
       "days",
-      "timeline",
+      "calendar",
       "stats",
     ]);
     mocked.mockResolvedValue([
@@ -240,8 +240,11 @@ describe("Department week", () => {
 
     await showWeek("?week=2026-10-05&department=d1");
 
-    // One row: Ana. The open shift is not a row of the timeline.
-    expect(document.querySelectorAll("#timeline table tbody tr")).toHaveLength(1);
+    // One block: Ana's, on Monday. The open shift is not in the calendar.
+    expect(document.querySelectorAll("#calendar .week-calendar__block")).toHaveLength(1);
+    expect(
+      document.querySelector('#calendar .week-calendar__day[data-day="2026-10-05"] li'),
+    ).not.toBeNull();
     expect(document.getElementById("stats")?.hidden).toBe(false);
     expect(document.querySelectorAll("#stats .stat")).toHaveLength(4);
   });
@@ -352,7 +355,7 @@ describe("Department week", () => {
       "next-week",
       "status",
       "days",
-      "timeline",
+      "calendar",
       "stats",
       "sections",
     ]);
@@ -373,7 +376,7 @@ describe("Department week", () => {
       "next-week",
       "status",
       "days",
-      "timeline",
+      "calendar",
     ]);
     mocked.mockResolvedValueOnce([shiftOn("2026-10-05")]);
     await showWeek("?week=2026-10-05");
@@ -382,8 +385,29 @@ describe("Department week", () => {
     await showWeek("?week=2026-10-12");
 
     expect(document.getElementById("days")?.childElementCount).toBe(0);
-    expect(document.getElementById("timeline")?.childElementCount).toBe(0);
+    expect(document.getElementById("calendar")?.childElementCount).toBe(0);
     expect(text("status")).toBe("Problem: Forbidden");
+  });
+
+  it("fills the department picker with the company's departments, the one shown selected", async () => {
+    // The picker as the page has it: a wrapper holding a list.
+    const picker = document.createElement("div");
+    picker.id = "department-picker";
+    picker.hidden = true;
+    picker.append(document.createElement("select"));
+    document.body.append(picker);
+    mocked.mockResolvedValue([]);
+
+    await showWeek("?week=2026-10-05&department=d2");
+
+    expect(picker.hidden).toBe(false);
+    expect(picker.querySelector("select")?.value).toBe("d2");
+    expect(picker.querySelectorAll("option")).toHaveLength(2);
+
+    // A company with one department: nothing to choose, so no picker.
+    departmentsMock.mockResolvedValue([{ id: "d1", name: "Kitchen" }]);
+    await showWeek("?week=2026-10-05&department=d1");
+    expect(picker.hidden).toBe(true);
   });
 
   it("links to other weeks, keeping the department", async () => {
@@ -475,7 +499,7 @@ describe("Department week", () => {
       "status",
       "days",
       "stats",
-      "timeline",
+      "calendar",
       "sections",
     ]);
     mocked.mockResolvedValue([shiftOn("2026-10-05")]);
@@ -484,7 +508,7 @@ describe("Department week", () => {
     await showWeek("?week=2026-10-05&department=unknown");
 
     expect(document.getElementById("stats")?.hidden).toBe(true);
-    expect(text("timeline")).toBe("");
+    expect(text("calendar")).toBe("");
     expect(text("sections")).toBe("");
     expect(text("days")).toBe("");
   });
