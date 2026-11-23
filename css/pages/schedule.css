@@ -1,7 +1,7 @@
 /* Department week (pages/schedule.html), laid out for planning. Phones and tablets see the
    week's numbers, then a card per day, one under another. Laptops see the numbers, then
-   the whole week as a timeline with one row per person (css/components/week-timeline.css)
-   and the open shifts in a section under it. Both then list the people without a shift
+   the whole week as a calendar with the days across and the hours down the side
+   (css/components/week-calendar.css), and the open shifts in a section under it. Both then list the people without a shift
    (css/components/week-sections.css). */
 
 main.schedule {
@@ -21,9 +21,37 @@ main.schedule {
   margin-bottom: 0;
 }
 
-/* Phones and tablets: the day cards, not the timeline. The open shifts are already in the
+/* The department picker: its label beside the list, under the heading on phones. */
+.department-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.625rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.department-picker[hidden] {
+  display: none;
+}
+
+.department-picker__label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+/* As wide as a long department name needs, not the whole line. */
+.department-picker__select {
+  width: auto;
+  min-width: 12rem;
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding-block: 0.375rem;
+}
+
+/* Phones and tablets: the day cards, not the calendar. The open shifts are already in the
    day cards, so their own section is left out too. */
-.week-timeline-card,
+.week-calendar-card,
 .week-section--open {
   display: none;
 }
@@ -51,8 +79,14 @@ main.schedule {
     gap: var(--space);
   }
 
-  /* Laptops: the timeline and the open shifts section, not the day cards. */
-  .week-timeline-card,
+  /* The picker sits on the right, just before the week choice, on the same line. */
+  .department-picker {
+    margin-bottom: 0;
+    margin-left: auto;
+  }
+
+  /* Laptops: the calendar and the open shifts section, not the day cards. */
+  .week-calendar-card,
   .week-section--open {
     display: block;
   }
@@ -63,11 +97,9 @@ main.schedule {
 }
 
 /* Wide desktop screens: the department week takes most of the window, with roomy margins,
-   instead of a 90rem column with empty space on both sides. The timeline has seven days,
-   the names, and the hours to fit, so every bit of width makes its bars longer and their
-   labels easier to read (an 8-hour shift on a 1920px screen gets about a third more room).
-   Only this page widens; smaller laptops keep the 90rem layout and the timeline's sideways
-   scroll. */
+   instead of a 90rem column with empty space on both sides. The calendar has seven day
+   columns to fit, so every bit of width gives side by side shifts more room for their
+   names. Only this page widens; smaller laptops keep the 90rem layout. */
 @media (width >= 90rem) {
   main.schedule {
     max-width: none;
