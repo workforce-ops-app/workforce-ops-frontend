@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Announcements · Workforce Operations</title>
+    <link rel="icon" type="image/png" href="/images/logos/app-square.png" />
+    <link rel="stylesheet" href="/css/base/base.css" />
+    <link rel="stylesheet" href="/css/components/app-shell.css" />
+    <link rel="stylesheet" href="/css/components/form.css" />
+    <link rel="stylesheet" href="/css/components/announcement.css" />
+    <link rel="stylesheet" href="/css/pages/announcements.css" />
+    <script type="module" src="/js/pages/announcements.js"></script>
+  </head>
+  <body>
+    <!-- The app shell: the brand, the main tabs, then who is signed in. The logo spot
+         shows the application's logo until the session loads, then the company's logo if
+         it has one; the image has empty alt text because the name next to it is the
+         link's text, so the link is never unnamed. Each tab names the permission it needs
+         (data-permission) and starts hidden; js/components/app-shell.js shows the ones the
+         person may use. Announcements needs no permission (everyone signed in reads the
+         ones meant for them), so its tab is always there. -->
+    <div class="app-shell-top">
+      <header class="app-header">
+        <a class="brand" href="/pages/my-shifts.html">
+          <span class="brand__logo" aria-hidden="true">
+            <img src="/images/logos/app-square.png" alt="" width="40" height="40" />
+          </span>
+          <span class="brand__name">Workforce Operations</span>
+        </a>
+      </header>
+      <nav class="tab-bar" aria-label="Main">
+        <a
+          class="tab-bar__link"
+          href="/pages/my-shifts.html"
+          data-permission="schedule.view_self"
+          hidden
+        >
+          <span class="icon icon--calendar" aria-hidden="true"></span>
+          My week
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off.html"
+          data-permission="time_off.request_self"
+          hidden
+        >
+          <span class="icon icon--lounge" aria-hidden="true"></span>
+          Time off
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/time-off-review.html"
+          data-permission="time_off.review"
+          hidden
+        >
+          <span class="icon icon--clock" aria-hidden="true"></span>
+          Review time off
+          <!-- How many requests wait for this person; filled in on every page load. -->
+          <span class="tab-bar__count" data-waiting-count hidden></span>
+        </a>
+        <a class="tab-bar__link" href="/pages/schedule.html" data-permission="schedule.view" hidden>
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Department
+        </a>
+        <!-- No permission: everyone signed in reads the announcements meant for them. -->
+        <a class="tab-bar__link" href="/pages/announcements.html" aria-current="page">
+          <span class="icon icon--announcement" aria-hidden="true"></span>
+          Announcements
+        </a>
+        <a
+          class="tab-bar__link"
+          href="/pages/admin-people.html"
+          data-permission-any="user.manage org.manage role.manage role.assign reporting_line.manage security.view"
+          hidden
+        >
+          <span class="icon icon--people" aria-hidden="true"></span>
+          Administration
+        </a>
+      </nav>
+      <!-- The signed-in person's name and the sign-out button, filled in by the script. -->
+      <div id="account" class="account" hidden></div>
+    </div>
+    <!-- Shown while the session loads, in the place where the page will appear. It says
+         nothing about the page, so a signed-out visitor on the way to sign in sees only this. -->
+    <p id="page-loading" class="page-loading" role="status">Loading…</p>
+    <!-- The page itself starts hidden too, so a signed-out visitor never sees it, not even
+         for a moment before going to the sign-in page. startSignedInPage shows it once the
+         session has loaded (or the server could not be asked, so the page can say so). -->
+    <main class="app-main announcements" hidden>
+      <h1>Announcements</h1>
+      <!-- Only for people who can post (applyPermissions shows it); the API still decides. -->
+      <p data-permission="announcement.create" hidden>
+        <a href="/pages/announcements-manage.html">Post and manage announcements</a>
+      </p>
+      <!-- Loading, "No announcements yet.", and problems, read out by screen readers. -->
+      <p id="status" class="status" aria-live="polite">Loading announcements…</p>
+      <!-- One item per announcement, newest first (js/components/announcement-card.js). -->
+      <ul id="announcements" class="announcement-list"></ul>
+      <!-- Shown only while the server has more (a next_cursor). -->
+      <button id="load-more" class="button announcements__more" type="button" hidden>
+        Load more announcements
+      </button>
+    </main>
+  </body>
+</html>

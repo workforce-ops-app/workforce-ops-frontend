@@ -60,8 +60,10 @@ import { openShiftForm } from "./shift-form.js";
  * The week on screen, as the department week page loaded it.
  * @typedef {{
  *   departmentId: string, monday: string, days: string[], shifts: Shift[],
- *   people: EmployeeRef[] | null, today: string,
+ *   people: EmployeeRef[] | null, today: string, canEdit?: boolean,
  * }} WeekContext
+ * canEdit: whether the person holds schedule.edit in this department (from
+ * GET /api/departments/mine); false hides the tools. Left out, the global check decides.
  */
 
 /** From this many shifts on, a batch asks first and sends confirm_count (the backend's
@@ -155,6 +157,7 @@ export function weekEditor(options) {
   }
   // The same element, known to exist from here on (for the functions below).
   const page = main;
+  const toolbar = tools;
 
   let editing = false;
   /** @type {WeekContext | null} */
@@ -229,7 +232,12 @@ export function weekEditor(options) {
 
   /** @param {WeekContext | null} next */
   function update(next) {
-    context = next;
+    // A department where the person may not edit: no tools there, and edit mode ends, so
+    // the manager buttons never follow someone into a department they do not manage.
+    const allowed = next?.canEdit !== false;
+    if (!allowed && editing) toggle.click();
+    toolbar.hidden = !allowed;
+    context = allowed ? next : null;
     // A new week (or the same one again after a change): start with nothing selected.
     selected.clear();
     barProblem = "";
@@ -324,7 +332,7 @@ export function weekEditor(options) {
   }
 
   /**
-   * Select or unselect a shift. The same shift has a box in the timeline and in the day cards
+   * Select or unselect a shift. The same shift has a box in the calendar and in the day cards
    * (only one is visible at a time), so both are kept in step.
    * @param {string} id
    * @param {boolean} on
