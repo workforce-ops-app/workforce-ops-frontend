@@ -153,6 +153,22 @@ describe("an event card", () => {
     expect(card.querySelector("dd")?.textContent).toBe("5");
   });
 
+  it("shows a refused request with its permission, and no pattern or excerpt", () => {
+    const card = page.eventCard(
+      event("e4", {
+        kind: "authz.denied",
+        pattern_id: null,
+        excerpt: null,
+        field: "schedule.edit",
+      }),
+      "America/Chicago",
+    );
+    const facts = [...card.querySelectorAll("dt")].map((d) => d.textContent);
+    expect(facts).toEqual(["Permission", "Route", "Person", "Address"]);
+    expect(card.querySelector("dd")?.textContent).toBe("schedule.edit");
+    expect(card.querySelector("h3 span")?.textContent).toBe("Refused: no permission");
+  });
+
   it("says None for a missing value and Not signed in without a person", () => {
     const card = page.eventCard(
       event("e3", { client_address: null, user_id: null, user_name: null }),

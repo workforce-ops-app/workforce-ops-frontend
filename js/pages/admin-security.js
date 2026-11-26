@@ -38,8 +38,26 @@ export const KINDS = /** @type {const} */ ([
   ["detection.path_traversal", "Path traversal"],
   ["detection.command_injection", "Command injection"],
   ["detection.format_string", "Format string or template"],
+  // Refused requests (backend #92, detection.md "Refused requests"): what the server
+  // refused, with nothing the sender typed, so they have no pattern and no excerpt.
+  ["authz.denied", "Refused: no permission"],
+  ["tenancy.not_found", "Refused: another company's record"],
+  ["request.not_found", "Refused: not found"],
+  ["csrf.refused", "Refused: forged request"],
+  ["auth.reauth_failed", "Refused: wrong password re-entered"],
+  ["auth.reauth_locked", "Refused: too many wrong passwords"],
   ["detection.summary", "Held back by the rate cap"],
   ["audit.chain_broken", "Audit log check failed"],
+]);
+
+/** The refused-request kinds: no pattern or excerpt, and the field is a permission. */
+const REFUSAL_KINDS = new Set([
+  "authz.denied",
+  "tenancy.not_found",
+  "request.not_found",
+  "csrf.refused",
+  "auth.reauth_failed",
+  "auth.reauth_locked",
 ]);
 
 /**
@@ -120,16 +138,20 @@ function fact(name, value, className) {
  */
 export function eventCard(event, timeZone) {
   const summary = event.kind === "detection.summary";
+  // A refusal holds only what the server decided: its field is the permission refused.
+  const refusal = REFUSAL_KINDS.has(event.kind);
   const facts = [
     // A summary row stands for the events the rate cap held back, not one request.
     ...(summary
       ? fact("Events held back", String(event.count))
-      : fact("Pattern", event.pattern_id)),
-    ...fact("Field", event.field),
+      : refusal
+        ? []
+        : fact("Pattern", event.pattern_id)),
+    ...(refusal ? fact("Permission", event.field) : fact("Field", event.field)),
     ...fact("Route", [event.method, event.route].filter(Boolean).join(" ")),
     ...fact("Person", event.user_name ?? (event.user_id ? "Unknown person" : "Not signed in")),
     ...fact("Address", event.client_address),
-    ...(summary ? [] : fact("Excerpt", event.excerpt, "security-event__excerpt")),
+    ...(summary || refusal ? [] : fact("Excerpt", event.excerpt, "security-event__excerpt")),
   ];
   return el("article", { className: "security-event" }, [
     el("h3", { className: "security-event__title" }, [
