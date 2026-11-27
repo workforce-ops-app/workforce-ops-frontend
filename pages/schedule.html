@@ -13,7 +13,8 @@
     <link rel="stylesheet" href="/css/components/reauth-dialog.css" />
     <link rel="stylesheet" href="/css/components/shift-dialog.css" />
     <link rel="stylesheet" href="/css/components/stat-tile.css" />
-    <link rel="stylesheet" href="/css/components/week-timeline.css" />
+    <link rel="stylesheet" href="/css/components/person-colour.css" />
+    <link rel="stylesheet" href="/css/components/week-calendar.css" />
     <link rel="stylesheet" href="/css/components/week-sections.css" />
     <link rel="stylesheet" href="/css/components/week-nav.css" />
     <link rel="stylesheet" href="/css/components/week-editor.css" />
@@ -72,6 +73,12 @@
           <p class="eyebrow">Department week</p>
           <h1 id="title">Department week</h1>
         </div>
+        <!-- Which department to show, when the company has more than one; the script fills
+             in the departments (js/components/department-picker.js) and shows it. -->
+        <div id="department-picker" class="department-picker" hidden>
+          <label class="department-picker__label" for="department-select">Department</label>
+          <select id="department-select" class="field__input department-picker__select"></select>
+        </div>
         <nav class="week-nav" aria-label="Weeks">
           <a id="previous-week" class="week-nav__button" href="?">
             <span class="icon icon--chevron-left" aria-hidden="true"></span>
@@ -100,10 +107,10 @@
       <div class="week-content">
         <!-- The week's numbers: shifts, open shifts, hours, people. -->
         <section id="stats" class="stats" aria-label="This week in numbers" hidden></section>
-        <!-- The same week twice: a timeline for laptops, a card per day for phones. The
+        <!-- The same week twice: a calendar for laptops, a card per day for phones. The
              stylesheet shows only one of them; the hidden one is skipped by screen readers
              too. -->
-        <div id="timeline" class="week-timeline-card"></div>
+        <div id="calendar" class="week-calendar-card"></div>
         <div id="days" class="days days--week"></div>
         <!-- Under the week: open shifts (laptops only; phones see them in the day cards)
              and the people without a shift this week. -->

@@ -1,0 +1,67 @@
+/* Each person's colour (js/components/person-colour.js picks the number from their ID).
+   A class only sets two custom properties; whatever uses the colour (the calendar's blocks,
+   css/components/week-calendar.css) reads them:
+   --person-tint   a light background, under dark text
+   --person-edge   a strong colour for an edge or a swatch
+   The values are tokens in css/base/base.css, checked there for contrast. Colour is never
+   the only signal: a block always shows the person's name too. */
+
+.person-colour-0 {
+  --person-tint: var(--person-0-tint);
+  --person-edge: var(--person-0-edge);
+}
+
+.person-colour-1 {
+  --person-tint: var(--person-1-tint);
+  --person-edge: var(--person-1-edge);
+}
+
+.person-colour-2 {
+  --person-tint: var(--person-2-tint);
+  --person-edge: var(--person-2-edge);
+}
+
+.person-colour-3 {
+  --person-tint: var(--person-3-tint);
+  --person-edge: var(--person-3-edge);
+}
+
+.person-colour-4 {
+  --person-tint: var(--person-4-tint);
+  --person-edge: var(--person-4-edge);
+}
+
+.person-colour-5 {
+  --person-tint: var(--person-5-tint);
+  --person-edge: var(--person-5-edge);
+}
+
+.person-colour-6 {
+  --person-tint: var(--person-6-tint);
+  --person-edge: var(--person-6-edge);
+}
+
+.person-colour-7 {
+  --person-tint: var(--person-7-tint);
+  --person-edge: var(--person-7-edge);
+}
+
+.person-colour-8 {
+  --person-tint: var(--person-8-tint);
+  --person-edge: var(--person-8-edge);
+}
+
+.person-colour-9 {
+  --person-tint: var(--person-9-tint);
+  --person-edge: var(--person-9-edge);
+}
+
+.person-colour-10 {
+  --person-tint: var(--person-10-tint);
+  --person-edge: var(--person-10-edge);
+}
+
+.person-colour-11 {
+  --person-tint: var(--person-11-tint);
+  --person-edge: var(--person-11-edge);
+}

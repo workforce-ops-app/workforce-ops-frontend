@@ -27,6 +27,36 @@
   --color-warning-background: #fff4d6;
   --color-warning-border: #e3b341;
 
+  /* People's colours on the department calendar (css/components/person-colour.css):
+     for each, a light tint for a block's background and a strong edge for its left border.
+     Dark text (--color-heading) on every tint is at least 13:1, and at least 10:1 on the
+     darker tint of a block under the mouse; every edge is at least 5:1 against white and
+     4.3:1 against its own tint (WCAG 2.2 AA asks 4.5:1 for text, 3:1 for shapes). */
+  --person-0-tint: #e2f1e3; /* green */
+  --person-0-edge: #2e7d32;
+  --person-1-tint: #e1ebf9; /* blue */
+  --person-1-edge: #1a5fb4;
+  --person-2-tint: #ece4f8; /* purple */
+  --person-2-edge: #6a3fb5;
+  --person-3-tint: #fbe3e0; /* red */
+  --person-3-edge: #c0392b;
+  --person-4-tint: #fdead6; /* orange */
+  --person-4-edge: #a85400;
+  --person-5-tint: #d9f0ec; /* teal */
+  --person-5-edge: #00796b;
+  --person-6-tint: #f9e0ed; /* pink */
+  --person-6-edge: #b0236a;
+  --person-7-tint: #edf1d3; /* olive */
+  --person-7-edge: #5f6e00;
+  --person-8-tint: #e3e6f7; /* indigo */
+  --person-8-edge: #3949ab;
+  --person-9-tint: #f2e6da; /* brown */
+  --person-9-edge: #8d5524;
+  --person-10-tint: #daedf6; /* cyan */
+  --person-10-edge: #0a6a94;
+  --person-11-tint: #e5ebee; /* slate */
+  --person-11-edge: #4f6773;
+
   /* Type */
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-heading: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
