@@ -67,9 +67,8 @@ export function formatTimeRange(startsAt, endsAt, timeZone) {
 
 /**
  * A moment's time written as short as possible, e.g. "9a" or "2:30p", in a time zone. The
- * timeline's bars are narrow (an 8-hour shift is about 3rem wide on a laptop), so they use
- * this instead of "9:00 AM"; the full time is always there for screen readers and in the
- * details popup.
+ * calendar's narrow blocks (several shifts side by side) use it instead of "9:00 AM"; the
+ * full time is always there for screen readers and in the details popup.
  * @param {string} moment an ISO 8601 moment
  * @param {string} timeZone
  * @returns {string}
@@ -89,7 +88,7 @@ export function compactTime(moment, timeZone) {
 
 /**
  * A moment's time as people say it, e.g. "9 AM" or "2:30 PM", in a time zone: like
- * formatTime, but whole hours leave out ":00". The timeline's widest bar label uses it
+ * formatTime, but whole hours leave out ":00". The calendar's blocks use it
  * ("9 AM - 5 PM"), so the time is easy to scan without wasting room on ":00".
  * @param {string} moment an ISO 8601 moment
  * @param {string} timeZone
