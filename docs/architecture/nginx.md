@@ -18,6 +18,13 @@ project joins that existing network, where Docker DNS resolves the backend servi
 `api`. Because `proxy_pass` has no replacement path, `/api/health` arrives at FastAPI as
 `/api/health`.
 
+Two addresses are redirected rather than served: `/` goes to the sign-in page, and
+`/set-password.html` (the address in the backend's setup and reset links,
+`/set-password.html#token=...`) goes to `/pages/set-password.html`. The `#token=...` part
+is never sent to nginx, so it is not in any log; browsers carry it over to the redirect's
+new address, where the page reads it and removes it from the address bar. The smoke test
+follows such a link in every browser.
+
 The important files are:
 
 - `Dockerfile`: copies only the static application (`pages/`, `css/`, `js/`, `icons/`,

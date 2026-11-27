@@ -198,8 +198,14 @@
   color: var(--color-muted);
 }
 
+/* The name links to My account. */
 .account__name {
   overflow-wrap: anywhere;
+  color: inherit;
+}
+
+.account__name:hover {
+  color: var(--color-accent);
 }
 
 /* A quiet text button: signing out is always available but never the main action. */

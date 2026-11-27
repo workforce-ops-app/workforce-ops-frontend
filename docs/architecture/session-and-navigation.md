@@ -38,7 +38,7 @@ sequenceDiagram
 | `applyPermissions()` | `js/components/app-shell.js` | shows each element marked `data-permission="<code>"` only when `can(code)`; such elements start `hidden` in the HTML, so nothing flashes while the session loads |
 | `showCompanyLogo(session)` | `js/components/app-shell.js` | replaces the application logo in each `.brand__logo` with the demo company's logo when one is available; otherwise the application logo remains |
 | `showCompanyName(session)` | `js/components/app-shell.js` | puts `company.name` (as text) in every `.brand__name` and at the end of the tab title ("My week · Northwind Cafe"), in place of "Workforce Operations"; the HTML keeps the application's name, so the home link has a name before the session loads and when it cannot be loaded |
-| `accountItems(session)` | `js/components/app-shell.js` | the name (as text) and the Sign out button for the `#account` spot in the header; one request per click, and a plain message when signing out fails |
+| `accountItems(session)` | `js/components/app-shell.js` | the name (as text, linking to My account at `pages/account.html`) and the Sign out button for the `#account` spot in the header; one request per click, and a plain message when signing out fails |
 
 **Menu entries and their permissions:** My week needs `schedule.view_self`; Department needs `schedule.view` (an administrator can remove it from the Employee role, and the tab then disappears).
 
@@ -62,7 +62,7 @@ Previous and Next do not load the page again: `js/components/week-nav.js` change
 ## Not yet
 
 - A session that expires while a page is open shows the page's usual "Problem: Unauthorized" on the next request, including the next week chosen with Previous or Next (the week before is cleared, so no old shifts stay on screen); sending the person to sign in at that moment comes later.
-- The password re-entry pop-up (`reauth-required`) comes with the account screens (#21).
+- The password re-entry pop-up (`reauth-required`) is registered by `startSignedInPage` on every signed-in page (`js/components/reauth-dialog.js`, #21; [sign in](../features/sign-in.md)).
 
 ## Tests
 
