@@ -14,7 +14,14 @@
 import { decide, listRequests } from "../api/approvals.js";
 import { listTeams } from "../api/org.js";
 import { listDepartments } from "../api/shifts.js";
-import { actionButton, joinNames, reportProblem, say } from "../components/admin-page.js";
+import {
+  actionButton,
+  joinNames,
+  keepFocus,
+  markStale,
+  reportProblem,
+  say,
+} from "../components/admin-page.js";
 import { startSignedInPage } from "../components/app-shell.js";
 import { confirmChange } from "../components/confirm-dialog.js";
 import { el } from "../core/dom.js";
@@ -36,7 +43,7 @@ export function describeRequest(request, places) {
   const whom = request.subject_name;
   switch (request.kind) {
     case "role_assignment":
-      return `${who} asks to give ${whom} the ${request.role_name ?? "unknown"} role, for ${where(request.payload, places)}.`;
+      return `${who} asks to give ${whom} the ${request.role_name ?? "unknown"} role, for ${where(request, places)}.`;
     case "owner_add":
       return `${who} proposes making ${whom} an owner of the company.`;
     case "owner_remove":
@@ -48,18 +55,27 @@ export function describeRequest(request, places) {
 
 /**
  * Where a role request would apply.
- * @param {Record<string, unknown>} payload
+ *
+ * The API names the place itself (`scope_name`: the department, the team, or the one
+ * person the role would be over), so a reviewer sees exactly who a role "for one person"
+ * reaches without looking anyone up (review of #93, point 5; backend #215). The department
+ * and team lists are a fallback for an API that does not send the name yet; for one
+ * person there is no fallback, because looking people up would need a permission the
+ * reviewer may not hold.
+ * @param {ApprovalRequest} request
  * @param {Places} places
  */
-function where(payload, places) {
+function where(request, places) {
+  const payload = request.payload;
   const id = String(payload.scope_id ?? "");
+  const named = request.scope_name ?? null;
   switch (payload.scope_type) {
     case "department":
-      return `the ${places.departments.get(id) ?? "unknown"} department`;
+      return `the ${named ?? places.departments.get(id) ?? "unknown"} department`;
     case "team":
-      return `the ${places.teams.get(id) ?? "unknown"} team`;
+      return `the ${named ?? places.teams.get(id) ?? "unknown"} team`;
     case "employee":
-      return "one person";
+      return named ? `${named} only` : "one person (not named)";
     default:
       return "the whole company";
   }
@@ -119,8 +135,16 @@ export async function showApprovals() {
   await drawLists();
 }
 
-/** Both lists, loaded fresh (after every decision too). */
-async function drawLists() {
+/**
+ * Both lists, loaded fresh (after every decision too).
+ *
+ * `done` is the decision just made ("Cancelled."). It is said only after the lists are
+ * loaded, so it never hides a failed reload. If the reload fails, the decision still
+ * stands: the status line says both, and the old cards' buttons are turned off, since a
+ * request shown as waiting may already be decided (review of #93, point 4).
+ * @param {string} [done]
+ */
+async function drawLists(done = "") {
   /** @type {ApprovalRequest[]} */
   let waiting;
   /** @type {ApprovalRequest[]} */
@@ -128,10 +152,22 @@ async function drawLists() {
   try {
     [waiting, mine] = await Promise.all([listRequests("to_review"), listRequests("mine")]);
   } catch (error) {
-    reportProblem(error);
+    markStale("waiting-list", "mine-list");
+    reportProblem(error, done);
     return;
   }
-  say("");
+  // Drawn so keyboard focus comes back to a rebuilt button, or to the heading when the
+  // decided request's card is gone (point 7).
+  keepFocus(() => fillBoth(waiting, mine));
+  say(done);
+}
+
+/**
+ * Fill both lists with cards and their buttons.
+ * @param {ApprovalRequest[]} waiting
+ * @param {ApprovalRequest[]} mine
+ */
+function fillBoth(waiting, mine) {
   const me = currentSession()?.user.id;
   fill(
     "waiting-list",
@@ -140,10 +176,12 @@ async function drawLists() {
       actionButton("Approve", () => decideWith(request, "approve"), {
         className: "button button--primary",
         ariaLabel: `Approve: ${describeRequest(request, places)}`,
+        key: `approve:${request.id}`,
       }),
       actionButton("Deny", () => decideWith(request, "deny"), {
         className: "button button--danger-outline",
         ariaLabel: `Deny: ${describeRequest(request, places)}`,
+        key: `deny:${request.id}`,
       }),
     ],
     "Nothing is waiting for you.",
@@ -153,7 +191,11 @@ async function drawLists() {
     handledHere(mine),
     (request) =>
       request.status === "pending" && request.requested_by === me
-        ? [actionButton("Cancel request", () => decideWith(request, "cancel"))]
+        ? [
+            actionButton("Cancel request", () => decideWith(request, "cancel"), {
+              key: `cancel:${request.id}`,
+            }),
+          ]
         : [],
     "You have no requests.",
   );
@@ -202,8 +244,8 @@ async function decideWith(request, decision) {
     run: () => decide(request.id, decision),
   });
   if (!done) return;
-  await drawLists();
-  say(words.after);
+  // The lists again, and only then what was done (a failed reload is never hidden).
+  await drawLists(words.after);
 }
 
 // Load the session first (signed-out visitors go to the sign-in page), then the page.

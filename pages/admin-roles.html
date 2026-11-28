@@ -93,7 +93,11 @@
       </section>
       <section class="admin-card" aria-labelledby="owners-title">
         <h2 id="owners-title">Owners</h2>
-        <p class="muted">Owners can do everything. Every other owner must agree to a change.</p>
+        <p class="muted">
+          Owners can do everything. Adding an owner needs every other owner to agree. Removing one
+          needs every owner except the one asking and the one removed, so with two owners it takes
+          effect at once.
+        </p>
         <ul id="owner-list" class="person-rows"></ul>
         <button id="add-owner" class="button" type="button" hidden>Add an owner</button>
       </section>

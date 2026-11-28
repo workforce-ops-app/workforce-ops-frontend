@@ -8,8 +8,12 @@
 // lack is shown locked, and stays as it is.
 //
 // Owners: who owns the company. Only an owner (company.transfer_ownership) proposes a
-// change; every other owner must agree, so the answer is either "Done" or "Sent for
-// approval to ...". Never the last owner (the API refuses, and says so).
+// change, and who must agree depends on the change (decision 0032): adding an owner needs
+// every other owner; removing one needs every owner except the one asking and the one
+// being removed (nobody can block their own removal). So with two owners, either removes
+// the other at once. Each popup names who must agree, or says the change takes effect at
+// once (ownerConsequence), and the answer is either "Done" or "Sent for approval to ...".
+// Never the last owner (the API refuses, and says so).
 //
 // Changing what a role grants, archiving one, and any owner change ask for the password
 // again: the API client shows the pop-up and repeats the request (reauth-dialog.js).
@@ -26,7 +30,14 @@ import {
   removeOwner,
   updateRole,
 } from "../api/roles.js";
-import { actionButton, joinNames, reportProblem, say } from "../components/admin-page.js";
+import {
+  actionButton,
+  joinNames,
+  keepFocus,
+  markStale,
+  reportProblem,
+  say,
+} from "../components/admin-page.js";
 import { startSignedInPage } from "../components/app-shell.js";
 import { confirmChange } from "../components/confirm-dialog.js";
 import { openFormDialog } from "../components/form-dialog.js";
@@ -36,6 +47,7 @@ import { can, currentSession } from "../core/session.js";
 /** @typedef {import("../api/roles.js").Role} Role */
 /** @typedef {import("../api/roles.js").Permission} Permission */
 /** @typedef {import("../api/roles.js").OwnerResult} OwnerResult */
+/** @typedef {import("../api/roles.js").Owner} Owner */
 
 // --- Small rules, exported for the tests --------------------------------------------------
 
@@ -64,6 +76,47 @@ export function ownerMessage(result, done) {
 }
 
 /**
+ * Who must agree to an owner change, by the backend's rule (decision 0032;
+ * app/modules/owners/service.py), from the owners as the page last loaded them:
+ *   - adding someone: every owner except the one asking (who counts as agreeing);
+ *   - removing someone: every owner except the one asking and the one being removed.
+ * The server works it out again when the change is sent; this is only what the popup says.
+ * @param {"add" | "remove"} change
+ * @param {Owner[]} owners
+ * @param {string | undefined} me the person asking
+ * @param {string} [personId] the owner to remove
+ * @returns {Owner[]}
+ */
+export function ownersWhoMustAgree(change, owners, me, personId) {
+  return owners.filter((o) => o.id !== me && (change === "add" || o.id !== personId));
+}
+
+/**
+ * What an owner change will do, for its popup (review of #93, point 3): either that it
+ * takes effect at once, or who must agree first. The password is asked first either way.
+ * @param {"add" | "remove"} change
+ * @param {Owner[]} owners
+ * @param {string | undefined} me the person asking
+ * @param {Owner} [person] the owner to remove
+ */
+export function ownerConsequence(change, owners, me, person) {
+  // Step 1: the names of everyone who must agree.
+  const needed = ownersWhoMustAgree(change, owners, me, person?.id).map((o) => o.display_name);
+  // Step 2: removing someone else: say they are not asked, so nobody expects them to have
+  // a say.
+  const notAsked =
+    change === "remove" && person && person.id !== me
+      ? ` ${person.display_name} is not asked.`
+      : "";
+  // Step 3: nobody to ask means it happens as soon as the password is accepted.
+  if (needed.length === 0) {
+    return `This takes effect at once, as soon as your password is checked.${notAsked}`;
+  }
+  const agree = needed.length === 1 ? "agrees" : "all agree";
+  return `This takes effect only once ${joinNames(needed)} ${agree}.${notAsked} Your password is asked first.`;
+}
+
+/**
  * The words for a built-in role.
  * @param {Role} role
  */
@@ -74,8 +127,13 @@ export function roleTag(role) {
 
 // --- The page ----------------------------------------------------------------------------
 
-/** @type {{ roles: Role[], permissions: Permission[], people: import("../api/users.js").Person[] }} */
-const state = { roles: [], permissions: [], people: [] };
+/**
+ * @type {{
+ *   roles: Role[], permissions: Permission[], people: import("../api/users.js").Person[],
+ *   owners: Owner[],
+ * }}
+ */
+const state = { roles: [], permissions: [], people: [], owners: [] };
 
 export async function showRoles() {
   try {
@@ -92,17 +150,26 @@ export async function showRoles() {
   say("");
   document.getElementById("new-role")?.addEventListener("click", () => roleDialog(null));
   drawRoles();
-  await drawOwners();
+  await reloadOwners();
 }
 
-async function reloadRoles() {
+/**
+ * Load the roles again after a change and draw them; the status line says `done`. If the
+ * reload fails, the change was still saved: the line says both, and the old cards'
+ * buttons are turned off (review of #93, point 4).
+ * @param {string} done what was just saved
+ */
+async function reloadRoles(done) {
   try {
     state.roles = await listRoles();
   } catch (error) {
-    reportProblem(error);
+    markStale("role-list");
+    reportProblem(error, done);
     return;
   }
-  drawRoles();
+  // Focus comes back to the button that opened the popup (point 7).
+  keepFocus(drawRoles);
+  say(done);
 }
 
 function drawRoles() {
@@ -118,10 +185,14 @@ function drawRoles() {
       const buttons = [];
       if (manage && role.you_may_change) {
         buttons.push(
-          actionButton("Change", () => roleDialog(role), { ariaLabel: `Change ${role.name}` }),
+          actionButton("Change", () => roleDialog(role), {
+            ariaLabel: `Change ${role.name}`,
+            key: `role-change:${role.id}`,
+          }),
           actionButton("Archive", () => archive(role), {
             className: "button button--danger-outline",
             ariaLabel: `Archive ${role.name}`,
+            key: `role-archive:${role.id}`,
           }),
         );
       }
@@ -184,10 +255,9 @@ async function roleDialog(role) {
     },
   });
   if (!saved) return;
-  say(
+  await reloadRoles(
     role ? `${saved.name} saved.` : `${saved.name} created. Give it to people on the People page.`,
   );
-  await reloadRoles();
 }
 
 /** @param {Role} role */
@@ -199,34 +269,50 @@ async function archive(role) {
     run: () => archiveRole(role.id),
   });
   if (!done) return;
-  say(`${role.name} archived.`);
-  await reloadRoles();
+  await reloadRoles(`${role.name} archived.`);
+}
+
+/**
+ * Load the owners (again) and draw them. `done` is what was just saved, as for
+ * reloadRoles; on the first load it is empty and the status line is left as it is.
+ * @param {string} [done]
+ */
+async function reloadOwners(done = "") {
+  try {
+    state.owners = await listOwners();
+  } catch (error) {
+    // The old list and "Add an owner" act on owners that may have changed: turned off.
+    markStale("owner-list");
+    const add = document.getElementById("add-owner");
+    if (add instanceof HTMLButtonElement) add.disabled = true;
+    reportProblem(error, done);
+    return;
+  }
+  keepFocus(drawOwners);
+  if (done) say(done);
 }
 
 /** The owners, and (for owners) adding and removing them. */
-async function drawOwners() {
+function drawOwners() {
   const list = document.getElementById("owner-list");
   if (!list) return;
-  /** @type {import("../api/roles.js").Owner[]} */
-  let owners;
-  try {
-    owners = await listOwners();
-  } catch (error) {
-    reportProblem(error);
-    return;
-  }
+  const owners = state.owners;
   const mayChange = can("company.transfer_ownership");
   const me = currentSession()?.user.id;
   list.replaceChildren(
     ...owners.map((owner) => {
       const children = [
-        el("span", { text: owner.id === me ? `${owner.display_name} (you)` : owner.display_name }),
+        el("span", {
+          className: "person-row__text",
+          text: owner.id === me ? `${owner.display_name} (you)` : owner.display_name,
+        }),
       ];
       if (mayChange && owners.length > 1) {
         children.push(
           actionButton("Remove", () => removeOwnerDialog(owner), {
             className: "button button--small",
             ariaLabel: `Remove ${owner.display_name} as an owner`,
+            key: `owner-remove:${owner.id}`,
           }),
         );
       }
@@ -236,17 +322,21 @@ async function drawOwners() {
   const add = document.getElementById("add-owner");
   if (add) {
     add.hidden = !mayChange;
-    add.onclick = () => addOwnerDialog(owners.map((o) => o.id));
+    if (add instanceof HTMLButtonElement) add.disabled = false;
+    add.onclick = () => addOwnerDialog(owners);
   }
 }
 
 /**
- * @param {string[]} current the owners now
+ * @param {Owner[]} owners the owners now
  */
-async function addOwnerDialog(current) {
+async function addOwnerDialog(owners) {
+  const current = owners.map((o) => o.id);
+  const me = currentSession()?.user.id;
   const result = await openFormDialog({
     title: "Add an owner",
-    lead: "Owners can do everything, including changing the owners. Every other owner must agree, and your password is asked first.",
+    // Who must agree, by name, or that it happens at once (point 3).
+    lead: `Owners can do everything, including changing the owners. ${ownerConsequence("add", owners, me)}`,
     submitLabel: "Propose",
     fields: [
       {
@@ -262,25 +352,24 @@ async function addOwnerDialog(current) {
     run: (values) => addOwner(values.user_id),
   });
   if (!result) return;
-  say(ownerMessage(result, "Done: they are now an owner."));
-  await drawOwners();
+  await reloadOwners(ownerMessage(result, "Done: they are now an owner."));
 }
 
-/** @param {import("../api/roles.js").Owner} owner */
+/** @param {Owner} owner */
 async function removeOwnerDialog(owner) {
   /** @type {OwnerResult | null} */
   let result = null;
   const done = await confirmChange({
     title: `Remove ${owner.display_name} as an owner?`,
-    message: "Every other owner must agree. Your password is asked first.",
+    // At once, or who must agree first, from the owners now (point 3).
+    message: ownerConsequence("remove", state.owners, currentSession()?.user.id, owner),
     confirmLabel: "Remove owner",
     run: async () => {
       result = await removeOwner(owner.id);
     },
   });
   if (!done || !result) return;
-  say(ownerMessage(result, `Done: ${owner.display_name} is no longer an owner.`));
-  await drawOwners();
+  await reloadOwners(ownerMessage(result, `Done: ${owner.display_name} is no longer an owner.`));
 }
 
 // Load the session first (signed-out visitors go to the sign-in page), then the page.

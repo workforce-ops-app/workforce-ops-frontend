@@ -15,6 +15,7 @@ import { api } from "./client.js";
  *   required_approvals: number, review_by: string, not_reviewed: boolean,
  *   created_at: string, decided_at: string | null, reviewers: Reviewer[],
  *   requested_by_name: string, subject_name: string, role_name: string | null,
+ *   scope_name?: string | null,
  * }} ApprovalRequest
  */
 

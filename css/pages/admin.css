@@ -31,20 +31,55 @@
   font-weight: 700;
 }
 
+/* One column that is never wider than the page: a grid column sized "1fr" alone would grow
+   to fit a long unbroken name, so it is held to minmax(0, 1fr) (review of #93, point 6). */
 .card-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space);
   margin: var(--space) 0 calc(var(--space) * 1.5);
   padding: 0;
   list-style: none;
 }
 
+/* min-width 0 and overflow-wrap anywhere: a name at its longest allowed length, even one
+   with no spaces, breaks inside the card instead of widening the page. */
 .request-card,
 .admin-card {
+  min-width: 0;
   padding: calc(var(--space) * 1.25);
   border-radius: var(--radius-card);
   background: var(--color-background);
   box-shadow: var(--shadow-card);
+  overflow-wrap: anywhere;
+}
+
+/* A team or owner row: the name takes the room left and wraps, and the buttons drop below
+   it on a narrow screen instead of being pushed off the side. */
+.request-card .person-row,
+.admin-card .person-row {
+  flex-wrap: wrap;
+}
+
+.person-row__text {
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The popups: a long name in the title, a checkbox label, or a choice in a list wraps or
+   is cut to the popup's width, so the popup never needs scrolling sideways on a phone. */
+.edit-dialog__title,
+.edit-dialog__lead,
+.field__check label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.edit-dialog select.field__input {
+  max-width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
 }
 
 .request-card p {
@@ -65,6 +100,8 @@
 
 /* The checkbox list in the form popup (what a role grants, team members). */
 .field--checks {
+  /* A fieldset is as wide as its widest line by default; 0 lets long labels wrap. */
+  min-width: 0;
   max-height: 18rem;
   overflow-y: auto;
   margin: 0 0 var(--space);
