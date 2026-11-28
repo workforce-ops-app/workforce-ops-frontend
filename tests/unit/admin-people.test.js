@@ -390,6 +390,55 @@ describe("the People page", () => {
     expect(setup.hasAttribute("aria-disabled")).toBe(false);
   });
 
+  // Choosing someone else and coming back draws new buttons; the guard must not be lost
+  // with the old ones, or the second link would cancel the first one shown.
+  it.each([
+    { who: "Ana", id: "ana", label: "Setup link", purpose: "setup" },
+    { who: "Sofia", id: "sofia", label: "Reset link", purpose: "reset" },
+  ])(
+    "sends one $label request when another person is chosen and then $who again",
+    async ({ who, id, label, purpose }) => {
+      const link = held();
+      server({
+        "GET /api/users": () => json(200, people()),
+        [`POST /api/users/${id}/${purpose}-link`]: () => link.promise,
+      });
+      page();
+      await showPeople();
+      const posts = () => fetchMock.mock.calls.filter(([, init]) => init?.method === "POST");
+
+      // Ask for a link; while it is on its way, choose Priya, then come back.
+      personButton(who).click();
+      await settle();
+      buttonCalled("#person-details", label).click();
+      personButton("Priya").click();
+      await settle();
+      personButton(who).click();
+      await settle();
+
+      // The button drawn again is off, and pressing it sends nothing.
+      const again = buttonCalled("#person-details", label);
+      expect(again.getAttribute("aria-disabled")).toBe("true");
+      again.click();
+      again.click();
+      expect(posts()).toHaveLength(1);
+
+      // The first answer arrives: one popup. Once it is closed, the new button works again.
+      link.release(
+        json(201, {
+          purpose,
+          link: "https://h/set-password.html#token=abc",
+          expires_at: "2026-11-21T18:00:00Z",
+        }),
+      );
+      await settle();
+      expect(document.querySelectorAll("dialog")).toHaveLength(1);
+      buttonCalled("dialog", "Done").click();
+      await settle();
+      expect(again.hasAttribute("aria-disabled")).toBe(false);
+    },
+  );
+
   it("says when roles could not be loaded, and leaves out only what was refused", async () => {
     server({
       "GET /api/users": () => json(200, people()),
