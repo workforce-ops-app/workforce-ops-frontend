@@ -50,10 +50,10 @@ export async function listShifts(query) {
 }
 
 /**
- * The company's active departments (id and name only), sorted by name, for naming the
- * department a week belongs to. From GET /api/departments, which anyone signed in may
+ * The company's active departments (id, name, and time zone: null for the company's),
+ * sorted by name, for naming the department a week belongs to. From GET /api/departments, which anyone signed in may
  * call (backend organization feature, workforce-ops-backend#88).
- * @returns {Promise<DepartmentRef[]>}
+ * @returns {Promise<(DepartmentRef & { timezone?: string | null })[]>}
  */
 export async function listDepartments() {
   return getAll("/api/departments");
