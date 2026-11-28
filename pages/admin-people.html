@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/css/components/reauth-dialog.css" />
     <!-- The popups' look (forms, "Are you sure?", the link shown once). -->
     <link rel="stylesheet" href="/css/components/week-editor.css" />
+    <link rel="stylesheet" href="/css/pages/admin.css" />
     <link rel="stylesheet" href="/css/pages/admin-people.css" />
     <script type="module" src="/js/pages/admin-people.js"></script>
   </head>
@@ -54,6 +55,22 @@
     </div>
     <p id="page-loading" class="page-loading" role="status">Loading…</p>
     <main class="app-main admin-people" hidden>
+      <!-- The administration screens (docs/features/administration.md), each shown by the
+           permission it needs; the API checks every request regardless. -->
+      <nav class="admin-nav" aria-label="Administration">
+        <a class="admin-nav__link" href="/pages/admin-people.html" aria-current="page">People</a>
+        <a
+          class="admin-nav__link"
+          href="/pages/admin-structure.html"
+          data-permission="org.manage"
+          hidden
+          >Departments and teams</a
+        >
+        <a class="admin-nav__link" href="/pages/admin-roles.html" data-permission="role.view" hidden
+          >Roles and owners</a
+        >
+        <a class="admin-nav__link" href="/pages/admin-approvals.html">Approvals</a>
+      </nav>
       <h1>People</h1>
       <!-- Results of actions, and problems loading (role="status": read out politely). -->
       <p id="status" class="status" role="status">Loading people…</p>

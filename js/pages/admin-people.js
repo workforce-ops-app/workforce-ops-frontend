@@ -37,6 +37,7 @@ import {
   makeLink,
   signPersonOut,
 } from "../api/users.js";
+import { joinNames, reportProblem } from "../components/admin-page.js";
 import { startSignedInPage } from "../components/app-shell.js";
 import { confirmChange } from "../components/confirm-dialog.js";
 import { openFormDialog } from "../components/form-dialog.js";
@@ -109,9 +110,7 @@ export function giveMessage(result, roleName, personName) {
   if (names.length === 0) {
     return "Sent for approval. Nobody can review it right now, so it will be declined after 7 days unless that changes.";
   }
-  const list =
-    names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
-  return `Sent for approval to ${list}. ${personName} gets ${roleName} once it is approved.`;
+  return `Sent for approval to ${joinNames(names)}. ${personName} gets ${roleName} once it is approved.`;
 }
 
 /** A list that could not be loaded for another reason than a refusal (see `loadOrRefused`). */
@@ -204,25 +203,6 @@ function zone() {
   return currentSession()?.company.timezone ?? "UTC";
 }
 
-/**
- * Show a failure in the page's status line, or throw a bug on.
- * @param {unknown} error
- */
-function showProblem(error) {
-  const status = document.getElementById("status");
-  if (!status) return;
-  if (error instanceof ApiError || error instanceof NetworkError) {
-    const message =
-      error instanceof ApiError ? error.detail || error.title : "the server could not be reached";
-    status.replaceChildren(el("span", { className: "error", text: `Problem: ${message}` }));
-    return;
-  }
-  status.replaceChildren(
-    el("span", { className: "error", text: "Problem: this page could not load" }),
-  );
-  throw error;
-}
-
 /** Load the people and the places, then draw the page. */
 export async function showPeople() {
   const status = document.getElementById("status");
@@ -244,7 +224,7 @@ export async function showPeople() {
       rolesFailed: roles === FAILED,
     });
   } catch (error) {
-    showProblem(error);
+    reportProblem(error);
     return;
   }
   if (status) setText(status, "");
@@ -263,7 +243,7 @@ async function reload() {
   try {
     state.people = await listPeople();
   } catch (error) {
-    showProblem(error);
+    reportProblem(error);
     return;
   }
   drawList();
@@ -492,7 +472,7 @@ function accountButtons(person) {
       try {
         await action();
       } catch (error) {
-        showProblem(error);
+        reportProblem(error);
       } finally {
         running.delete(key);
         // This button, and the one drawn in its place if the person was chosen again.
@@ -751,7 +731,7 @@ async function addPersonDialog() {
     const link = await makeLink(made.id, "setup");
     await showLinkOnce(link, { name: made.display_name, zone: zone() });
   } catch (error) {
-    showProblem(error);
+    reportProblem(error);
   }
 }
 

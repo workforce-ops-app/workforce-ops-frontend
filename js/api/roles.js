@@ -8,11 +8,11 @@
 // answer "reauth-required": the API client then shows the password pop-up and repeats
 // the request (js/components/reauth-dialog.js), so callers never see that answer.
 
-import { api, getAll } from "./client.js";
+import { api } from "./client.js";
 
 /**
  * @typedef {{ id: string, name: string, built_in: string | null, archived: boolean,
- *   permissions: string[] }} Role
+ *   permissions: string[], you_may_change: boolean }} Role
  * @typedef {{ id: string, user_id: string, role_id: string, role_name: string,
  *   built_in: string | null, role_archived: boolean,
  *   scope_type: "company" | "department" | "team" | "employee", scope_id: string | null }} Assignment
@@ -90,7 +90,85 @@ export function endLine(lineId) {
   return api.post(`/api/reporting-lines/${encodeURIComponent(lineId)}/end`);
 }
 
-/** @returns {Promise<{ id: string, department_id: string, name: string, archived: boolean }[]>} */
-export function listTeams() {
-  return getAll("/api/teams");
+// The teams list lives with the rest of the structure (org.js).
+export { listTeams } from "./org.js";
+
+// --- Roles themselves (the Roles and owners screen) --------------------------------------
+
+/**
+ * @typedef {{ code: string, kind: string, description: string }} Permission
+ * @typedef {{ id: string, display_name: string }} Owner
+ * @typedef {{ done: true, owners: Owner[] } | { done: false, request: PendingRequest }} OwnerResult
+ */
+
+/** @returns {Promise<Permission[]>} every permission a role can grant */
+export async function listPermissions() {
+  const answer = await api.get("/api/permissions");
+  return answer.items;
+}
+
+/**
+ * A new role. Only permissions the person holds themselves are accepted (rule AZ3).
+ * @param {string} name
+ * @param {string[]} permissions
+ * @returns {Promise<Role>}
+ */
+export function createRole(name, permissions) {
+  return api.post("/api/roles", { name, permissions });
+}
+
+/**
+ * Rename a role or replace what it grants (only the fields sent change). Changing what it
+ * grants asks for the password again (the API client shows the pop-up).
+ * @param {string} id
+ * @param {{ name?: string, permissions?: string[] }} changes
+ * @returns {Promise<Role>}
+ */
+export function updateRole(id, changes) {
+  return api.patch(`/api/roles/${encodeURIComponent(id)}`, changes);
+}
+
+/**
+ * Archive a role: its holders lose what it grants at once (password asked again).
+ * @param {string} id
+ * @returns {Promise<Role>}
+ */
+export function archiveRole(id) {
+  return api.post(`/api/roles/${encodeURIComponent(id)}/archive`);
+}
+
+/** @returns {Promise<Owner[]>} the company's owners, by name */
+export async function listOwners() {
+  const answer = await api.get("/api/owners");
+  return answer.items;
+}
+
+/**
+ * The answer of an owner change: done at once (200, the owners now), or waiting for the
+ * other owners (202, an approval request).
+ * @param {any} answer
+ * @returns {OwnerResult}
+ */
+function ownerResult(answer) {
+  return "kind" in answer
+    ? { done: false, request: /** @type {PendingRequest} */ (answer) }
+    : { done: true, owners: answer.items };
+}
+
+/**
+ * Propose a new owner (owners only; every other owner must agree).
+ * @param {string} userId
+ * @returns {Promise<OwnerResult>}
+ */
+export async function addOwner(userId) {
+  return ownerResult(await api.post("/api/owners", { user_id: userId }));
+}
+
+/**
+ * Propose that someone stop being an owner (never the last one).
+ * @param {string} userId
+ * @returns {Promise<OwnerResult>}
+ */
+export async function removeOwner(userId) {
+  return ownerResult(await api.post(`/api/owners/${encodeURIComponent(userId)}/remove`));
 }
