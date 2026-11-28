@@ -56,13 +56,13 @@ files. Each directive has one job:
 | `frame-ancestors 'none'` | Do not allow another page to frame the application. |
 | `form-action 'self'` | Submit forms only to this origin. |
 
-**Positions computed by a script** (the bars of the department week's timeline) still
+**Positions computed by a script** (the blocks of the department week's calendar) still
 follow `style-src 'self'`: the script never writes a `style` attribute or HTML that carries
 one, which the browser would refuse. It sets CSS custom properties through the CSSOM
-(`element.style.setProperty("--bar-start", "12.5")`), which the policy allows because only
+(`element.style.setProperty("--block-start", "37.5")`), which the policy allows because only
 our own script can call it, and the stylesheet turns them into positions. The values are
 numbers computed from server data, never text a user wrote.
-`tests/integration/timeline.spec.js` checks in all three browser engines that the bars land
+`tests/integration/calendar.spec.js` checks in all three browser engines that the blocks land
 where they belong behind the real policy and that nothing is refused.
 
 ## Other response headers
