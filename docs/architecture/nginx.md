@@ -34,6 +34,15 @@ The important files are:
   test requests one file from each folder, so a missing one fails CI.
 - `nginx/nginx.conf`: serves static files, defines the proxy, and adds the security and
   caching headers.
+- `nginx/one-api.sh` (#119): runs before nginx starts (the image runs every script in
+  `/docker-entrypoint.d/`) and refuses to start when more than one container answers as
+  `api` on the shared network, naming each. nginx looks `api` up once at start and sends
+  requests to every address in turn, so with two backend stacks there (say a second one
+  with its own database, for testing) links, sign-ins, and changes fail at random: a link
+  made through one API is "not valid" for the other (the 400s in the review of #92). No
+  answer or one answer starts nginx as before. The backend refuses a second API from its
+  side too (backend #213). To run a second stack, give it a network of its own
+  (`SHARED_NETWORK`), as the integration tests do.
 - `docker-compose.yml`: publishes nginx on `127.0.0.1:8080` and joins the shared network.
 - `tests/integration/`: starts an isolated API stand-in and checks the complete browser
   path without depending on a checkout of the backend repository.

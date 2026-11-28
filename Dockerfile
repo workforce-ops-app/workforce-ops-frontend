@@ -8,6 +8,9 @@ FROM nginx:1.31-alpine3.24
 # imports and links used during development.
 RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
+# Run before nginx starts (the image runs /docker-entrypoint.d/*.sh): refuse to start when
+# more than one API answers as "api" on the shared network (nginx/one-api.sh, #119).
+COPY --chmod=755 nginx/one-api.sh /docker-entrypoint.d/05-one-api.sh
 COPY pages /usr/share/nginx/html/pages
 COPY css /usr/share/nginx/html/css
 COPY js /usr/share/nginx/html/js
