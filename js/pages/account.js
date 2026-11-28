@@ -10,7 +10,7 @@
 // page then goes to the sign-in page. It asks first: every phone and computer is affected.
 
 import { ApiError, NetworkError, setCsrfToken } from "../api/client.js";
-import { changePassword } from "../api/account.js";
+import { changePassword, passwordRefusal } from "../api/account.js";
 import { signOutEverywhere } from "../api/sessions.js";
 import { startSignedInPage } from "../components/app-shell.js";
 import { confirmChange } from "../components/confirm-dialog.js";
@@ -29,7 +29,11 @@ export function explainPasswordChange(error) {
   }
   if (!(error instanceof ApiError)) return null;
   if (error.status === 401) return "Your session has ended. Sign in again, then try once more.";
-  // The current password was wrong: the server answers 403 and records it.
+  // 403: the current password was refused. A locked account (too many wrong passwords)
+  // gets the server's own explanation, so the person knows to wait instead of retrying;
+  // a plain wrong password gets ours. The server records both.
+  const refusal = passwordRefusal(error);
+  if (refusal) return refusal;
   if (error.status === 403) return "Your current password is not right.";
   if (error.status === 429) {
     const wait = error.retryAfter ? ` Try again in ${error.retryAfter} seconds.` : "";

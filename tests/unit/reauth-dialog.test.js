@@ -51,6 +51,44 @@ describe("askForPassword", () => {
     await expect(answer).resolves.toBe(true);
   });
 
+  it("says the backend's wrong-password answer in its own words", async () => {
+    const wrong = new ApiError(403, { title: "Forbidden", detail: "That password is not right." });
+    askForPassword(vi.fn().mockRejectedValue(wrong));
+    const { input, form, message } = parts();
+    input.value = "wrong";
+    form.requestSubmit();
+    await settle();
+    expect(message.textContent).toBe("That password is not right. Please try again.");
+  });
+
+  it("says when the account is locked, in the backend's words, and stays open", async () => {
+    const locked = new ApiError(403, {
+      title: "Forbidden",
+      detail: "Too many wrong passwords. Wait a while and try again.",
+    });
+    const send = vi.fn().mockRejectedValue(locked);
+    askForPassword(send);
+    const { input, form, message } = parts();
+    input.value = "maybe right";
+    form.requestSubmit();
+    await settle();
+    expect(message.textContent).toBe("Too many wrong passwords. Wait a while and try again.");
+    // The password is not marked wrong: it may be right; the person has to wait.
+    expect(input.hasAttribute("aria-invalid")).toBe(false);
+    expect(document.querySelector("dialog")).not.toBeNull();
+  });
+
+  it("shows the server's explanation as text, never as HTML", async () => {
+    const odd = new ApiError(403, { detail: "<img src=x onerror=alert(1)>" });
+    askForPassword(vi.fn().mockRejectedValue(odd));
+    const { input, form, message } = parts();
+    input.value = "x";
+    form.requestSubmit();
+    await settle();
+    expect(message.textContent).toBe("<img src=x onerror=alert(1)>");
+    expect(message.querySelector("img")).toBeNull();
+  });
+
   it("does not send an empty password", () => {
     const send = vi.fn();
     askForPassword(send);

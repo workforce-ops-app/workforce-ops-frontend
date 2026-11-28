@@ -103,6 +103,33 @@ describe("My account", () => {
     expect(setCsrfToken).not.toHaveBeenCalled();
   });
 
+  it("says the backend's wrong-password answer in the page's own words", async () => {
+    const wrong = new ApiError(403, { title: "Forbidden", detail: "That password is not right." });
+    const change = vi.fn().mockRejectedValue(wrong);
+    await showAccount({ change, endAll: vi.fn(), confirm: vi.fn() });
+    const p = parts();
+    fill(p);
+    p.form.requestSubmit();
+    await settle();
+    expect(p.message.textContent).toBe("Your current password is not right.");
+  });
+
+  it("says when the account is locked, in the backend's words, so the person waits", async () => {
+    const locked = new ApiError(403, {
+      title: "Forbidden",
+      detail: "Too many wrong passwords. Wait a while and try again.",
+    });
+    const change = vi.fn().mockRejectedValue(locked);
+    await showAccount({ change, endAll: vi.fn(), confirm: vi.fn() });
+    const p = parts();
+    fill(p);
+    p.form.requestSubmit();
+    await settle();
+    expect(p.message.textContent).toBe("Too many wrong passwords. Wait a while and try again.");
+    expect(p.message.textContent).not.toContain("not right");
+    expect(setCsrfToken).not.toHaveBeenCalled();
+  });
+
   it("asks before signing out everywhere, then goes to the sign-in page", async () => {
     const endAll = vi.fn().mockResolvedValue(null);
     // The question, answered yes: it runs the change, as the real popup does.
