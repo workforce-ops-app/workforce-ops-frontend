@@ -15,6 +15,17 @@
     grid-template-columns: minmax(16rem, 22rem) 1fr;
     align-items: start;
   }
+
+  /* Side by side, the list is always in view: no need for a way back to it. */
+  .person-back {
+    display: none;
+  }
+}
+
+/* On phones, "Back to the list" at the top of the details returns to the chosen person in
+   the list (choosing someone scrolls down to their details; js/pages/admin-people.js). */
+.person-back {
+  margin-bottom: 0.75rem;
 }
 
 .admin-people__list,
@@ -23,6 +34,12 @@
   border-radius: var(--radius-card);
   background: var(--color-background);
   box-shadow: var(--shadow-card);
+}
+
+/* Add a person: the first thing in the list's column, as wide as it, above the search. */
+.admin-people__add {
+  width: 100%;
+  margin-bottom: var(--space);
 }
 
 .people-list {

@@ -1,6 +1,9 @@
 // The page frame: menu entries by permission, the account spot, and starting a page.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ApiError, NetworkError } from "../../js/api/client.js";
+import { loadPage } from "./page-html.js";
 
 // Replace the server calls, so each test decides what the "server" answers.
 vi.mock("../../js/api/sessions.js", () => ({
@@ -324,5 +327,62 @@ describe("the company's logo", () => {
     await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
 
     expect(logo().getAttribute("src")).toBe("/images/logos/app-square.png");
+  });
+});
+
+// The hidden attribute alone is not enough: a class that sets display (.button is
+// inline-flex) wins over the browser's own [hidden] rule, and the element shows anyway.
+// These load each real page with the stylesheets it links, so the cascade is the one a
+// browser applies (jsdom computes it), and look at what a person would actually see.
+describe("elements hidden by permission", () => {
+  /**
+   * Put a real page and its stylesheets into the test document.
+   * @param {string} name e.g. "admin-people.html"
+   */
+  function pageWithStyles(name) {
+    loadPage(name);
+    const html = readFileSync(join(process.cwd(), "pages", name), "utf8");
+    // Every <link rel="stylesheet" href="/css/..."> of the page, in order.
+    const sheets = [...html.matchAll(/<link rel="stylesheet" href="\/(css\/[^"]+)"/g)].map(
+      (match) => readFileSync(join(process.cwd(), match[1]), "utf8"),
+    );
+    const style = document.createElement("style");
+    style.textContent = sheets.join("\n");
+    document.head.replaceChildren(style);
+  }
+
+  afterEach(() => document.head.replaceChildren());
+
+  /** Whether an element takes part in the page at all (display: none does not). */
+  const shown = (/** @type {Element} */ element) => getComputedStyle(element).display !== "none";
+
+  it.each(["my-shifts.html", "schedule.html", "account.html", "admin-people.html"])(
+    "%s shows nothing the person may not use",
+    async (name) => {
+      pageWithStyles(name);
+      // Someone with only their own week: no Department tab, no Administration, no buttons.
+      fetchSession.mockResolvedValue(sessionWith(["schedule.view_self"]));
+      await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+      const controlled = [...document.querySelectorAll("[data-permission], [data-permission-any]")];
+      expect(controlled.length).toBeGreaterThan(0);
+      for (const element of controlled) {
+        if (element instanceof HTMLElement && element.hidden) {
+          expect(shown(element), element.outerHTML).toBe(false);
+        }
+      }
+    },
+  );
+
+  it("hides Add a person without user.manage, and shows it with it", async () => {
+    pageWithStyles("admin-people.html");
+    fetchSession.mockResolvedValue(sessionWith(["schedule.view_self", "role.assign"]));
+    await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+    expect(shown(byId("add-person"))).toBe(false);
+
+    forgetSession();
+    pageWithStyles("admin-people.html");
+    fetchSession.mockResolvedValue(sessionWith(["schedule.view_self", "user.manage"]));
+    await startSignedInPage(vi.fn().mockResolvedValue(undefined), vi.fn());
+    expect(shown(byId("add-person"))).toBe(true);
   });
 });

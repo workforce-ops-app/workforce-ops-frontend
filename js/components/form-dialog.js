@@ -14,8 +14,17 @@
 // values joined by spaces (permission codes have none). A locked choice is shown but
 // cannot be changed: a permission the person lacks stays as it is (rule AZ3).
 
+import { ApiError } from "../api/client.js";
 import { el } from "../core/dom.js";
 import { createModal, explainFailure } from "./modal.js";
+
+// The shape the API accepts for an email address (backend app/modules/org/schemas.py): no
+// spaces, one "@", and a dot somewhere after it. Checked here first, so a typing mistake
+// gets a plain message without a request.
+const EMAIL_SHAPE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/** What a person sees for an email address the API would not accept. */
+export const INVALID_EMAIL = "Enter a valid email address.";
 
 /**
  * @typedef {{ value: string, label: string, locked?: boolean }} Choice
@@ -99,12 +108,27 @@ export function openFormDialog(options) {
         if (empty instanceof HTMLElement) empty.focus();
         return;
       }
+      // Then the shape of email addresses, the same rule as the API's.
+      const badEmail = options.fields.find(
+        (field) =>
+          field.type === "email" &&
+          (!field.shown || field.shown(values)) &&
+          values[field.name] &&
+          !EMAIL_SHAPE.test(values[field.name]),
+      );
+      if (badEmail) {
+        problem.textContent = INVALID_EMAIL;
+        problem.hidden = false;
+        const input = form.querySelector(`[name="${badEmail.name}"]`);
+        if (input instanceof HTMLElement) input.focus();
+        return;
+      }
       sending = true;
       modal.setBusy(true);
       try {
         done = { result: await options.run({ ...values }) };
       } catch (error) {
-        const message = explainFailure(error);
+        const message = explainFormFailure(error, options.fields);
         sending = false;
         modal.setBusy(false);
         if (message === null) {
@@ -142,6 +166,30 @@ export function openFormDialog(options) {
     );
     modal.open(/** @type {HTMLElement | null} */ (form.querySelector("input, select")));
   });
+}
+
+/**
+ * Why the form could not be sent, in plain words (or null for a bug in our own code).
+ * Like explainFailure (modal.js), except for the API's own checks of the fields (422 with
+ * a list of errors): their messages are written for developers, and one that a value
+ * "should match pattern" even shows the pattern itself, a regular expression. Those get a
+ * plain message instead: "Enter a valid email address." for an email field, or which
+ * field to check for any other.
+ * @param {unknown} error
+ * @param {Field[]} fields
+ * @returns {string | null}
+ */
+export function explainFormFailure(error, fields) {
+  if (!(error instanceof ApiError) || error.errors.length === 0) return explainFailure(error);
+  const messages = error.errors.map((problem) => {
+    // The location ends with the field's name: "body.email".
+    const field = fields.find((f) => f.name === problem.location.split(".").at(-1));
+    if (!/pattern/i.test(problem.message)) return problem.message;
+    if (field?.type === "email") return INVALID_EMAIL;
+    return field ? `Check ${field.label.toLowerCase()}.` : "Check the values entered.";
+  });
+  // One line per message; the same message twice is said once.
+  return [...new Set(messages)].join(" ");
 }
 
 /**
