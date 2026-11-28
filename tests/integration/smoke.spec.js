@@ -12,7 +12,12 @@ test("placeholder page loads through nginx and reaches the API", async ({ page }
 // Signed-in pages ask the API "who am I" first. Without a session the answer is 401, and
 // the page must send the visitor to sign in instead of showing an empty schedule.
 test("a signed-in page sends a signed-out visitor to the sign-in page", async ({ page }) => {
-  for (const path of ["/pages/my-shifts.html", "/pages/schedule.html", "/pages/account.html"]) {
+  for (const path of [
+    "/pages/my-shifts.html",
+    "/pages/schedule.html",
+    "/pages/account.html",
+    "/pages/admin-people.html",
+  ]) {
     await page.goto(path);
     await expect(page, path).toHaveURL(/\/pages\/sign-in\.html$/);
   }
@@ -21,7 +26,12 @@ test("a signed-in page sends a signed-out visitor to the sign-in page", async ({
 // While the "who am I" answer is on its way, the signed-in page must not show itself: a
 // signed-out visitor should never glimpse its heading or week buttons before leaving.
 test("a signed-in page stays hidden until the session has loaded", async ({ page }) => {
-  for (const path of ["/pages/my-shifts.html", "/pages/schedule.html", "/pages/account.html"]) {
+  for (const path of [
+    "/pages/my-shifts.html",
+    "/pages/schedule.html",
+    "/pages/account.html",
+    "/pages/admin-people.html",
+  ]) {
     // Hold the answer back until the page has been checked, then let the 401 through.
     /** @type {() => void} */
     let release = () => {};
