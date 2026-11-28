@@ -182,6 +182,13 @@ const state = {
 // under Sofia's highlighted name, and the next click would change the wrong account.
 let detailsDrawing = 0;
 
+// The account actions still running, as "person ID:action" (for example "ana:link").
+// Kept here, not on the button, because choosing another person and coming back draws
+// new buttons: a mark on the old button would be lost, and a second "Setup link" press
+// would send a second request whose link cancels the first one shown.
+/** @type {Set<string>} */
+const running = new Set();
+
 /** Names by ID, for showing places and people. */
 function names() {
   return {
@@ -439,24 +446,40 @@ function accountButtons(person) {
    * @param {string} label
    * @param {() => Promise<unknown>} action
    * @param {string} [className]
+   * @param {string} [kind] what the action is, for telling whether it is still running;
+   *   the label unless two labels are the same action
    */
-  const button = (label, action, className = "button") => {
-    const element = el("button", { className, text: label, attrs: { type: "button" } });
+  const button = (label, action, className = "button", kind = label) => {
+    const key = `${person.id}:${kind}`;
+    const element = el("button", {
+      className,
+      text: label,
+      attrs: { type: "button", "data-action": key },
+    });
+    // Drawn while the action is still running (the person was chosen again): off at once.
+    if (running.has(key)) element.setAttribute("aria-disabled", "true");
     element.addEventListener("click", async () => {
-      // One request at a time per button. A double click on "Setup link" would otherwise
-      // send two requests: both succeed, but the second link cancels the first, so the
-      // first one shown would already be dead. Until the action (its popup included) has
-      // finished, further clicks are ignored and the button says it is off with
-      // aria-disabled. Not the disabled attribute: a disabled button loses keyboard focus,
-      // and the popup could then not give focus back to it when it closes.
-      if (element.getAttribute("aria-disabled") === "true") return;
+      // One request at a time per person and action. A double click on "Setup link" would
+      // otherwise send two requests: both succeed, but the second link cancels the first,
+      // so the first one shown would already be dead. Until the action (its popup
+      // included) has finished, further clicks are ignored, also on buttons drawn again
+      // meanwhile, and the buttons say they are off with aria-disabled. Not the disabled
+      // attribute: a disabled button loses keyboard focus, and the popup could then not
+      // give focus back to it when it closes.
+      if (running.has(key)) return;
+      running.add(key);
       element.setAttribute("aria-disabled", "true");
       try {
         await action();
       } catch (error) {
         reportProblem(error);
       } finally {
+        running.delete(key);
+        // This button, and the one drawn in its place if the person was chosen again.
         element.removeAttribute("aria-disabled");
+        for (const drawn of document.querySelectorAll("[data-action]")) {
+          if (drawn.getAttribute("data-action") === key) drawn.removeAttribute("aria-disabled");
+        }
       }
     });
     buttons.push(element);
@@ -465,10 +488,16 @@ function accountButtons(person) {
   button("Change details", () => editPersonDialog(person));
   if (person.status !== "deactivated") {
     const purpose = person.status === "invited" ? "setup" : "reset";
-    button(purpose === "setup" ? "Setup link" : "Reset link", async () => {
-      const link = await makeLink(person.id, purpose);
-      await showLinkOnce(link, { name: person.display_name, zone: zone() });
-    });
+    // Setup and reset are one action ("link"): any new link cancels the last one.
+    button(
+      purpose === "setup" ? "Setup link" : "Reset link",
+      async () => {
+        const link = await makeLink(person.id, purpose);
+        await showLinkOnce(link, { name: person.display_name, zone: zone() });
+      },
+      "button",
+      "link",
+    );
   }
   if (person.locked) {
     button("Unlock", async () => {
