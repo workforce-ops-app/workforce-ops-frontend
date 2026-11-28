@@ -12,7 +12,7 @@
 // The password is only ever in the field and in the one request; it is never kept.
 
 import { ApiError, NetworkError, onReauthRequired } from "../api/client.js";
-import { reenterPassword } from "../api/account.js";
+import { passwordRefusal, reenterPassword } from "../api/account.js";
 import { el } from "../core/dom.js";
 import { createModal } from "./modal.js";
 
@@ -64,11 +64,16 @@ export function askForPassword(send = reenterPassword) {
       attrs: { type: "submit" },
     });
 
-    /** @param {string} message */
-    const showProblem = (message) => {
+    /**
+     * @param {string} message
+     * @param {boolean} [invalid] whether the password itself is the problem (false for a
+     *   locked account: the password may be right, the person must wait)
+     */
+    const showProblem = (message, invalid = true) => {
       problem.textContent = message;
       problem.hidden = false;
-      input.setAttribute("aria-invalid", "true");
+      if (invalid) input.setAttribute("aria-invalid", "true");
+      else input.removeAttribute("aria-invalid");
       input.setAttribute("aria-describedby", "reauth-message");
       input.focus();
     };
@@ -87,7 +92,12 @@ export function askForPassword(send = reenterPassword) {
         await send(input.value);
         accepted = true;
       } catch (error) {
-        if (error instanceof ApiError && error.status === 403) {
+        // A 403 is a refusal of the password: a locked account (the server's own words,
+        // "Too many wrong passwords. Wait a while and try again.") or a wrong password.
+        const refusal = passwordRefusal(error);
+        if (refusal) {
+          showProblem(refusal, false);
+        } else if (error instanceof ApiError && error.status === 403) {
           showProblem("That password is not right. Please try again.");
         } else if (error instanceof ApiError && error.status === 401) {
           showProblem("Your session has ended. Sign in again, then try once more.");
