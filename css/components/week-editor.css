@@ -127,8 +127,10 @@
   border-color: transparent;
 }
 
-/* A button that is waiting for the server, or has nothing to do yet. */
-.button[disabled] {
+/* A button that is waiting for the server, or has nothing to do yet. aria-disabled is the
+   same state for a button that must keep keyboard focus while it waits (People page). */
+.button[disabled],
+.button[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.55;
 }

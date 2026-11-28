@@ -114,18 +114,74 @@ export function giveMessage(result, roleName, personName) {
   return `Sent for approval to ${list}. ${personName} gets ${roleName} once it is approved.`;
 }
 
+/** A list that could not be loaded for another reason than a refusal (see `loadOrRefused`). */
+export const FAILED = Symbol("failed");
+
+/**
+ * Load a list that the user may or may not be allowed to see, and say which it was:
+ *   - the list itself when it arrived;
+ *   - null when the server refused it with 403: the user has no right to see it, which is
+ *     expected, so the section is left out as if it did not exist;
+ *   - FAILED for any other failure (no answer, a 500, a 404): the user may see it, but it
+ *     did not arrive, and the page must say so instead of quietly leaving it out.
+ * A bug in our own code (any other error) is thrown on, to the console.
+ * @template T
+ * @param {Promise<T>} request
+ * @returns {Promise<T | null | typeof FAILED>}
+ */
+export async function loadOrRefused(request) {
+  try {
+    return await request;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) return null;
+    if (error instanceof ApiError || error instanceof NetworkError) return FAILED;
+    throw error;
+  }
+}
+
+/**
+ * A short note in place of a section that could not be loaded (class "error", as the
+ * page's other problem messages; role="alert", so screen readers hear it at once).
+ * @param {string} what e.g. "Their roles"
+ * @param {string} [retry] how to try again
+ */
+function notLoaded(what, retry = "choose the person again or reload the page") {
+  return el("p", {
+    className: "error",
+    attrs: { role: "alert" },
+    text: `${what} could not be loaded. Check the connection, then ${retry}.`,
+  });
+}
+
 // --- The page ----------------------------------------------------------------------------
 
 /**
  * Everything the page has loaded.
  * @typedef {{
  *   people: Person[], departments: Named[], teams: (Named & { department_id: string, archived: boolean })[],
- *   roles: Role[], selected: string | null, query: string,
+ *   roles: Role[], rolesFailed: boolean, selected: string | null, query: string,
  * }} State
  */
 
 /** @type {State} */
-const state = { people: [], departments: [], teams: [], roles: [], selected: null, query: "" };
+const state = {
+  people: [],
+  departments: [],
+  teams: [],
+  roles: [],
+  // True when the role catalogue could not be loaded (not refused: failed), so "Give a
+  // role" says why it is missing.
+  rolesFailed: false,
+  selected: null,
+  query: "",
+};
+
+// Which drawing of the details is the current one. Every drawDetails() call takes the next
+// number and, after each wait for the server, checks it still holds the latest one. If
+// another person was chosen meanwhile, its answers are thrown away: otherwise a slow
+// answer for Ana, arriving after Sofia was chosen, would show Ana's details and buttons
+// under Sofia's highlighted name, and the next click would change the wrong account.
+let detailsDrawing = 0;
 
 /** Names by ID, for showing places and people. */
 function names() {
@@ -164,14 +220,22 @@ function showProblem(error) {
 export async function showPeople() {
   const status = document.getElementById("status");
   try {
-    // Roles are needed only to give them; without role.view the list is not offered.
+    // Roles are needed only to give them. Without role.view the server refuses the list
+    // (403) and "Give a role" is simply not offered; any other failure is remembered, so
+    // the roles section can say that the list could not be loaded.
     const [people, departments, teams, roles] = await Promise.all([
       listPeople(),
       listDepartments(),
       listTeams(),
-      can("role.assign") ? listRoles().catch(() => []) : Promise.resolve([]),
+      can("role.assign") ? loadOrRefused(listRoles()) : Promise.resolve([]),
     ]);
-    Object.assign(state, { people, departments, teams, roles });
+    Object.assign(state, {
+      people,
+      departments,
+      teams,
+      roles: Array.isArray(roles) ? roles : [],
+      rolesFailed: roles === FAILED,
+    });
   } catch (error) {
     showProblem(error);
     return;
@@ -212,23 +276,66 @@ function drawList() {
         "button",
         {
           className: "people-list__person",
-          attrs: { type: "button", "aria-pressed": String(person.id === state.selected) },
+          attrs: {
+            type: "button",
+            "aria-pressed": String(person.id === state.selected),
+            // Which person the button is for, so focus can be put back on it after the
+            // list is drawn again (selectedButton).
+            "data-person-id": person.id,
+          },
         },
         [
           el("span", { className: "people-list__name", text: person.display_name }),
           el("span", { className: "people-list__status muted", text: statusLabel(person) }),
         ],
       );
-      button.addEventListener("click", () => {
-        state.selected = person.id;
-        drawList();
-        drawDetails(person.id);
-      });
+      button.addEventListener("click", () => choose(person.id));
       return el("li", {}, [button]);
     }),
   );
   if (shown.length === 0)
     list.replaceChildren(el("li", { className: "muted", text: "Nobody matches." }));
+}
+
+/**
+ * The list button of the chosen person, if they are in the list as drawn now.
+ * @returns {HTMLElement | null}
+ */
+function selectedButton() {
+  if (!state.selected) return null;
+  const list = document.getElementById("people-list");
+  const buttons = list ? list.querySelectorAll("[data-person-id]") : [];
+  for (const button of buttons) {
+    if (button instanceof HTMLElement && button.dataset.personId === state.selected) {
+      return button;
+    }
+  }
+  return null;
+}
+
+/**
+ * Someone was chosen in the list (by mouse, finger, or keyboard).
+ * @param {string} personId
+ */
+function choose(personId) {
+  state.selected = personId;
+  // 1. Draw the list again, so the highlight moves to them. That replaces every button,
+  //    the one just pressed included, and focus would fall back to the page's start; a
+  //    keyboard user would have to Tab all the way back. So focus goes to the new button
+  //    for the same person. preventScroll: the list does not jump.
+  drawList();
+  selectedButton()?.focus({ preventScroll: true });
+  // 2. Then their details. On a phone the details sit under the whole list, maybe several
+  //    screens down; bring them into view (the "Back to the list" button returns).
+  drawDetails(personId);
+  if (isNarrow()) {
+    document.getElementById("person-details")?.scrollIntoView?.({ block: "start" });
+  }
+}
+
+/** Whether the list and the details are stacked (the phone layout in admin-people.css). */
+function isNarrow() {
+  return window.matchMedia?.("(width < 56rem)").matches ?? false;
 }
 
 /**
@@ -238,35 +345,35 @@ function drawList() {
 async function drawDetails(personId) {
   const panel = document.getElementById("person-details");
   const person = state.people.find((p) => p.id === personId);
-  if (!panel || !person) return;
+  // Only the chosen person's details are ever drawn.
+  if (!panel || !person || state.selected !== personId) return;
   panel.hidden = false;
+  // This drawing's number: any older drawing still waiting for the server gives up.
+  const drawing = ++detailsDrawing;
   const known = names();
   const mayAct = person.you_are_above;
 
-  // Roles and lines come from their own requests; a 403 (no right to see them) leaves the
-  // section out instead of failing the page.
+  // 1. At once, before asking the server anything: this person's name and facts, and a
+  //    loading line. The previous person's buttons are gone from the page now, so they
+  //    cannot be pressed for the wrong account while this person's answers are on the way.
+  const top = [backToList(), ...facts(person, known)];
+  panel.replaceChildren(
+    ...top,
+    el("p", { className: "muted", attrs: { role: "status" }, text: "Loading roles and lines…" }),
+  );
+
+  // 2. Roles and lines come from their own requests. A 403 (no right to see them) leaves
+  //    the section out; any other failure says so in its place (loadOrRefused).
   const [assignments, lines] = await Promise.all([
-    listAssignments(person.id).catch(() => /** @type {Assignment[] | null} */ (null)),
-    listLines(person.id).catch(() => /** @type {Line[] | null} */ (null)),
+    loadOrRefused(listAssignments(person.id)),
+    loadOrRefused(listLines(person.id)),
   ]);
 
-  const teams = person.team_ids
-    .map((id) => known.teams.get(id))
-    .filter(Boolean)
-    .join(", ");
-  const parts = [
-    el("h2", { text: person.display_name, attrs: { id: "person-name" } }),
-    el("dl", { className: "person-facts" }, [
-      el("dt", { text: "Email" }),
-      el("dd", { text: person.email }),
-      el("dt", { text: "Home department" }),
-      el("dd", { text: known.departments.get(person.department_id) ?? "Unknown" }),
-      el("dt", { text: "Teams" }),
-      el("dd", { text: teams || "None" }),
-      el("dt", { text: "Account" }),
-      el("dd", { text: statusLabel(person) }),
-    ]),
-  ];
+  // 3. Someone else was chosen while we waited (or the page drew this person again with
+  //    fresher data): these answers are out of date, so they are thrown away.
+  if (drawing !== detailsDrawing || state.selected !== personId) return;
+
+  const parts = [...top];
   if (!mayAct) {
     parts.push(
       el("p", {
@@ -281,9 +388,64 @@ async function drawDetails(personId) {
     parts.push(accountButtons(person));
   }
 
-  if (assignments) parts.push(rolesSection(person, assignments, mayAct));
-  if (lines) parts.push(linesSection(person, lines, mayAct));
+  if (assignments === FAILED) parts.push(failedSection("Roles", "Their roles"));
+  else if (assignments) parts.push(rolesSection(person, assignments, mayAct));
+  if (lines === FAILED) parts.push(failedSection("Reporting lines", "Their reporting lines"));
+  else if (lines) parts.push(linesSection(person, lines, mayAct));
   panel.replaceChildren(...parts);
+}
+
+/**
+ * "Back to the list", shown on phones only (admin-people.css), where the details are
+ * under the whole list: it returns to the chosen person's button in the list.
+ */
+function backToList() {
+  const back = el("button", {
+    className: "button button--small person-back",
+    text: "Back to the list",
+    attrs: { type: "button" },
+  });
+  // Focusing the button also scrolls the list to it.
+  back.addEventListener("click", () => selectedButton()?.focus());
+  return back;
+}
+
+/**
+ * A section heading with a note that its content could not be loaded.
+ * @param {string} title "Roles"
+ * @param {string} what "Their roles"
+ */
+function failedSection(title, what) {
+  return el("section", { className: "person-section" }, [
+    el("h3", { text: title }),
+    notLoaded(what),
+  ]);
+}
+
+/**
+ * The person's name and facts, the top of the details.
+ * @param {Person} person
+ * @param {ReturnType<typeof names>} known
+ * @returns {HTMLElement[]}
+ */
+function facts(person, known) {
+  const teams = person.team_ids
+    .map((id) => known.teams.get(id))
+    .filter(Boolean)
+    .join(", ");
+  return [
+    el("h2", { text: person.display_name, attrs: { id: "person-name" } }),
+    el("dl", { className: "person-facts" }, [
+      el("dt", { text: "Email" }),
+      el("dd", { text: person.email }),
+      el("dt", { text: "Home department" }),
+      el("dd", { text: known.departments.get(person.department_id) ?? "Unknown" }),
+      el("dt", { text: "Teams" }),
+      el("dd", { text: teams || "None" }),
+      el("dt", { text: "Account" }),
+      el("dd", { text: statusLabel(person) }),
+    ]),
+  ];
 }
 
 /**
@@ -301,10 +463,20 @@ function accountButtons(person) {
   const button = (label, action, className = "button") => {
     const element = el("button", { className, text: label, attrs: { type: "button" } });
     element.addEventListener("click", async () => {
+      // One request at a time per button. A double click on "Setup link" would otherwise
+      // send two requests: both succeed, but the second link cancels the first, so the
+      // first one shown would already be dead. Until the action (its popup included) has
+      // finished, further clicks are ignored and the button says it is off with
+      // aria-disabled. Not the disabled attribute: a disabled button loses keyboard focus,
+      // and the popup could then not give focus back to it when it closes.
+      if (element.getAttribute("aria-disabled") === "true") return;
+      element.setAttribute("aria-disabled", "true");
       try {
         await action();
       } catch (error) {
         showProblem(error);
+      } finally {
+        element.removeAttribute("aria-disabled");
       }
     });
     buttons.push(element);
@@ -420,6 +592,9 @@ function rolesSection(person, assignments, mayAct) {
     });
     give.addEventListener("click", () => giveRoleDialog(person));
     section.append(give);
+  } else if (manage && state.rolesFailed) {
+    // The catalogue of roles did not arrive (not refused): say why "Give a role" is missing.
+    section.append(notLoaded("The list of roles to give", "reload the page"));
   }
   return section;
 }

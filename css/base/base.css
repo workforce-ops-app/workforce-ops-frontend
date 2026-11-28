@@ -130,6 +130,17 @@ a {
 }
 
 /* Text for screen readers only: hidden on screen, still read aloud. */
+/* The hidden attribute always hides. Browsers hide [hidden] with display: none, but any
+   class that sets display (.button is inline-flex) would win over it and show the element
+   again: an "Add a person" button kept for user.manage holders (data-permission) would
+   then appear for everyone. !important makes the attribute win everywhere, so a component
+   does not need its own [hidden] rule. The one exception is the account line, which on
+   phones keeps its place while hidden (visibility, css/components/app-shell.css). */
+[hidden]:not(.account) {
+  /* biome-ignore lint/complexity/noImportantStyles: the attribute must beat every class. */
+  display: none !important;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
