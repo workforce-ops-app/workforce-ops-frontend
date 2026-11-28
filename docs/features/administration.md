@@ -28,7 +28,7 @@ Through `js/api/users.js`, `js/api/org.js`, `js/api/roles.js`, and `js/api/appro
 
 ## People screen (built)
 
-`pages/admin-people.html`, `js/pages/admin-people.js`. The people the user may see on the left (search by any words of the name or email), the chosen person on the right:
+`pages/admin-people.html`, `js/pages/admin-people.js`. The people the user may see on the left (search by any words of the name or email), with **Add a person** at the top of that column, above the search and the names (for `user.manage` holders); the chosen person on the right:
 - **Details:** email, home department, teams, account status (no password yet, active, deactivated, locked).
 - **Account actions** (`user.manage`, and only for people the user is above): change details, setup link (no password yet) or reset link, unlock, sign out everywhere, deactivate (says how many upcoming shifts still need someone else), reactivate. Adding a person asks who they report to (the user by default) and then shows their setup link.
 - **Roles** (`role.assign`, people the user is above): each role and where it applies, a Remove button (never for the Owner role, which changes only through the owners), and **Give a role**: the role, then the whole company, one department, one team, or only one person. The answer says "Ana now holds Scheduler." or "Sent for approval to Owen ..." (the request's `reviewers`, backend #168).

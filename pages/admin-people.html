@@ -61,19 +61,20 @@
       <div class="admin-people__columns">
         <section class="admin-people__list" aria-labelledby="people-list-title">
           <h2 id="people-list-title" class="visually-hidden">Everyone you can see</h2>
-          <div class="field">
-            <label class="field__label" for="people-search">Search by name or email</label>
-            <input id="people-search" class="field__input" type="search" autocomplete="off" />
-          </div>
+          <!-- First in the list's column, above the search and the names (review of #92). -->
           <button
             id="add-person"
-            class="button button--primary"
+            class="button button--primary admin-people__add"
             type="button"
             data-permission="user.manage"
             hidden
           >
             Add a person
           </button>
+          <div class="field">
+            <label class="field__label" for="people-search">Search by name or email</label>
+            <input id="people-search" class="field__input" type="search" autocomplete="off" />
+          </div>
           <ul id="people-list" class="people-list"></ul>
         </section>
 

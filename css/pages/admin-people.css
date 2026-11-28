@@ -36,6 +36,12 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Add a person: the first thing in the list's column, as wide as it, above the search. */
+.admin-people__add {
+  width: 100%;
+  margin-bottom: var(--space);
+}
+
 .people-list {
   display: grid;
   gap: 0.25rem;
